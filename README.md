@@ -4,13 +4,13 @@ A Bitumen-focused procurement and trade platform designed for future commodity e
 
 ## Current state
 
-T0101 establishes the monorepo layout and baseline files. Application setup, database setup, Docker services, and CI are scheduled in later tasks. There is no application to run, build, or test yet.
+T0101 establishes the monorepo layout and baseline files. T0102 adds the Django API foundation and a public JSON health endpoint. Frontend setup, local Docker services, OpenAPI generation, and CI remain scheduled in later tasks.
 
 ## Repository structure
 
 ```text
 apps/
-  api/                 Django API location (T0102)
+  api/                 Django API foundation (T0102)
   web/                 Next.js frontend location (T0103)
 docs/
   product/             Authoritative Product Specification
@@ -32,14 +32,14 @@ Empty implementation directories contain `.gitkeep` files so Git retains the lay
 
 ## Local setup
 
-Prerequisites for this task are Git, repository access, and a text editor. Application runtime and service setup are deferred to their respective tasks.
+Prerequisites are Git and repository access. Backend development additionally requires Python 3.12+ and a running PostgreSQL database. See the [backend setup guide](apps/api/README.md) for installation, configuration, migrations, server, and test commands.
 
 ```text
 git clone https://github.com/Puriatc10/digital-commodity-infrastracture.git
 cd digital-commodity-infrastracture
 ```
 
-From the repository root, optionally create an ignored local environment file. The template currently contains comments only; no application consumes environment variables yet. Preserve an existing `.env` when repeating setup.
+From the repository root, create an ignored local environment file for Django. Preserve an existing `.env` when repeating setup, and replace template placeholders with local values before running the backend.
 
 PowerShell:
 
@@ -57,7 +57,7 @@ if [ ! -e .env ]; then
 fi
 ```
 
-Keep credentials in ignored local configuration. Add documented environment keys to `.env.example` when the relevant setup task defines them, using placeholders rather than secrets.
+Keep credentials in ignored local configuration. Django local settings load the root `.env` without overriding process environment variables; production settings use process environment only. `.env.example` documents the supported Django and PostgreSQL keys with placeholder secrets.
 
 ## Root commands
 
@@ -70,7 +70,7 @@ Run these from the repository root:
 | `git diff --check` | Check tracked changes for whitespace errors. |
 | `git ls-files` | List files already tracked by Git. |
 
-Application start/build/test commands will be documented when implemented. T0102 covers Django, T0103 covers Next.js, T0104 covers local Docker services, and T0106 covers CI. T0101 does not install dependencies or add runtime commands.
+Backend commands are documented in [apps/api/README.md](apps/api/README.md) and run from `apps/api`. T0103 covers Next.js, T0104 covers local Docker services, T0105 covers OpenAPI, and T0106 covers CI.
 
 ## Project context
 
