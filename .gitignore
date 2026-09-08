@@ -1,0 +1,47 @@
+# Python caches, virtual environments, and generated packages
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+*.egg-info/
+.eggs/
+build/
+dist/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Node / Next.js dependencies, caches, and generated output
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment files; retain safe templates at any directory level
+.env
+.env.*
+!.env.example
+
+# IDE and OS artifacts
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
