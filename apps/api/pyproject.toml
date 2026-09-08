@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "commodity-platform-api"
+version = "0.1.0"
+description = "Django API foundation for the commodity procurement platform"
+requires-python = ">=3.12"
+dependencies = [
+  "Django==6.0.8",
+  "djangorestframework==3.18.1",
+  "psycopg[binary]==3.3.5",
+  "django-environ==0.14.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["config*"]
