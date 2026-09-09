@@ -2,6 +2,11 @@
 
 T0102 provides Django 6, Django REST Framework, environment-based PostgreSQL settings, and `GET /api/health`. The response is HTTP 200 with `{"status":"ok"}`. This public JSON endpoint reports application liveness without accessing the database.
 
+OpenAPI generation is configured via `drf-spectacular`. The generated schema is authoritative for API contracts.
+New endpoints provided:
+- `GET /api/schema/`: Exposes the raw OpenAPI schema.
+- `GET /api/docs/`: Provides interactive API documentation using Swagger UI.
+
 ## Setup
 
 Use Python 3.12 or newer supported by Django 6.0 and a running PostgreSQL 14+ database with an existing database/user. PostgreSQL is the only configured database. Local infrastructure provisioning is T0104; these commands connect to an instance you already provide.
