@@ -22,6 +22,7 @@ Open `http://localhost:3000/fa`. `/` redirects to `/fa`; `/en` and unsupported l
 | `npm run typecheck` | Generate Next.js route types, then run strict TypeScript checks without emitting JavaScript. |
 | `npm run build` | Build the production application. |
 | `npm run start` | Serve the production build. Run after `build`, with the dev server stopped. |
+| `npm run api:generate` | Regenerates frontend TypeScript definitions from the backend OpenAPI schema. The generated file (`src/lib/api/generated/schema.d.ts`) must not be manually edited. |
 
 All commands also work from the repository root using `npm --prefix apps/web ...`. Lint is separate from the production build. No environment variables or backend services are required; the root Django `.env` is not frontend configuration. Add public frontend configuration only when a later task needs it, and never expose secrets through `NEXT_PUBLIC_*`.
 
