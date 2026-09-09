@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - codex/epic-01-*
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: commodity_platform
+          POSTGRES_USER: commodity_platform
+          POSTGRES_PASSWORD: ci-database-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DJANGO_SECRET_KEY: test-ci-secret-key-do-not-use-in-production
+      DJANGO_DEBUG: "False"
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: commodity_platform
+      POSTGRES_USER: commodity_platform
+      POSTGRES_PASSWORD: ci-database-password
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: apps/api
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: Run Django system checks
+        working-directory: apps/api
+        run: |
+          source venv/bin/activate
+          python manage.py check
+
+      - name: Verify migration consistency
+        working-directory: apps/api
+        run: |
+          source venv/bin/activate
+          python manage.py makemigrations --check --dry-run
+
+      - name: Run migrations
+        working-directory: apps/api
+        run: |
+          source venv/bin/activate
+          python manage.py migrate --noinput
+
+      - name: Run tests
+        working-directory: apps/api
+        run: |
+          source venv/bin/activate
+          python manage.py test
+
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Run lint
+        working-directory: apps/web
+        run: npm run lint
+
+      - name: Run typecheck
+        working-directory: apps/web
+        run: npm run typecheck
+
+      - name: Run build
+        working-directory: apps/web
+        run: npm run build
+
+  contract:
+    name: OpenAPI Contract Validation
+    runs-on: ubuntu-latest
+
+    env:
+      DJANGO_SECRET_KEY: test-ci-secret-key-do-not-use-in-production
+      DJANGO_DEBUG: "False"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: apps/api
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: Generate OpenAPI Schema
+        working-directory: apps/api
+        run: |
+          source venv/bin/activate
+          python manage.py spectacular --file schema.yaml
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Regenerate TypeScript definitions
+        working-directory: apps/web
+        run: npx openapi-typescript ../api/schema.yaml -o src/lib/api/generated/schema.d.ts
+
+      - name: Check for uncommitted contract drift
+        run: git diff --exit-code apps/web/src/lib/api/generated/schema.d.ts
