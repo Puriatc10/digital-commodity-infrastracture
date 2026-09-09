@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "identity",
+    "organizations",
 ]
 
 # drf-spectacular renders the Swagger UI from its packaged template.
