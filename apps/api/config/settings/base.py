@@ -43,7 +43,7 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
         "HOST": env.str("POSTGRES_HOST", default="127.0.0.1"),
         "PORT": env.int("POSTGRES_PORT", default=5432),
         "NAME": env.str("POSTGRES_DB"),
