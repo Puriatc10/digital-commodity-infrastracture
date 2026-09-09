@@ -1,5 +1,4 @@
 from rest_framework import viewsets, mixins
-from django.db.models import Q
 from organizations.models import Organization
 from organizations.api.serializers import OrganizationSerializer
 from organizations.api.permissions import IsOrganizationMemberOrAdmin, get_active_system_roles
