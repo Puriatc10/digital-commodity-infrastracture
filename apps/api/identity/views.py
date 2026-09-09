@@ -41,10 +41,14 @@ class MeView(views.APIView):
         return Response(UserSerializer(request.user).data)
 
 
+class CsrfViewResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
 class CsrfView(views.APIView):
     permission_classes = [permissions.AllowAny]
-    serializer_class = None
+    serializer_class = CsrfViewResponseSerializer
 
+    @extend_schema(responses={200: CsrfViewResponseSerializer})
     @method_decorator(ensure_csrf_cookie)
     def get(self, request):
         return Response({"detail": "CSRF cookie set"})

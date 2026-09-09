@@ -137,6 +137,9 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CsrfViewResponse: {
+            detail: string;
+        };
         DemoPersonaSwitcherRequest: {
             persona: components["schemas"]["PersonaEnum"];
         };
@@ -222,12 +225,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CsrfViewResponse"];
+                };
             };
         };
     };
