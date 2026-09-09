@@ -4,14 +4,14 @@ A Bitumen-focused procurement and trade platform designed for future commodity e
 
 ## Current state
 
-T0101 establishes the monorepo layout and baseline files. T0102 adds the Django API foundation and a public JSON health endpoint. Frontend setup, local Docker services, OpenAPI generation, and CI remain scheduled in later tasks.
+T0101 establishes the monorepo layout and baseline files. T0102 adds the Django API foundation and a public JSON health endpoint. T0103 adds the Next.js frontend shell at `/fa`, with Persian localization and RTL layout. Local Docker services, OpenAPI generation, and CI remain scheduled in later tasks.
 
 ## Repository structure
 
 ```text
 apps/
   api/                 Django API foundation (T0102)
-  web/                 Next.js frontend location (T0103)
+  web/                 Next.js frontend foundation (T0103)
 docs/
   product/             Authoritative Product Specification
   delivery/            Authoritative Delivery Roadmap
@@ -33,6 +33,8 @@ Empty implementation directories contain `.gitkeep` files so Git retains the lay
 ## Local setup
 
 Prerequisites are Git and repository access. Backend development additionally requires Python 3.12+ and a running PostgreSQL database. See the [backend setup guide](apps/api/README.md) for installation, configuration, migrations, server, and test commands.
+
+Frontend development requires Node.js 22.13+ (Node 24 LTS recommended) and npm. See the [frontend setup guide](apps/web/README.md). The frontend shell runs independently; it needs no database, backend server, or environment variables.
 
 ```text
 git clone https://github.com/Puriatc10/digital-commodity-infrastracture.git
@@ -70,7 +72,18 @@ Run these from the repository root:
 | `git diff --check` | Check tracked changes for whitespace errors. |
 | `git ls-files` | List files already tracked by Git. |
 
-Backend commands are documented in [apps/api/README.md](apps/api/README.md) and run from `apps/api`. T0103 covers Next.js, T0104 covers local Docker services, T0105 covers OpenAPI, and T0106 covers CI.
+Frontend commands from the repository root:
+
+```sh
+npm --prefix apps/web ci
+npm --prefix apps/web run dev
+npm --prefix apps/web run lint
+npm --prefix apps/web run typecheck
+npm --prefix apps/web run build
+npm --prefix apps/web run start
+```
+
+Open `http://localhost:3000/fa`. Run `start` after a successful production build, with the development server stopped. Backend commands are documented in [apps/api/README.md](apps/api/README.md) and run from `apps/api`. T0104 covers local Docker services, T0105 covers OpenAPI, and T0106 covers CI.
 
 ## Project context
 
