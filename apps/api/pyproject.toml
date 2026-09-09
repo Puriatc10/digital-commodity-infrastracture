@@ -17,3 +17,14 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 include = ["config*"]
+
+[project.optional-dependencies]
+dev = ["ruff==0.16.6"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Django settings intentionally inherit the shared settings namespace.
+"config/settings/local.py" = ["F405"]
+"config/settings/production.py" = ["F405"]

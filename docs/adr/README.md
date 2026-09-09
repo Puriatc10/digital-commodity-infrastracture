@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-These records derive from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). “Accepted” means explicitly specified by the user; the project owner has now approved the documentation foundation. The decisions are not implemented. Open implementation details and recorded source ambiguities are not resolved by this approval.
+These records derive from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). “Accepted” means explicitly specified by the user; the project owner has approved the documentation foundation. Epic 1 implements the backend/frontend scaffolds, PostgreSQL/MinIO services, and OpenAPI generation/client foundation. Domain-specific decisions remain pending their delivery tasks. Open implementation details and recorded source ambiguities are not resolved by foundation implementation.
 
 | ADR | Status |
 | --- | --- |

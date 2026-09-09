@@ -16,6 +16,14 @@ INSTALLED_APPS = [
     "drf_spectacular",
 ]
 
+# drf-spectacular renders the Swagger UI from its packaged template.
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "APP_DIRS": True,
+    }
+]
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",

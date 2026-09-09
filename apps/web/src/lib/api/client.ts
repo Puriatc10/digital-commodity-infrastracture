@@ -8,9 +8,9 @@ import type { paths } from "./generated/schema";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 if (!API_BASE_URL) {
-  console.warn("NEXT_PUBLIC_API_BASE_URL is not defined in the environment.");
+  throw new Error("Set NEXT_PUBLIC_API_BASE_URL before importing the API client.");
 }
 
 export const apiClient = createClient<paths>({
-  baseUrl: API_BASE_URL || "http://127.0.0.1:8000",
+  baseUrl: API_BASE_URL,
 });

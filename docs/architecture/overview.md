@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Derived from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). This is a navigation/reference document; the complete sources remain unchanged. This task records architecture only and does not authorize application or infrastructure implementation.
+Derived from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). This is a navigation/reference document; the complete sources remain unchanged. Epic 1 implements the platform foundation described below; later domain work still requires its own authorization.
 
 ## Required stack
 
@@ -13,7 +13,7 @@ Derived from the authoritative [Product Specification](../product/product-spec.m
 | API | REST + OpenAPI generation and generated frontend API client |
 | Frontend | Next.js + TypeScript, Tailwind CSS, shadcn/ui |
 | Object storage | S3-compatible; MinIO for demo; files in object storage, metadata in PostgreSQL |
-| Local infrastructure | Docker Compose with PostgreSQL and MinIO, scheduled in T0104 |
+| Local infrastructure | Docker Compose with PostgreSQL 17 and MinIO, implemented in T0104 |
 | Initial search | PostgreSQL |
 | Domain events | In-process; no message broker in v1 |
 | Demo presentation | Persian, RTL, /fa only |
@@ -37,7 +37,7 @@ The Procurement Engine uses both the existing network and Market Discovery / Opp
 
 ## Repository and domain boundaries
 
-Specification §53 and roadmap T0101 prescribe a monorepo with apps/api, apps/web, docs, infra/docker, and scripts. This foundation creates documentation only.
+Specification §53 and roadmap T0101 prescribe a monorepo with apps/api, apps/web, docs, infra/docker, and scripts. Epic 1 implements that layout, API/frontend bootstraps, local infrastructure, contract generation, and CI; no domain modules are implemented.
 
 Specification §51 suggests these backend modules (not a finalized ownership/interface design):
 
@@ -70,7 +70,7 @@ Domain boundaries must be clear. REST/OpenAPI provides the frontend contract; ro
 7. Execution Monitor provides visibility and orchestration only.
 8. Do not implement real settlement, escrow, financing, insurance, payment processing, or logistics execution.
 9. PostgreSQL is the source of truth.
-10. Do not introduce microservices, Redis, Kafka, RabbitMQ, Elasticsearch, Kubernetes, Temporal, or additional infrastructure without explicit approval. PostgreSQL and demo MinIO/Docker Compose are supplied decisions for later implementation; all specification §56 non-goals still apply.
+10. Do not introduce microservices, Redis, Kafka, RabbitMQ, Elasticsearch, Kubernetes, Temporal, or additional infrastructure without explicit approval. PostgreSQL and demo MinIO/Docker Compose are the implemented Epic 1 infrastructure; all specification §56 non-goals still apply.
 11. Authorization must always be enforced server-side.
 12. Avoid unrelated refactors and unnecessary repository exploration.
 13. User-facing frontend architecture must remain localization-ready.
@@ -86,10 +86,10 @@ Specification §4 defines actor actions; roadmap T0204 and the Epic 2 gate requi
 
 Use locale-aware architecture from day one: /fa RTL is active in demo; /en LTR is a future target. Reusable components must not hard-code user-facing text. The UX is a desktop-first, responsive enterprise operations product with tables, workspaces, filters, comparison, panels, and timelines (specification §§45–47).
 
-Features require authorization, validation, appropriate auditability, and error/empty/loading states. Testing covers business rules, APIs, PostgreSQL integration, critical frontend components, and Playwright Hero Flow/permission scenarios. Follow roadmap development gates and human review; no application tests or runtime are created in this foundation (specification §§58–60; roadmap §19).
+Features require authorization, validation, appropriate auditability, and error/empty/loading states. Testing covers business rules, APIs, PostgreSQL integration, critical frontend components, and Playwright Hero Flow/permission scenarios as those features are introduced. Epic 1 checks endpoint/schema/docs behavior, PostgreSQL connectivity through migrations, frontend lint/typecheck/build, and generated-contract drift (specification §§58–60; roadmap §19).
 
 ## Decision records and unresolved detail
 
 All eight requested decisions are recorded in the [ADR index](../adr/README.md), including S3-compatible storage and demo MinIO, now explicit in specification §50 and T0104/T0405. The project owner has approved the documentation foundation; the ADRs record decisions, not implementation.
 
-See [source review](source-review.md) for disagreements and ambiguities. Exact permission/transition matrices, schema lifecycle policy, calculation conventions, library choices, production storage settings, and detailed module interfaces are not invented here. No services, databases, migrations, application scaffolding, or infrastructure are introduced by this foundation.
+See [source review](source-review.md) for disagreements and ambiguities. Exact permission/transition matrices, schema lifecycle policy, calculation conventions, production storage settings, and detailed module interfaces remain unresolved. Epic 1 uses drf-spectacular, openapi-typescript, and openapi-fetch for the contract boundary; API business models and migrations remain future work. See the [setup guide](../../README.md) for executable commands.

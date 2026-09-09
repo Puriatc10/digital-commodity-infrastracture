@@ -1,6 +1,6 @@
 # ADR 0002: PostgreSQL as Source of Truth
 
-Status: Accepted — explicit source decision; documentation foundation approved by the project owner; not implemented.
+Status: Accepted — PostgreSQL configuration and local PostgreSQL 17 implemented in Epic 1; business persistence remains future work.
 
 ## Context and decision
 

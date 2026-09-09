@@ -4,7 +4,7 @@ A Bitumen-focused procurement and trade platform designed for future commodity e
 
 ## Current state
 
-T0101 establishes the monorepo layout and baseline files. T0102 adds the Django API foundation and a public JSON health endpoint. T0103 adds the Next.js frontend shell at `/fa`, with Persian localization and RTL layout. Local Docker services, OpenAPI generation, and CI remain scheduled in later tasks.
+Epic 1 (T0101–T0106) provides the monorepo, Django API and public health endpoint, Persian RTL Next.js shell at `/fa`, PostgreSQL 17/MinIO Docker services, generated OpenAPI types and typed client, and GitHub Actions checks. Business modules and authentication remain outside this foundation.
 
 ## Repository structure
 
@@ -32,7 +32,7 @@ Empty implementation directories contain `.gitkeep` files so Git retains the lay
 
 ## Local setup
 
-Prerequisites are Git and repository access. Backend development additionally requires Python 3.12+ and a running PostgreSQL database. See the [backend setup guide](apps/api/README.md) for installation, configuration, migrations, server, and test commands.
+Prerequisites are Git, Docker with Compose v2, Python 3.12+ supported by Django 6, and Node.js 22.13+ (Node 24 LTS recommended) with npm. See the [backend setup guide](apps/api/README.md) for installation, configuration, migrations, server, and test commands.
 
 Frontend development requires Node.js 22.13+ (Node 24 LTS recommended) and npm. See the [frontend setup guide](apps/web/README.md). The frontend shell runs independently; it needs no database, backend server, or environment variables.
 
@@ -59,7 +59,14 @@ if [ ! -e .env ]; then
 fi
 ```
 
-Keep credentials in ignored local configuration. Django local settings load the root `.env` without overriding process environment variables; production settings use process environment only. `.env.example` documents the supported Django and PostgreSQL keys with placeholder secrets.
+Keep credentials in ignored local configuration. Django local settings load the root `.env` without overriding process environment variables; production settings use process environment only. `.env.example` documents Django, PostgreSQL, and local MinIO values. Start infrastructure from the repository root using the same file:
+
+```sh
+docker compose --env-file .env -f infra/docker/docker-compose.yml up -d --wait
+docker compose --env-file .env -f infra/docker/docker-compose.yml ps
+```
+
+PostgreSQL and MinIO bind to loopback, with persistent named volumes. PostgreSQL uses `POSTGRES_PORT` (default 5432); MinIO uses ports 9000 and 9001. Follow the backend guide to install dependencies, check/migrate, and run the API, and the frontend guide to install dependencies and run `/fa`. These setup steps require local environment configuration but no source edits.
 
 ## Root commands
 
@@ -83,7 +90,16 @@ npm --prefix apps/web run build
 npm --prefix apps/web run start
 ```
 
-Open `http://localhost:3000/fa`. Run `start` after a successful production build, with the development server stopped. Backend commands are documented in [apps/api/README.md](apps/api/README.md) and run from `apps/api`. Local Docker services (PostgreSQL and MinIO) are documented in [infra/docker/README.md](infra/docker/README.md) and run from `infra/docker`. T0105 covers OpenAPI, and T0106 covers CI.
+Open `http://localhost:3000/fa`. Run `start` after a successful production build, with the development server stopped. Backend commands are documented in [apps/api/README.md](apps/api/README.md) and run from `apps/api`. Local Docker services are documented in [infra/docker/README.md](infra/docker/README.md).
+
+With the backend virtual environment active and its dependencies installed, regenerate the API contract from the repository root:
+
+```sh
+npm --prefix apps/web run api:generate
+git diff --exit-code -- apps/web/src/lib/api/generated/schema.d.ts
+```
+
+This validates the Django schema and generates TypeScript without a running API server. CI runs backend Ruff/checks/migration consistency/migrations/tests against PostgreSQL, frontend deterministic install/lint/typecheck/build, and this contract drift check on pull requests and pushes to `master` or Epic 1 branches.
 
 ## Project context
 
