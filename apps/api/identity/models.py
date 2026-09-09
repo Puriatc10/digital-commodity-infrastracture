@@ -1,3 +1,5 @@
+import uuid
+
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 
@@ -36,3 +38,29 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class SystemRoleAssignment(models.Model):
+    class SystemRole(models.TextChoices):
+        OPERATOR = "operator", "Operator"
+        ADMIN = "admin", "Admin"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="system_roles")
+    role = models.CharField(max_length=50, choices=SystemRole.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "role"],
+                name="unique_system_role_assignment"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(role__in=["operator", "admin"]),
+                name="check_valid_system_role"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user} - {self.get_role_display()}"

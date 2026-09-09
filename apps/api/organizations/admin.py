@@ -12,8 +12,8 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 @admin.register(OrganizationMembership)
 class OrganizationMembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "organization", "is_active", "created_at")
-    list_filter = ("is_active",)
+    list_display = ("user", "organization", "role", "is_active", "created_at")
+    list_filter = ("role", "is_active")
     search_fields = ("user__email", "organization__name")
 
 
