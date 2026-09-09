@@ -14,7 +14,7 @@ The supplied Product Specification is authoritative for product scope; the suppl
 
 ## Current scope
 
-The project owner has approved the documentation foundation (Epic 0) and authorized its local commit. This task remains documentation-only: do not bootstrap Django or Next.js or implement application features, including Identity, RFQ, Opportunities, Offers, Deals, Matching, or Execution. Do not push. Foundation approval does not authorize starting the next implementation task or resolve the recorded source ambiguities.
+The current authorized task is T0103: bootstrap only the Next.js frontend under `apps/web`. T0102 is already implemented and merged. Follow the T0103 issue and current user instructions; do not implement business modules, real backend API integration, unrelated backend changes, or T0104. Do not commit or push until the owner reviews the work. Recorded source ambiguities remain unresolved.
 
 ## Required guardrails
 
@@ -32,4 +32,4 @@ The project owner has approved the documentation foundation (Epic 0) and authori
 - Work one scoped issue/capability at a time, sequentially while architecture stabilizes; follow dependencies, acceptance criteria, non-goals, and review gates. Do not implement multiple epics from one broad prompt.
 - Add tests for business rules. Run relevant unit/API/PostgreSQL integration tests, critical frontend tests, and Playwright Hero Flow/permission checks as applicable; run relevant lint/type/build/migration checks. See specification sections 59–60 and roadmap section 19.
 - Review the diff for scope and unintended changes. Report changes, reasons, validation results, risks, and follow-up; human review remains required.
-- For later authorized implementation, use a task-specific `codex/` branch and scoped Conventional Commits. Never force-push, merge a PR without explicit approval, or commit secrets/real `.env` files. Do not rewrite history or delete remote branches without explicit direction. The foundation commit is authorized; pushing remains prohibited by the current task instruction.
+- The owner has superseded the roadmap's per-task branch convention: use one branch per Epic, with separate task-scoped Conventional Commits. Epic 1 uses `codex/epic-01-platform-foundation`; do not create task-specific branches. Preserve reviewed remote/PR history when transitioning existing branches. Never force-push, merge a PR without explicit approval, or commit secrets/real `.env` files. Do not rewrite history or delete remote branches without explicit direction. Commits and pushes remain prohibited until review for this task.
