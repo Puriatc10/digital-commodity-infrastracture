@@ -6,6 +6,7 @@ import "@fontsource/vazirmatn/arabic-400.css";
 import "@fontsource/vazirmatn/arabic-500.css";
 import "@fontsource/vazirmatn/arabic-600.css";
 import "../globals.css";
+import { AuthProvider } from "@/lib/auth-context";
 
 type Props = {
   children: React.ReactNode;
@@ -28,7 +29,9 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <html lang={locale} dir={locales[locale].direction}>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

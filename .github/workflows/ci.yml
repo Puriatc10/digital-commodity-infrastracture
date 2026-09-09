@@ -37,6 +37,7 @@ jobs:
       POSTGRES_DB: commodity_platform
       POSTGRES_USER: commodity_platform
       POSTGRES_PASSWORD: ci-database-password
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
 
     steps:
       - name: Checkout code
@@ -80,6 +81,9 @@ jobs:
     name: Frontend CI
     runs-on: ubuntu-latest
 
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -119,6 +123,7 @@ jobs:
       POSTGRES_DB: commodity_platform
       POSTGRES_USER: commodity_platform
       POSTGRES_PASSWORD: ci-database-password
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
 
     steps:
       - name: Checkout code

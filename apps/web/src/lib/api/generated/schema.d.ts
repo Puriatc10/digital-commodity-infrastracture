@@ -143,6 +143,11 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        OrganizationContext: {
+            organization: components["schemas"]["Organization"];
+            role: string;
+            capabilities: string[];
+        };
         PatchedOrganization: {
             /** Format: uuid */
             readonly id?: string;
@@ -168,6 +173,8 @@ export interface components {
              * @description نشان می‌دهد که این کاربر همهٔ اجازه‌ها را دارد بدون آنکه به صراحت به او اختصاص داده شده باشد.
              */
             readonly is_superuser: boolean;
+            readonly system_roles: string[];
+            readonly organizations: components["schemas"]["OrganizationContext"][];
         };
     };
     responses: never;
