@@ -2,13 +2,51 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
 from django.utils.translation import gettext_lazy as _
 
+from drf_spectacular.utils import extend_schema_field
+from organizations.models import OrganizationMembership
+from organizations.api.serializers import OrganizationSerializer
+
+
 User = get_user_model()
 
+
+class OrganizationContextSerializer(serializers.Serializer):
+    organization = OrganizationSerializer()
+    role = serializers.CharField()
+    capabilities = serializers.ListField(child=serializers.CharField())
+
 class UserSerializer(serializers.ModelSerializer):
+    system_roles = serializers.SerializerMethodField()
+    organizations = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ("id", "email", "is_active", "is_staff", "is_superuser")
+        fields = ("id", "email", "is_active", "is_staff", "is_superuser", "system_roles", "organizations")
         read_only_fields = fields
+
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    def get_system_roles(self, obj):
+        return list(obj.system_roles.values_list("role", flat=True))
+
+    @extend_schema_field(OrganizationContextSerializer(many=True))
+    def get_organizations(self, obj):
+        memberships = OrganizationMembership.objects.filter(
+            user=obj,
+            is_active=True,
+            organization__is_active=True
+        ).select_related("organization").prefetch_related("organization__capabilities")
+
+        result = []
+        for membership in memberships:
+            org = membership.organization
+            capabilities = list(org.capabilities.values_list("capability", flat=True))
+            result.append({
+                "organization": org,
+                "role": membership.role,
+                "capabilities": capabilities
+            })
+
+        return OrganizationContextSerializer(result, many=True).data
 
 
 class LoginSerializer(serializers.Serializer):

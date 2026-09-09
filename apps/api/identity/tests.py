@@ -57,9 +57,23 @@ class AuthTests(APITestCase):
 
     def test_me_authenticated(self):
         self.client.login(email=self.user_data["email"], password=self.user_data["password"])
+
+        # Give the user some context to test
+        from organizations.models import Organization, OrganizationMembership, OrganizationCapability
+        from .models import SystemRoleAssignment
+        SystemRoleAssignment.objects.create(user=self.user, role=SystemRoleAssignment.SystemRole.OPERATOR)
+        org = Organization.objects.create(name="Test Org")
+        OrganizationMembership.objects.create(user=self.user, organization=org, role=OrganizationMembership.OrganizationRole.MANAGER)
+        OrganizationCapability.objects.create(organization=org, capability=OrganizationCapability.CapabilityType.BUYER)
+
         response = self.client.get(self.me_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["email"], self.user_data["email"])
+        self.assertEqual(response.data["system_roles"], ["operator"])
+        self.assertEqual(len(response.data["organizations"]), 1)
+        self.assertEqual(response.data["organizations"][0]["role"], "manager")
+        self.assertEqual(response.data["organizations"][0]["capabilities"], ["buyer"])
+        self.assertEqual(response.data["organizations"][0]["organization"]["name"], "Test Org")
 
     def test_me_unauthenticated(self):
         response = self.client.get(self.me_url)
