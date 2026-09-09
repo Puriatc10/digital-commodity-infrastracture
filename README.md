@@ -83,7 +83,7 @@ npm --prefix apps/web run build
 npm --prefix apps/web run start
 ```
 
-Open `http://localhost:3000/fa`. Run `start` after a successful production build, with the development server stopped. Backend commands are documented in [apps/api/README.md](apps/api/README.md) and run from `apps/api`. T0104 covers local Docker services, T0105 covers OpenAPI, and T0106 covers CI.
+Open `http://localhost:3000/fa`. Run `start` after a successful production build, with the development server stopped. Backend commands are documented in [apps/api/README.md](apps/api/README.md) and run from `apps/api`. Local Docker services (PostgreSQL and MinIO) are documented in [infra/docker/README.md](infra/docker/README.md) and run from `infra/docker`. T0105 covers OpenAPI, and T0106 covers CI.
 
 ## Project context
 
