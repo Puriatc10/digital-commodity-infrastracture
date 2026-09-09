@@ -1,6 +1,6 @@
 # ADR 0008: Locale-aware Frontend
 
-Status: Accepted — explicit source decision; documentation foundation approved by the project owner; not implemented.
+Status: Accepted — locale-aware Persian RTL frontend foundation implemented in Epic 1.
 
 ## Context and decision
 
@@ -15,6 +15,6 @@ Do not hard-code user-facing text in reusable components. The demo is Persian on
 
 The UX is a desktop-first, responsive enterprise operations product centered on workspaces, dense tables, filters, comparison, side panels, timelines, and Operator efficiency. T1303–T1304 require a Persian localization pass and RTL UX review.
 
-Localization libraries, translation management, and date/number/currency formatting conventions are not selected here. No frontend scaffolding or UI feature is implemented in this foundation.
+Epic 1 uses the Next.js App Router, a typed dictionary, locale validation, and language/direction in the locale root layout. Only /fa is enabled; /en remains inactive. Translation management and date/number/currency formatting conventions remain future decisions.
 
 Sources: [Product Specification](../product/product-spec.md) §§45–46, 52; [Delivery Roadmap](../delivery/roadmap.md) T0103, T0105, T1303–T1304.

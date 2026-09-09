@@ -1,6 +1,6 @@
 # ADR 0001: Django Modular Monolith
 
-Status: Accepted — explicit source decision; documentation foundation approved by the project owner; not implemented.
+Status: Accepted — Django 6/DRF foundation implemented in Epic 1; domain modules remain future work.
 
 ## Context and decision
 

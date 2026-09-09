@@ -14,7 +14,7 @@ The supplied Product Specification is authoritative for product scope; the suppl
 
 ## Current scope
 
-The current authorized task is T0103: bootstrap only the Next.js frontend under `apps/web`. T0102 is already implemented and merged. Follow the T0103 issue and current user instructions; do not implement business modules, real backend API integration, unrelated backend changes, or T0104. Do not commit or push until the owner reviews the work. Recorded source ambiguities remain unresolved.
+The current authorized task is the Epic 1 Review Gate for T0101–T0106 on `codex/epic-01-platform-foundation`: review, validate, and fix small, clearly correct foundation defects. Epic 1 includes the monorepo, Django API, Next.js frontend, PostgreSQL/MinIO local infrastructure, OpenAPI contract generation, and CI. Do not begin Epic 2 or implement business modules, authentication, or application-level storage integration. Do not commit, push, or merge until the owner reviews the work and authorizes those actions. Recorded source ambiguities remain unresolved.
 
 ## Required guardrails
 

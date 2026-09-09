@@ -1,12 +1,12 @@
 # ADR 0007: S3-compatible Object Storage
 
-Status: Accepted — explicit source decision; documentation foundation approved by the project owner; not implemented.
+Status: Accepted — local MinIO service implemented in Epic 1; application storage features remain future work.
 
 ## Context and decision
 
 Actual document files use S3-compatible object storage. Use MinIO for the demo. PostgreSQL stores document metadata, including id, file_name, object_key, mime_type, type, uploaded_by, verification_status, and created_at.
 
-Local infrastructure is planned as Docker Compose with PostgreSQL and MinIO (T0104). T0405 explicitly requires verification document metadata and MinIO upload.
+Local infrastructure uses Docker Compose with PostgreSQL and MinIO (T0104). T0405 explicitly requires verification document metadata and MinIO upload; those application features are not part of Epic 1.
 
 ## Consequences and open detail
 

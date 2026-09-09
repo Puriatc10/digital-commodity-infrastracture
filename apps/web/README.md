@@ -1,4 +1,4 @@
-# Frontend foundation — T0103
+# Frontend foundation — Epic 1
 
 Next.js App Router, TypeScript, Tailwind CSS, and a minimal shadcn/ui shell. Only the Persian demo at `/fa` is enabled. There are no business modules, user accounts, data, or API calls.
 
@@ -22,8 +22,11 @@ Open `http://localhost:3000/fa`. `/` redirects to `/fa`; `/en` and unsupported l
 | `npm run typecheck` | Generate Next.js route types, then run strict TypeScript checks without emitting JavaScript. |
 | `npm run build` | Build the production application. |
 | `npm run start` | Serve the production build. Run after `build`, with the dev server stopped. |
+| `npm run api:generate` | Validates and exports Django's schema, then generates TypeScript definitions. Requires the backend virtual environment active, installed backend dependencies, and Django environment configuration; no running API server is needed. Do not manually edit `src/lib/api/generated/schema.d.ts`. |
 
-All commands also work from the repository root using `npm --prefix apps/web ...`. Lint is separate from the production build. No environment variables or backend services are required; the root Django `.env` is not frontend configuration. Add public frontend configuration only when a later task needs it, and never expose secrets through `NEXT_PUBLIC_*`.
+All commands also work from the repository root using `npm --prefix apps/web ...`. Lint is separate from the production build. The shell needs no environment variables or backend services. Before using the typed API client, copy this directory's `.env.example` to `.env.local` and set `NEXT_PUBLIC_API_BASE_URL` to the backend origin. The client rejects missing configuration; the root Django/Compose `.env` is not loaded by Next.js. Public values are embedded at build time; rebuild after changing the origin, and never expose secrets through `NEXT_PUBLIC_*`.
+
+The scoped `js-yaml` 4.3.2 override under `@redocly/openapi-core` fixes [GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh). Remove it once the upstream generator dependency pins a patched parser.
 
 Turbopack is scoped to this app directory. Next.js automatic agent-file generation is disabled so running the dev server preserves the existing repository guidance. ESLint 9 is pinned for compatibility with the React plugin used by the current Next.js lint preset; npm marks that ESLint major deprecated. Upgrade when the preset's plugins support ESLint 10 without peer-dependency overrides.
 
@@ -64,7 +67,9 @@ Vazirmatn Arabic-subset font files are served locally from the installed Fontsou
 
 `components.json` configures shadcn's TypeScript/RSC foundation with RTL and Tailwind v4 CSS variables. Button and Card are manually adopted from the official shadcn registry, keeping only used primitives/variants. The Button uses the individual Radix Slot package for a semantic anchor; the full Radix catalog, icons, and animation libraries are not installed. These primitives inherit document direction and do not need a direction provider; evaluate that requirement when adding direction-sensitive interactive primitives later.
 
-The shell has a single real navigation link to its foundation page and an in-page “about” anchor. It has no authentication, persona switching, dashboard navigation, simulated actions, or business records. The frontend imports no Django internals and defines no backend DTOs. OpenAPI generation/client integration belongs to T0105.
+The shell has a single real navigation link to its foundation page and an in-page “about” anchor. It has no authentication, persona switching, dashboard navigation, simulated actions, or business records. The frontend imports no Django internals and defines no backend DTOs. T0105 provides generated types in `src/lib/api/generated/schema.d.ts` and a handwritten `openapi-fetch` client in `src/lib/api/client.ts`; the shell does not call it yet. Browser cross-origin requests and authentication are not configured in this foundation and must be addressed when actual UI integration is authorized.
+
+CI uses the same `npm run api:generate` command and checks the generated types with `git diff --exit-code`. The backend schema file is an ignored intermediate, and the generated frontend file is committed.
 
 ## Manual verification
 
