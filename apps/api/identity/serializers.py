@@ -26,7 +26,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_system_roles(self, obj):
-        return list(obj.system_roles.values_list("role", flat=True))
+        if hasattr(obj, "system_roles"):
+            return list(obj.system_roles.values_list("role", flat=True))
+        return []
 
     @extend_schema_field(OrganizationContextSerializer(many=True))
     def get_organizations(self, obj):

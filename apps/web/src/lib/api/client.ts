@@ -24,10 +24,10 @@ export const apiClient = createClient<paths>({
     ) {
       const match = document.cookie.match(new RegExp("(^| )csrftoken=([^;]+)"));
       if (match && match[2]) {
-        options.headers = {
-          ...options.headers,
-          "X-CSRFToken": match[2],
-        };
+        // Convert existing headers to a Headers object, or append appropriately
+        const headers = new Headers(options.headers);
+        headers.set("X-CSRFToken", match[2]);
+        options.headers = headers;
       }
     }
 

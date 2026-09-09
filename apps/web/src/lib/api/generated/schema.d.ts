@@ -169,8 +169,8 @@ export interface components {
             readonly is_active: boolean;
             readonly is_staff: boolean;
             /**
-             * Superuser status
-             * @description Designates that this user has all permissions without explicitly assigning them.
+             * ابرکاربر
+             * @description نشان می‌دهد که این کاربر همهٔ اجازه‌ها را دارد بدون آنکه به صراحت به او اختصاص داده شده باشد.
              */
             readonly is_superuser: boolean;
             readonly system_roles: string[];
@@ -213,8 +213,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["Login"];
-                "application/x-www-form-urlencoded": components["schemas"]["Login"];
-                "multipart/form-data": components["schemas"]["Login"];
             };
         };
         responses: {
@@ -308,7 +306,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A UUID string identifying this organization. */
+                /** @description یک رشته UUID که این organization را شناسایی میکند. */
                 id: string;
             };
             cookie?: never;
@@ -330,7 +328,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A UUID string identifying this organization. */
+                /** @description یک رشته UUID که این organization را شناسایی میکند. */
                 id: string;
             };
             cookie?: never;
@@ -338,8 +336,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["Organization"];
-                "application/x-www-form-urlencoded": components["schemas"]["Organization"];
-                "multipart/form-data": components["schemas"]["Organization"];
             };
         };
         responses: {
@@ -358,7 +354,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @description A UUID string identifying this organization. */
+                /** @description یک رشته UUID که این organization را شناسایی میکند. */
                 id: string;
             };
             cookie?: never;
@@ -366,8 +362,6 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": components["schemas"]["PatchedOrganization"];
-                "application/x-www-form-urlencoded": components["schemas"]["PatchedOrganization"];
-                "multipart/form-data": components["schemas"]["PatchedOrganization"];
             };
         };
         responses: {
