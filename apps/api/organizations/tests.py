@@ -31,15 +31,33 @@ class OrganizationMembershipTests(TestCase):
         self.org2 = Organization.objects.create(name="Org 2")
 
     def test_create_membership(self):
-        membership = OrganizationMembership.objects.create(user=self.user1, organization=self.org1)
+        membership = OrganizationMembership.objects.create(
+            user=self.user1,
+            organization=self.org1,
+            role=OrganizationMembership.OrganizationRole.MANAGER
+        )
         self.assertEqual(membership.user, self.user1)
         self.assertEqual(membership.organization, self.org1)
+        self.assertEqual(membership.role, "manager")
         self.assertTrue(membership.is_active)
 
+    def test_default_membership_role(self):
+        membership = OrganizationMembership.objects.create(
+            user=self.user1,
+            organization=self.org1
+        )
+        self.assertEqual(membership.role, "viewer")
+
     def test_multiple_orgs_per_user(self):
-        OrganizationMembership.objects.create(user=self.user1, organization=self.org1)
-        OrganizationMembership.objects.create(user=self.user1, organization=self.org2)
+        OrganizationMembership.objects.create(
+            user=self.user1, organization=self.org1, role=OrganizationMembership.OrganizationRole.OWNER
+        )
+        OrganizationMembership.objects.create(
+            user=self.user1, organization=self.org2, role=OrganizationMembership.OrganizationRole.MEMBER
+        )
         self.assertEqual(self.user1.organization_memberships.count(), 2)
+        roles = set(self.user1.organization_memberships.values_list("role", flat=True))
+        self.assertEqual(roles, {"owner", "member"})
 
     def test_multiple_users_per_org(self):
         OrganizationMembership.objects.create(user=self.user1, organization=self.org1)
@@ -50,6 +68,14 @@ class OrganizationMembershipTests(TestCase):
         OrganizationMembership.objects.create(user=self.user1, organization=self.org1)
         with self.assertRaises(IntegrityError):
             OrganizationMembership.objects.create(user=self.user1, organization=self.org1)
+
+    def test_invalid_membership_role_rejection(self):
+        with self.assertRaises(IntegrityError):
+            OrganizationMembership.objects.create(
+                user=self.user1,
+                organization=self.org1,
+                role="admin"
+            )
 
 
 class OrganizationCapabilityTests(TestCase):

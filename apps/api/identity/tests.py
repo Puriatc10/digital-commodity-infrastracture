@@ -1,7 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.urls import reverse
-from rest_framework.test import APITestCase
 from rest_framework import status
+from rest_framework.test import APITestCase
+
+from .models import SystemRoleAssignment
 
 User = get_user_model()
 
@@ -75,3 +78,54 @@ class AuthTests(APITestCase):
         response = self.client.get(self.csrf_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("csrftoken", response.cookies)
+
+
+class SystemRoleTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="admin@example.com", password="password")
+        self.user2 = User.objects.create_user(email="operator@example.com", password="password")
+
+    def test_create_system_role(self):
+        role = SystemRoleAssignment.objects.create(
+            user=self.user,
+            role=SystemRoleAssignment.SystemRole.ADMIN
+        )
+        self.assertEqual(role.user, self.user)
+        self.assertEqual(role.role, "admin")
+
+    def test_duplicate_system_role_rejection(self):
+        SystemRoleAssignment.objects.create(
+            user=self.user,
+            role=SystemRoleAssignment.SystemRole.ADMIN
+        )
+        with self.assertRaises(IntegrityError):
+            SystemRoleAssignment.objects.create(
+                user=self.user,
+                role=SystemRoleAssignment.SystemRole.ADMIN
+            )
+
+    def test_invalid_system_role_rejection(self):
+        with self.assertRaises(IntegrityError):
+            SystemRoleAssignment.objects.create(
+                user=self.user,
+                role="superuser"
+            )
+
+    def test_multiple_roles_for_user(self):
+        SystemRoleAssignment.objects.create(
+            user=self.user,
+            role=SystemRoleAssignment.SystemRole.ADMIN
+        )
+        SystemRoleAssignment.objects.create(
+            user=self.user,
+            role=SystemRoleAssignment.SystemRole.OPERATOR
+        )
+        self.assertEqual(self.user.system_roles.count(), 2)
+
+    def test_no_organization_required(self):
+        # We did not create any organization or membership, but role was created.
+        role = SystemRoleAssignment.objects.create(
+            user=self.user,
+            role=SystemRoleAssignment.SystemRole.OPERATOR
+        )
+        self.assertEqual(role.user, self.user)

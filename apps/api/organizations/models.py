@@ -19,9 +19,20 @@ class Organization(models.Model):
 
 
 class OrganizationMembership(models.Model):
+    class OrganizationRole(models.TextChoices):
+        OWNER = "owner", "Owner"
+        MANAGER = "manager", "Manager"
+        MEMBER = "member", "Member"
+        VIEWER = "viewer", "Viewer"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="memberships")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="organization_memberships")
+    role = models.CharField(
+        max_length=50,
+        choices=OrganizationRole.choices,
+        default=OrganizationRole.VIEWER,
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -31,11 +42,15 @@ class OrganizationMembership(models.Model):
             models.UniqueConstraint(
                 fields=["organization", "user"],
                 name="unique_organization_membership"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(role__in=["owner", "manager", "member", "viewer"]),
+                name="check_valid_membership_role"
             )
         ]
 
     def __str__(self):
-        return f"{self.user} - {self.organization}"
+        return f"{self.user} - {self.organization} ({self.get_role_display()})"
 
 
 class OrganizationCapability(models.Model):
