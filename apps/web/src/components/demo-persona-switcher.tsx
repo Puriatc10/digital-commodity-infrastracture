@@ -15,7 +15,7 @@ export function DemoPersonaSwitcher() {
   useEffect(() => {
     async function checkEnabled() {
       try {
-        const { data, error } = await apiClient.GET("/api/auth/demo-switch");
+        const { data, error } = await apiClient.GET("/api/auth/demo-switch", {});
         if (data && !error && Array.isArray(data)) {
           setEnabled(true);
           setPersonas(data as AllowedPersona[]);
