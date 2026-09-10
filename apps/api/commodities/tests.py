@@ -42,8 +42,8 @@ class CommoditySchemaVersionTests(TestCase):
         self.assertEqual(schema.commodity.code, "bitumen")
 
     def test_multiple_versions(self):
-        schema1 = CommoditySchemaVersion.objects.create(commodity=self.commodity, version=1)
-        schema2 = CommoditySchemaVersion.objects.create(commodity=self.commodity, version=2)
+        CommoditySchemaVersion.objects.create(commodity=self.commodity, version=1)
+        CommoditySchemaVersion.objects.create(commodity=self.commodity, version=2)
         self.assertEqual(self.commodity.schema_versions.count(), 2)
 
     def test_duplicate_version_rejected(self):
@@ -60,7 +60,7 @@ class CommoditySchemaVersionTests(TestCase):
         # We need to test DB check constraint
         # Django's TestCase wraps tests in transactions, so IntegrityError will be raised
         with self.assertRaises(IntegrityError):
-            schema = CommoditySchemaVersion.objects.create(
+            CommoditySchemaVersion.objects.create(
                 commodity=self.commodity,
                 version=1,
                 status="invalid_status"
