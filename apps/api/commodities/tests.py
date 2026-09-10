@@ -4,6 +4,10 @@ from django.core.exceptions import ValidationError
 from .models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition
 from .services import publish_schema, retire_schema, clone_schema_to_draft
 
+from rest_framework.test import APITestCase
+from rest_framework import status
+from django.urls import reverse
+from identity.models import User
 
 class CommodityDefinitionTests(TestCase):
     def test_commodity_creation(self):
@@ -278,11 +282,6 @@ class CommodityAttributeDefinitionTests(TestCase):
         with self.assertRaises(ValidationError):
             attr.delete()
 
-from rest_framework.test import APITestCase
-from rest_framework import status
-from django.urls import reverse
-from identity.models import User
-from .models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition
 
 
 class CommodityAPITests(APITestCase):
