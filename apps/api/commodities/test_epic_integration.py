@@ -92,7 +92,7 @@ class EpicIntegrationAPI_Flow_Tests(APITestCase):
         self.assertEqual(len(response.data["attributes"]), 7)
 
         # 3. Retrieve Historical Schema directly
-        historical_url = reverse("commodity-schema", kwargs={"id": response.data["id"]})
+        historical_url = reverse("commodity-schema-detail", kwargs={"pk": response.data["id"]})
         hist_response = self.client.get(historical_url)
         self.assertEqual(hist_response.status_code, 200)
         self.assertEqual(hist_response.data["id"], response.data["id"])
@@ -110,7 +110,7 @@ class EpicIntegrationAPI_Flow_Tests(APITestCase):
         self.assertEqual(len(response.data["attributes"]), 6)
 
         # 3. Retrieve Historical Schema directly
-        historical_url = reverse("commodity-schema", kwargs={"id": response.data["id"]})
+        historical_url = reverse("commodity-schema-detail", kwargs={"pk": response.data["id"]})
         hist_response = self.client.get(historical_url)
         self.assertEqual(hist_response.status_code, 200)
         self.assertEqual(hist_response.data["id"], response.data["id"])
