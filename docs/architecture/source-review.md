@@ -1,6 +1,6 @@
 # Authoritative Source Review
 
-Reviewed against the supplied [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). Both files remain verbatim copies of the supplied attachments. This review records differences and missing details; it does not amend either source or decide new product behavior.
+Reviewed against the supplied [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). The Product Specification remains unchanged. The roadmap Epic 3 section is now synchronized under explicit owner direction to the [approved Epic 3 Design Contract](../product/epic-03-dynamic-commodity-design-contract.md). This review records the resolution and remaining unrelated differences; it does not independently decide product behavior.
 
 ## Confirmed foundation decisions
 
@@ -32,8 +32,27 @@ Buyer/Supplier/Broker are Organization capabilities, while Operator/Admin are sy
 
 ## Remaining design detail, not invented requirements
 
-The full permission matrix, lifecycle transition guards, schema version status/lifecycle policy, cross-version compatibility, qualification criteria, precise unit/currency/rounding rules for normalisation, library versions/configuration, and production storage/retention policy still require definition within authorized work. The supplied actors, lifecycle labels, example schemas, and suggested modules are not a substitute for those details.
+The full permission matrix, lifecycle transition guards, future cross-version conversion/compatibility beyond the Epic 3 historical-version and RFQ-context invariants, qualification criteria, precise unit/currency/rounding rules for normalisation, library versions/configuration, and production storage/retention policy still require definition within authorized work. The supplied actors, lifecycle labels, example schemas, and suggested modules are not a substitute for those details.
 
 The Product Specification's suggested phases (§67) and the roadmap's Epics are different planning levels; this review does not invent a one-to-one mapping. Roadmap Epic 4 is P1 but appears before core P0 work in its dependency sequence; priority labels do not automatically remove dependencies.
 
 The project owner has approved the documentation foundation and requested a final consistency check and local commit. This approval does not mark application tasks or later review gates complete, resolve the differences above, or authorize implementation or a push. The final check preserves both authoritative documents and all recorded product-scope constraints.
+
+## Epic 3 documentation synchronization — 2026-09-10
+
+The full owner-supplied Design Contract was already present as an untracked repository file and is preserved in full, with an authority notice and explicit owner synchronization clarification. It is the detailed Epic 3 implementation contract alongside the Product Specification's product scope. This synchronization authorizes documentation only, not T0301 implementation or any commit/push/merge.
+
+| Conflict or stale statement | Resolution under owner direction |
+| --- | --- |
+| Roadmap T0302 described JSON Schema representation rather than lifecycle. | T0302 now covers Draft/Published/Retired, immutability, active-schema ownership/state integrity, and safe evolution; deterministic derivation is in T0303. |
+| Roadmap T0306/T0307 were form/display; T0308 required JSONB query/index work. ADR 0002 repeated that index requirement. | T0306 is read API/OpenAPI, T0307 form, T0308 view/integration coverage. Indexing waits for a real specification-bearing entity and real query patterns; no fake tables or indexes. |
+| ADR 0003 listed lifecycle as unspecified and a unit-aware numeric type; overview/source review left commodity lifecycle unresolved. | The approved lifecycle and integrity requirements now govern. Five supported types include integer; units are definition metadata, values stay flat, and no conversion engine is added. Unrelated lifecycle ambiguities remain unresolved. |
+| Prior metadata/JSON Schema wording did not establish one authoritative source. | Relational Attribute Definitions are authoritative; deterministic JSON Schema is derived. No independently maintained second schema is permitted. |
+| Contract §9 used “preferably Published”; §73 called the mapping suggested. | The owner's synchronization request fixes active schemas to usable Published versions and makes the exact T0301–T0308 mapping authoritative. An explicit notice preserves the original contract wording while recording this clarification. |
+| Product Specification §7 uses illustrative enum strings such as 60/70; contract §15 illustrates canonical 60_70 with localized 60/70 labels. | These are examples, not conflicting fixed enum requirements. Actual definitions must use canonical stored values distinct from localized display labels; examples are not promoted into exhaustive seed requirements. Product Specification remains unchanged. |
+| AGENTS.md still authorized the Epic 2 Review Gate and named the Epic 2 branch. | Updated minimally to this docs-only task and the existing Epic 3 branch; no branch was created/switched and no Epic 2 gate approval is inferred. Existing no-commit/push/merge restrictions remain. |
+| Source review claimed both source files were unchanged verbatim attachments. | Corrected provenance to acknowledge the owner-authorized Epic 3 roadmap synchronization. Earlier foundation approval/commit notes above are historical, not authorization for this task. |
+
+No genuine product-level conflict requiring a Product Specification amendment was found. The contract elaborates §§6–10 and preserves Bitumen focus, multi-commodity extensibility, locale readiness, and platform non-goals. ADR 0004's generated API boundary and ADR 0008's Persian/RTL policy are compatible and need no Epic 3 amendment. Exact routes, schema dialect/library, representation/enforcement choices, and representative seed bounds remain scoped implementation details rather than new product requirements.
+
+A fresh Jules session can read AGENTS.md, the full contract, the synchronized roadmap, and the assigned GitHub Issue without chat history. GitHub Issues remain the formal backlog; no issue was changed by this repository-only synchronization. T0301 must be explicitly authorized before implementation. All unrelated source differences above remain open.

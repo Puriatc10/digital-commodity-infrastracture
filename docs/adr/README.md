@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-These records derive from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). “Accepted” means explicitly specified by the user; the project owner has approved the documentation foundation. Epic 1 implements the backend/frontend scaffolds, PostgreSQL/MinIO services, and OpenAPI generation/client foundation. Epic 2 implements Identity, Organizations, and session authentication under ADR 0009; later domain decisions remain pending their delivery tasks. Open implementation details and recorded source ambiguities are not resolved by foundation implementation.
+These records derive from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). “Accepted” means explicitly specified by the user; the project owner has approved the documentation foundation. Epic 1 implements the backend/frontend scaffolds, PostgreSQL/MinIO services, and OpenAPI generation/client foundation. Epic 2 implements Identity, Organizations, and session authentication under ADR 0009; the [approved Epic 3 Design Contract](../product/epic-03-dynamic-commodity-design-contract.md) now supplies the detailed Dynamic Commodity decision recorded in ADR 0003, with implementation still pending authorization. Other later domain decisions remain pending their delivery tasks. Open implementation details and recorded source ambiguities are not resolved by foundation implementation.
 
 | ADR | Status |
 | --- | --- |

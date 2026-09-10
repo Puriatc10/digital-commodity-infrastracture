@@ -50,6 +50,8 @@ docs/product/product-spec.md
 
 همان Final Product Specification.
 
+Epic 3 detailed design: [Dynamic Commodity Design Contract](../product/epic-03-dynamic-commodity-design-contract.md), approved by the product owner; authoritative for Epic 3 implementation details alongside the Product Specification's product scope.
+
 ### Architecture Decisions
 
 ```text
@@ -446,136 +448,106 @@ Permission matrix review شود.
 
 ---
 
-# 7. Epic 3 — Dynamic Commodity Platform
+# 7. Epic 3 — Dynamic Commodity Model
 
 **Priority:** P0
 
-این Epic یکی از مهم‌ترین بخش‌های کل معماری است.
+The [approved Epic 3 Design Contract](../product/epic-03-dynamic-commodity-design-contract.md) is the authoritative detailed implementation contract. Read it in full before any Epic 3 task; the scope and acceptance criteria below do not replace its invariants or §76 review checks.
 
----
+Current authorization is documentation synchronization only. Do not begin T0301, create the commodities app, models, migrations, APIs, generated types, components, seeds, tests, or install validation libraries during this task. Future implementation proceeds one assigned GitHub Issue at a time, sequentially T0301 → T0308, after owner authorization and prerequisite review gates. Use the existing Epic branch and the owner Git restrictions in AGENTS.md, superseding §21's per-task branch example.
 
-## T0301 — Commodity Definition Models
+Epic 3 builds relational definitions and reusable validation/rendering. Future business records use commodity_id + schema_version_id + specifications JSONB and retain their creation-time schema version. Epic 3 creates no specification-bearing business table.
 
-Implement:
+## T0301 — Commodity Definition & Schema Models
 
-```text
-CommodityDefinition
-CommoditySchemaVersion
-CommodityAttributeDefinition
-```
+Implement CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition, and relational integrity constraints.
 
----
+Acceptance and validation:
 
-## T0302 — JSON Schema Representation
+- Platform-level CommodityDefinition has a stable identifier, unique canonical code, Persian/English names, active/inactive state, active schema reference, and timestamps consistent with project conventions.
+- CommoditySchemaVersion belongs to a Commodity; (commodity, version) is unique. Attribute definitions belong to a schema version; (schema_version, key) is unique.
+- Attribute metadata covers canonical key, localized labels, string/number/integer/boolean/enum type, required state, units, canonical enum options with localized labels, validation rules, grouping, and ordering (contract §§5–16, 41, 60–61).
+- Verify model relationships and uniqueness with real PostgreSQL migrations/integration tests when implementation is authorized. Keep lifecycle enforcement in T0302 and generation/runtime validation in T0303; do not create fake instance storage.
 
-هر Schema Version باید runtime validation schema داشته باشد.
+## T0302 — Schema Lifecycle & Versioning
 
-Support اولیه:
+Implement Draft / Published / Retired, Published schema immutability, active schema integrity, and safe version evolution.
 
-* string
-* number
-* boolean
-* enum
-* unit-aware numeric field
+Acceptance and validation:
 
----
+- Draft is editable; Published semantics and attributes cannot be mutated or deleted, including through internal admin paths. Retired schemas remain readable for historical validation/rendering and are unavailable for new instances.
+- An active schema must belong to the same Commodity and be Published. A usable active Commodity requires an active Published schema; setup may have no active schema.
+- Evolve definitions through a new Draft version without rewriting Published history. Protect Published/historically referenced schemas from hard deletion.
+- Test lifecycle, ownership/state guards, semantic mutation/deletion protection, and preservation of earlier versions (contract §§7–9, 32, 34, 53–54, 64–65).
 
 ## T0303 — Dynamic Specification Validation
 
-Backend service:
+Implement relational Attribute Definitions as the source of truth, derived deterministic JSON Schema, and a reusable schema-version-aware backend validator with structured field-level errors.
 
-```text
-validate_specification(
-    commodity,
-    schema_version,
-    specifications
-)
-```
+Acceptance and validation:
 
-Invalid specification باید rejected شود.
+- No separately maintained JSON Schema source; derive a stable representation from relational definitions.
+- Support required/optional semantics, explicit null semantics, unknown-field rejection, type and enum validation, numeric min/max, and basic string min/max length constraints.
+- Optional means may be absent, not automatically nullable. Reject null unless explicitly supported. Errors identify fields and machine-readable codes deterministically.
+- Support string, number, integer, boolean, and enum. Payloads remain flat; enum values are canonical values, never localized labels. Units are definition metadata, not {value, unit} wrappers.
+- Test valid/invalid payloads against their specified version, including historical versions. Backend validation is authoritative and reusable outside API views; no commodity-specific validator or engine branch (contract §§17–19, 45–52, 63).
 
----
+## T0304 — Bitumen Definition
 
-## T0304 — Bitumen Commodity Seed
+Implement deterministic/idempotent realistic Bitumen v1 seed data sufficient for architecture validation, backend validation, frontend dynamic rendering, and later RFQ work.
 
-Bitumen schema realistic ایجاد شود.
+Acceptance and validation:
 
-نمونه attributes:
+- Use credible representative attributes as versioned data, never commodity-specific model fields.
+- Verify repeatable initialization, no duplicate definitions, deterministic schema representation, and valid/invalid payloads.
+- Re-running seeds must not overwrite Published historical semantics.
+- Do not turn this into exhaustive Bitumen standardization research (contract §§26, 30, 66).
 
-* penetration grade
-* penetration
-* softening point
-* flash point
-* ductility
+## T0305 — Secondary Commodity Extensibility Test
 
-این‌ها DB columns نیستند.
+Use Base Oil only as an architecture proof, with materially different definition data and deterministic/idempotent initialization.
 
----
+Prove addition without new commodity-specific Django models, specification-field migrations, commodity-specific validator code, commodity-specific React components, or generic-engine if commodity == ... branches. Verify the same backend definition/validation path; T0307–T0308 complete the frontend proof. This does not expand the Bitumen product scope (contract §§27–30, 67–70).
 
-## T0305 — Secondary Commodity Architecture Test
+## T0306 — Commodity Read API & OpenAPI
 
-یک Base Oil schema کوچک فقط برای تست architecture.
+Implement read-only commodity discovery/list, active schema retrieval, and historical schema retrieval.
 
-هدف:
+Acceptance and validation:
 
-اثبات اینکه بدون migration می‌توان Commodity دیگری تعریف کرد.
+- Preserve Django → OpenAPI → generated TypeScript → typed client; no manually duplicated DTOs.
+- Return deterministic localized metadata for all supported types. Historical schema retrieval uses the requested version, including Retired versions, rather than today's active schema.
+- Preserve Epic 2 server-side authentication/authorization; define and test inactive/retired behavior intentionally. Avoid obvious N+1 queries.
+- No public/product-facing schema write API. Exact route names follow project conventions; internal management must preserve lifecycle guards.
+- Verify read APIs, OpenAPI accuracy, and generated contract drift (contract §§31–34, 39–40, 62–64).
 
-UI اصلی همچنان Bitumen-focused است.
+## T0307 — Dynamic Specification Form
 
----
+Implement one generic Persian/RTL schema-driven frontend form renderer supporting string, number, integer, boolean, and enum.
 
-## T0306 — Dynamic Form Renderer
+Consume localized labels, required state, units, enum options, grouping, ordering, and validation metadata through the generated typed client. Use the existing locale infrastructure; /en stays inactive. Verify all five types, both commodities, and field-level error presentation. Frontend validation supports UX; backend validation remains authoritative. No commodity-specific form components or actual RFQ persistence (contract §§35, 38–39, 68, 71).
 
-Frontend component:
+## T0308 — Dynamic Specification View & Epic Integration Tests
 
-```text
-CommoditySpecificationForm
-```
+Implement a generic read-only specification renderer, Bitumen rendering, Base Oil rendering, cross-commodity architectural proof, historical schema rendering validation, and final integration coverage.
 
-Form را از Schema دریافت کند.
+Verify that the same rendering path uses each record's supplied schema version and preserves meaning after a new version becomes active. Complete backend/API/PostgreSQL/frontend and applicable Playwright coverage for the definition → read API → form/view flow, without fake persisted business records. Verify idempotent seeds and Epic 1/2 regression health (contract §§36, 64, 68–76).
 
-Fieldهای Bitumen داخل component hard-coded نباشند.
+## Deferred JSONB indexing and explicit non-goals
 
----
+The former T0308 JSONB Query & Index Foundation task is superseded. JSONB indexing should be introduced when the first real specification-bearing business entity, such as RFQ or Supply Listing, is implemented and real query patterns exist. Do not create artificial JSONB instance tables or indexes to prove this architecture. This does not prohibit T0301's relational uniqueness constraints.
 
-## T0307 — Dynamic Specification Display
-
-Reusable component:
-
-```text
-CommoditySpecificationView
-```
-
-برای:
-
-* RFQ
-* Offer
-* Supply
-* Opportunity
-* Deal
-
----
-
-## T0308 — JSONB Query & Index Foundation
-
-Query capability و indexهای لازم برای dynamic specifications.
-
-Over-indexing انجام نشود.
-
----
+Epic 3 does not implement RFQ, Supply Listing, Opportunity, Offer, Matching, procurement scoring, inventory, pricing, workflow, schema-builder UI or a generic low-code Schema Builder, arbitrary nested schemas, calculated/formula fields, AI, Redis, Kafka, RabbitMQ, Elasticsearch, Temporal, Kubernetes, or microservices. The contract also excludes arbitrary arrays, recursive schemas, conditional form logic, complex multi-select, custom scripting, premature matching metadata, and a unit conversion engine.
 
 # Epic 3 Review Gate
 
-یک تست معماری مهم:
+Apply the complete [Design Contract §76](../product/epic-03-dynamic-commodity-design-contract.md#76-required-epic-3-review-gate-checks) checklist, plus roadmap §19 gates.
 
-بدون migration:
-
-```text
-Bitumen
-→ Base Oil
-```
-
-قابل تعریف و validate باشد.
+- Prove a materially different commodity can be added as data after engine migrations, without a specification-field migration, commodity-specific models, validators, components, or engine branches.
+- Verify relational constraints, lifecycle and active-schema ownership/state integrity, immutable Published semantics, historical retrieval/validation/rendering, and deterministic field errors.
+- Verify both commodities through the generic read API, form, and view, all approved types, localization/RTL, generated OpenAPI/TypeScript accuracy, and idempotent seeds on PostgreSQL.
+- Preserve Epic 1/2 regressions, CI, and server-side security. Confirm all Epic 3 non-goals and deferred JSONB indexing remain respected.
+- Human review is required; passing this gate must not silently authorize later business modules or Git publication.
 
 ---
 
