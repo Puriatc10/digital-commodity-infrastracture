@@ -161,7 +161,7 @@ class CommodityAttributeDefinitionTests(TestCase):
         pub_schema = CommoditySchemaVersion.objects.create(commodity=self.commodity, version=2, status=CommoditySchemaVersion.SchemaStatus.PUBLISHED)
         # Bypassing clean to create it initially for testing update block
         attr = CommodityAttributeDefinition(schema_version=pub_schema, key="k2", data_type="string")
-        models.Model.save(attr) # bypass custom save/clean just to inject it
+        super(CommodityAttributeDefinition, attr).save() # bypass custom save/clean just to inject it
 
         attr.label_en = "Mutate"
         with self.assertRaises(ValidationError):
@@ -177,7 +177,7 @@ class CommodityAttributeDefinitionTests(TestCase):
     def test_cannot_delete_attribute_of_published_schema(self):
         pub_schema = CommoditySchemaVersion.objects.create(commodity=self.commodity, version=2, status=CommoditySchemaVersion.SchemaStatus.PUBLISHED)
         attr = CommodityAttributeDefinition(schema_version=pub_schema, key="k4", data_type="string")
-        models.Model.save(attr)
+        super(CommodityAttributeDefinition, attr).save()
 
         with self.assertRaises(ValidationError):
             attr.delete()
