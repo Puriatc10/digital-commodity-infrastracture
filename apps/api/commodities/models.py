@@ -62,24 +62,27 @@ class CommoditySchemaVersion(models.Model):
     def clean(self):
         super().clean()
         if self.pk:
-            orig = CommoditySchemaVersion.objects.get(pk=self.pk)
-            # Immutability of Published and Retired
-            if orig.status in [self.SchemaStatus.PUBLISHED, self.SchemaStatus.RETIRED]:
-                if self.version != orig.version or self.commodity_id != orig.commodity_id:
-                    raise ValidationError("Cannot modify commodity or version of a published/retired schema.")
+            try:
+                orig = CommoditySchemaVersion.objects.get(pk=self.pk)
+                # Immutability of Published and Retired
+                if orig.status in [self.SchemaStatus.PUBLISHED, self.SchemaStatus.RETIRED]:
+                    if self.version != orig.version or self.commodity_id != orig.commodity_id:
+                        raise ValidationError("Cannot modify commodity or version of a published/retired schema.")
 
-            # Status transitions
-            if orig.status == self.SchemaStatus.PUBLISHED:
-                if self.status == self.SchemaStatus.DRAFT:
-                    raise ValidationError({"status": "Cannot revert published schema to draft."})
-            elif orig.status == self.SchemaStatus.RETIRED:
-                if self.status != self.SchemaStatus.RETIRED:
-                    raise ValidationError({"status": "Retired schema cannot change status."})
+                # Status transitions
+                if orig.status == self.SchemaStatus.PUBLISHED:
+                    if self.status == self.SchemaStatus.DRAFT:
+                        raise ValidationError({"status": "Cannot revert published schema to draft."})
+                elif orig.status == self.SchemaStatus.RETIRED:
+                    if self.status != self.SchemaStatus.RETIRED:
+                        raise ValidationError({"status": "Retired schema cannot change status."})
 
-            # Check if retiring an active schema
-            if self.status == self.SchemaStatus.RETIRED and orig.status == self.SchemaStatus.PUBLISHED:
-                if self.commodity.active_schema_version_id == self.pk:
-                    raise ValidationError({"status": "Cannot retire an active schema. Change the active schema first."})
+                # Check if retiring an active schema
+                if self.status == self.SchemaStatus.RETIRED and orig.status == self.SchemaStatus.PUBLISHED:
+                    if self.commodity.active_schema_version_id == self.pk:
+                        raise ValidationError({"status": "Cannot retire an active schema. Change the active schema first."})
+            except CommoditySchemaVersion.DoesNotExist:
+                pass
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -136,10 +139,16 @@ class CommodityAttributeDefinition(models.Model):
     def clean(self):
         super().clean()
         if self.pk:
-            orig = CommodityAttributeDefinition.objects.get(pk=self.pk)
-            if orig.schema_version.status in ["published", "retired"]:
-                raise ValidationError("Cannot modify an attribute of a published or retired schema.")
-        if getattr(self, "schema_version", None) and self.schema_version.status in ["published", "retired"]:
+            try:
+                orig = CommodityAttributeDefinition.objects.get(pk=self.pk)
+                if orig.schema_version.status in ["published", "retired"]:
+                    raise ValidationError("Cannot modify an attribute of a published or retired schema.")
+            except CommodityAttributeDefinition.DoesNotExist:
+                # If we're creating an object and force setting self.pk (e.g. fixtures or specific test cases),
+                # we fall back to the creation logic.
+                if getattr(self, "schema_version", None) and self.schema_version.status in ["published", "retired"]:
+                    raise ValidationError("Cannot add attributes to a published or retired schema.")
+        elif getattr(self, "schema_version", None) and self.schema_version.status in ["published", "retired"]:
             raise ValidationError("Cannot add attributes to a published or retired schema.")
 
     def save(self, *args, **kwargs):
