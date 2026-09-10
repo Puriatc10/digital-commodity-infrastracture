@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import models
+from django.core.exceptions import ValidationError
 
 
 class CommodityDefinition(models.Model):
@@ -25,6 +26,18 @@ class CommodityDefinition(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def clean(self):
+        super().clean()
+        if self.active_schema_version:
+            if self.active_schema_version.commodity_id != self.id:
+                raise ValidationError({"active_schema_version": "Active schema must belong to the same commodity."})
+            if self.active_schema_version.status != "published":
+                raise ValidationError({"active_schema_version": "Only a published schema can be active."})
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.name_en} ({self.code})"
 
@@ -45,6 +58,40 @@ class CommoditySchemaVersion(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        super().clean()
+        if self.pk:
+            try:
+                orig = CommoditySchemaVersion.objects.get(pk=self.pk)
+                # Immutability of Published and Retired
+                if orig.status in [self.SchemaStatus.PUBLISHED, self.SchemaStatus.RETIRED]:
+                    if self.version != orig.version or self.commodity_id != orig.commodity_id:
+                        raise ValidationError("Cannot modify commodity or version of a published/retired schema.")
+
+                # Status transitions
+                if orig.status == self.SchemaStatus.PUBLISHED:
+                    if self.status == self.SchemaStatus.DRAFT:
+                        raise ValidationError({"status": "Cannot revert published schema to draft."})
+                elif orig.status == self.SchemaStatus.RETIRED:
+                    if self.status != self.SchemaStatus.RETIRED:
+                        raise ValidationError({"status": "Retired schema cannot change status."})
+
+                # Check if retiring an active schema
+                if self.status == self.SchemaStatus.RETIRED and orig.status == self.SchemaStatus.PUBLISHED:
+                    if self.commodity.active_schema_version_id == self.pk:
+                        raise ValidationError({"status": "Cannot retire an active schema. Change the active schema first."})
+            except CommoditySchemaVersion.DoesNotExist:
+                pass
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.status in [self.SchemaStatus.PUBLISHED, self.SchemaStatus.RETIRED]:
+            raise ValidationError("Cannot delete a published or retired schema.")
+        return super().delete(*args, **kwargs)
 
     class Meta:
         constraints = [
@@ -88,6 +135,30 @@ class CommodityAttributeDefinition(models.Model):
     # UI rendering hints
     display_group = models.CharField(max_length=100, blank=True, help_text="Logical group for UI presentation")
     sort_order = models.PositiveIntegerField(default=0, help_text="Deterministic sort order")
+
+    def clean(self):
+        super().clean()
+        if self.pk:
+            try:
+                orig = CommodityAttributeDefinition.objects.get(pk=self.pk)
+                if orig.schema_version.status in ["published", "retired"]:
+                    raise ValidationError("Cannot modify an attribute of a published or retired schema.")
+            except CommodityAttributeDefinition.DoesNotExist:
+                # If we're creating an object and force setting self.pk (e.g. fixtures or specific test cases),
+                # we fall back to the creation logic.
+                if getattr(self, "schema_version", None) and self.schema_version.status in ["published", "retired"]:
+                    raise ValidationError("Cannot add attributes to a published or retired schema.")
+        elif getattr(self, "schema_version", None) and self.schema_version.status in ["published", "retired"]:
+            raise ValidationError("Cannot add attributes to a published or retired schema.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.schema_version.status in ["published", "retired"]:
+            raise ValidationError("Cannot delete an attribute of a published or retired schema.")
+        return super().delete(*args, **kwargs)
 
     class Meta:
         constraints = [
