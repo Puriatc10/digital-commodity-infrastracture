@@ -1,16 +1,23 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./generated/schema";
 
-/**
- * Minimal generic client foundation for consuming the generated API contract.
- * Ensure NEXT_PUBLIC_API_BASE_URL is set in the environment.
- */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-if (!API_BASE_URL) {
-  throw new Error("Set NEXT_PUBLIC_API_BASE_URL before importing the API client.");
-}
-
+// Next's local proxy or the production ingress routes same-origin /api to Django.
 export const apiClient = createClient<paths>({
-  baseUrl: API_BASE_URL,
+  baseUrl: typeof window === "undefined" ? process.env.API_PROXY_TARGET : window.location.origin,
+  credentials: "include",
 });
+
+apiClient.use({
+  onRequest({ request }) {
+    if (typeof document !== "undefined" && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+      const token = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)?.[1];
+      if (token) request.headers.set("X-CSRFToken", token);
+    }
+    return request;
+  },
+});
+
+export async function bootstrapCsrf() {
+  const { response } = await apiClient.GET("/api/auth/csrf");
+  if (!response.ok) throw new Error("CSRF bootstrap failed");
+}

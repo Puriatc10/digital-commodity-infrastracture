@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["config*"]
+include = ["config*", "identity*", "organizations*"]
 
 [project.optional-dependencies]
 dev = ["ruff==0.16.6"]

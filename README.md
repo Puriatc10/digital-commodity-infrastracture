@@ -4,7 +4,7 @@ A Bitumen-focused procurement and trade platform designed for future commodity e
 
 ## Current state
 
-Epic 1 (T0101–T0106) provides the monorepo, Django API and public health endpoint, Persian RTL Next.js shell at `/fa`, PostgreSQL 17/MinIO Docker services, generated OpenAPI types and typed client, and GitHub Actions checks. Business modules and authentication remain outside this foundation.
+Epic 1 (T0101–T0106) provides the monorepo, Django API and public health endpoint, Persian RTL Next.js shell at `/fa`, PostgreSQL 17/MinIO Docker services, generated OpenAPI types and typed client, and GitHub Actions checks. Epic 2 adds email/session authentication, Organization memberships and capabilities, product roles, server-side authorization, frontend Organization context, and a disabled-by-default demo persona switcher. Future commodity and procurement modules remain outside this review.
 
 ## Repository structure
 
@@ -34,7 +34,7 @@ Empty implementation directories contain `.gitkeep` files so Git retains the lay
 
 Prerequisites are Git, Docker with Compose v2, Python 3.12+ supported by Django 6, and Node.js 22.13+ (Node 24 LTS recommended) with npm. See the [backend setup guide](apps/api/README.md) for installation, configuration, migrations, server, and test commands.
 
-Frontend development requires Node.js 22.13+ (Node 24 LTS recommended) and npm. See the [frontend setup guide](apps/web/README.md). The frontend shell runs independently; it needs no database, backend server, or environment variables.
+Frontend development requires Node.js 22.13+ (Node 24 LTS recommended) and npm. See the [frontend setup guide](apps/web/README.md). The shell can build independently; integrated identity/session behavior requires Django and the same-origin proxy configuration in the frontend guide.
 
 ```text
 git clone https://github.com/Puriatc10/digital-commodity-infrastracture.git
@@ -99,7 +99,7 @@ npm --prefix apps/web run api:generate
 git diff --exit-code -- apps/web/src/lib/api/generated/schema.d.ts
 ```
 
-This validates the Django schema and generates TypeScript without a running API server. CI runs backend Ruff/checks/migration consistency/migrations/tests against PostgreSQL, frontend deterministic install/lint/typecheck/build, and this contract drift check on pull requests and pushes to `master` or Epic 1 branches.
+This validates the Django schema and generates TypeScript without a running API server. CI runs backend Ruff/checks/migration consistency/migrations/tests against PostgreSQL, frontend deterministic install/lint/typecheck/build, and this contract drift check on pull requests and pushes to `master` or Epic 1/Epic 2 branches.
 
 ## Project context
 

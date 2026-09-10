@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - codex/epic-01-*
+      - codex/epic-02-*
   pull_request:
 
 permissions:
@@ -37,6 +38,7 @@ jobs:
       POSTGRES_DB: commodity_platform
       POSTGRES_USER: commodity_platform
       POSTGRES_PASSWORD: ci-database-password
+      API_PROXY_TARGET: http://127.0.0.1:8000
 
     steps:
       - name: Checkout code
@@ -80,6 +82,9 @@ jobs:
     name: Frontend CI
     runs-on: ubuntu-latest
 
+    env:
+      API_PROXY_TARGET: http://127.0.0.1:8000
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -107,6 +112,10 @@ jobs:
         working-directory: apps/web
         run: npm run build
 
+      - name: Run frontend session regressions
+        working-directory: apps/web
+        run: npm test
+
   contract:
     name: OpenAPI Contract Validation
     runs-on: ubuntu-latest
@@ -119,6 +128,7 @@ jobs:
       POSTGRES_DB: commodity_platform
       POSTGRES_USER: commodity_platform
       POSTGRES_PASSWORD: ci-database-password
+      API_PROXY_TARGET: http://127.0.0.1:8000
 
     steps:
       - name: Checkout code
