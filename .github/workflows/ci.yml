@@ -114,7 +114,7 @@ jobs:
 
       - name: Run frontend session regressions
         working-directory: apps/web
-        run: npm test
+        run: npm test && npm run test:components
 
   contract:
     name: OpenAPI Contract Validation
