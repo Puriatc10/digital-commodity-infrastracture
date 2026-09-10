@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.core.management import call_command
 from django.core.exceptions import ValidationError
-from django.contrib.auth.models import User
+from identity.models import User
 from rest_framework.test import APITestCase
 from django.urls import reverse
 from commodities.models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition
