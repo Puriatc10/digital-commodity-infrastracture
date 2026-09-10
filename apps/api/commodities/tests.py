@@ -277,3 +277,113 @@ class CommodityAttributeDefinitionTests(TestCase):
 
         with self.assertRaises(ValidationError):
             attr.delete()
+
+from rest_framework.test import APITestCase
+from rest_framework import status
+from django.urls import reverse
+from identity.models import User
+from .models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition
+
+
+class CommodityAPITests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="test@example.com", password="password")
+        self.client.force_login(self.user)
+
+        self.commodity1 = CommodityDefinition.objects.create(
+            code="bitumen", name_fa="قیر", name_en="Bitumen"
+        )
+        self.commodity2 = CommodityDefinition.objects.create(
+            code="base-oil", name_fa="روغن پایه", name_en="Base Oil", is_active=False
+        )
+
+        self.v1 = CommoditySchemaVersion.objects.create(
+            commodity=self.commodity1, version=1, status=CommoditySchemaVersion.SchemaStatus.PUBLISHED
+        )
+        self.v2 = CommoditySchemaVersion.objects.create(
+            commodity=self.commodity1, version=2, status=CommoditySchemaVersion.SchemaStatus.DRAFT
+        )
+        self.draft = CommoditySchemaVersion.objects.create(
+            commodity=self.commodity1, version=3, status=CommoditySchemaVersion.SchemaStatus.DRAFT
+        )
+
+        # Add some attributes to v2
+        CommodityAttributeDefinition.objects.create(
+            schema_version=self.v2,
+            key="test_attr",
+            label_fa="تست",
+            label_en="Test",
+            data_type=CommodityAttributeDefinition.DataType.STRING,
+            is_required=True
+        )
+
+        self.v2.status = CommoditySchemaVersion.SchemaStatus.PUBLISHED
+        self.v2.save()
+        self.commodity1.active_schema_version = self.v2
+        self.commodity1.save()
+
+    def test_authenticated_list_succeeds(self):
+        url = reverse("commodity-list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should only return active commodity (bitumen)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["code"], "bitumen")
+
+    def test_unauthenticated_behavior(self):
+        self.client.logout()
+        url = reverse("commodity-list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_active_published_schema_returned(self):
+        url = reverse("commodity-active-schema", kwargs={"code": "bitumen"})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["version"], 2)
+        self.assertEqual(response.data["status"], "published")
+        self.assertEqual(len(response.data["attributes"]), 1)
+        self.assertEqual(response.data["attributes"][0]["key"], "test_attr")
+
+    def test_no_active_schema_not_found(self):
+        self.commodity1.active_schema_version = None
+        self.commodity1.save()
+        url = reverse("commodity-active-schema", kwargs={"code": "bitumen"})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_unknown_commodity_not_found(self):
+        url = reverse("commodity-active-schema", kwargs={"code": "unknown"})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_historical_published_schema_retrieval(self):
+        url = reverse("commodity-schema-detail", kwargs={"pk": self.v1.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["version"], 1)
+
+    def test_historical_retired_schema_retrieval(self):
+        # Retire v1 for test
+        self.v1.status = CommoditySchemaVersion.SchemaStatus.RETIRED
+        self.v1.save()
+        url = reverse("commodity-schema-detail", kwargs={"pk": self.v1.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["version"], 1)
+
+    def test_draft_historical_retrieval_denied(self):
+        url = reverse("commodity-schema-detail", kwargs={"pk": self.draft.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_unsupported_write_methods_unavailable(self):
+        url = reverse("commodity-list")
+        response = self.client.post(url, data={"code": "new"})
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        response = self.client.patch(url, data={"code": "new"})
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
