@@ -203,6 +203,7 @@ class DemoPersonaSwitcherTests(APITestCase):
         self.assertEqual(response.status_code, 403)
 
 class SeedDemoPersonasTests(APITestCase):
+    @override_settings(DEMO_PERSONA_SWITCHER_ENABLED=True)
     def test_seed_idempotency(self):
         out = io.StringIO()
         call_command("seed_demo_personas", stdout=out)

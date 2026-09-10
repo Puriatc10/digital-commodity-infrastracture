@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "is_active", "is_staff", "is_superuser", "system_roles", "organizations")
+        fields = ("id", "email", "is_active", "system_roles", "organizations")
         read_only_fields = fields
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
@@ -41,7 +41,7 @@ class UserSerializer(serializers.ModelSerializer):
         result = []
         for membership in memberships:
             org = membership.organization
-            capabilities = list(org.capabilities.values_list("capability", flat=True))
+            capabilities = [item.capability for item in org.capabilities.all()]
             result.append({
                 "organization": org,
                 "role": membership.role,
@@ -53,7 +53,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(style={"input_type": "password"}, trim_whitespace=False)
+    password = serializers.CharField(write_only=True, style={"input_type": "password"}, trim_whitespace=False)
 
     def validate(self, attrs):
         email = attrs.get("email")

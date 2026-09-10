@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-These records derive from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). “Accepted” means explicitly specified by the user; the project owner has approved the documentation foundation. Epic 1 implements the backend/frontend scaffolds, PostgreSQL/MinIO services, and OpenAPI generation/client foundation. Domain-specific decisions remain pending their delivery tasks. Open implementation details and recorded source ambiguities are not resolved by foundation implementation.
+These records derive from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). “Accepted” means explicitly specified by the user; the project owner has approved the documentation foundation. Epic 1 implements the backend/frontend scaffolds, PostgreSQL/MinIO services, and OpenAPI generation/client foundation. Epic 2 implements Identity, Organizations, and session authentication under ADR 0009; later domain decisions remain pending their delivery tasks. Open implementation details and recorded source ambiguities are not resolved by foundation implementation.
 
 | ADR | Status |
 | --- | --- |
@@ -12,6 +12,7 @@ These records derive from the authoritative [Product Specification](../product/p
 | [0006 — Human-assisted Market Discovery](0006-human-assisted-market-discovery.md) | Accepted |
 | [0007 — S3-compatible Object Storage](0007-s3-compatible-object-storage.md) | Accepted |
 | [0008 — Locale-aware Frontend](0008-locale-aware-frontend.md) | Accepted |
+| [0009 — Authentication Architecture](0009-authentication-architecture.md) | Accepted |
 
 Numbering follows roadmap T0003: Execution is 005 and Market Discovery is 006. The initial pre-roadmap foundation had these two reversed; filenames and titles are now aligned with the roadmap. Four-digit filename prefixes are retained consistently; 0005 corresponds to ADR-005.
 

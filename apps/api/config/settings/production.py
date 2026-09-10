@@ -8,6 +8,9 @@ if DEBUG:
     raise ImproperlyConfigured("DJANGO_DEBUG must be false in production.")
 if not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS:
     raise ImproperlyConfigured("Set explicit DJANGO_ALLOWED_HOSTS in production.")
+if DEMO_PERSONA_SWITCHER_ENABLED:
+    raise ImproperlyConfigured("Demo persona switching is unavailable in production.")
 
 SECURE_SSL_REDIRECT = True
 CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True

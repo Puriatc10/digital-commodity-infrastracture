@@ -10,6 +10,6 @@ We will explicitly avoid introducing JSON Web Tokens (JWT), refresh tokens, loca
 
 ## Consequences and open detail
 
-This implements `/api/auth/login`, `/api/auth/logout`, and `/api/auth/me`. The frontend must send credentials to `/api/auth/login` to establish the session, and include CSRF tokens on subsequent unsafe requests. Later tasks will determine any required frontend configuration (e.g., cross-origin requests, `withCredentials`) should the API and Web applications run on different domains.
+This implements `/api/auth/login`, `/api/auth/logout`, and `/api/auth/me`. The frontend bootstraps `/api/auth/csrf`, sends cookies and the current CSRF header to login, and includes them on all subsequent unsafe requests. Anonymous login and demo switching also enforce CSRF. Browser requests use the frontend origin; Next.js forwards `/api` to an environment-configured backend during local development, preserving API trailing slashes. Production serves the API and frontend under one HTTPS origin and configures its actual hosts/trusted origins. DRF SessionAuthentication returns 403 for protected unauthenticated requests. Session cookies are HttpOnly/SameSite=Lax and Secure in production. Demo switching defaults off, is rejected by production settings, and accepts only fixed seeded identities. See the backend/frontend setup guides for configuration and reviewed permission semantics.
 
 Sources: [Product Specification](../product/product-spec.md); [Delivery Roadmap](../delivery/roadmap.md) T0201.

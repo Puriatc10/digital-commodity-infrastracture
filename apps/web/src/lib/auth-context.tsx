@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { apiClient } from "@/lib/api/client";
 import type { components } from "@/lib/api/generated/schema";
+import { readOrganizationPreference, saveOrganizationPreference, selectOrganization } from "./organization-preference";
 
 type User = components["schemas"]["User"];
 type OrganizationContext = components["schemas"]["OrganizationContext"];
@@ -11,13 +12,7 @@ type AuthState =
   | { status: "loading" }
   | { status: "unauthenticated" }
   | { status: "error"; error: Error }
-  | {
-      status: "authenticated";
-      user: User;
-      systemRoles: string[];
-      availableOrganizations: OrganizationContext[];
-      currentOrganization: OrganizationContext | null;
-    };
+  | { status: "authenticated"; user: User; systemRoles: string[]; availableOrganizations: OrganizationContext[]; currentOrganization: OrganizationContext | null };
 
 interface AuthContextValue {
   state: AuthState;
@@ -27,85 +22,64 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const ORG_PREF_KEY = "commodity_platform_pref_org_id";
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: "loading" });
+  const requestVersion = useRef(0);
+  const previousUser = useRef<number | null>(null);
 
-  const loadUser = useCallback(async (isInitial = false) => {
-    if (!isInitial) setState({ status: "loading" });
+  const loadUser = useCallback(async () => {
+    const version = ++requestVersion.current;
     try {
-      const { data, error } = await apiClient.GET("/api/auth/me");
-      if (error || !data) {
+      const { data, response } = await apiClient.GET("/api/auth/me");
+      if (version !== requestVersion.current) return;
+      if (response.status === 401 || response.status === 403) {
+        previousUser.current = null;
+        saveOrganizationPreference(null);
         setState({ status: "unauthenticated" });
         return;
       }
+      if (!response.ok || !data) throw new Error("Session request failed");
 
-      const availableOrganizations = data.organizations || [];
-      const systemRoles = data.system_roles || [];
-
-      let currentOrganization: OrganizationContext | null = null;
-      if (availableOrganizations.length === 1) {
-        currentOrganization = availableOrganizations[0];
-      } else if (availableOrganizations.length > 1) {
-        const savedId = typeof window !== "undefined" ? localStorage.getItem(ORG_PREF_KEY) : null;
-        if (savedId) {
-          const match = availableOrganizations.find((o) => o.organization.id === savedId);
-          if (match) {
-            currentOrganization = match;
-          }
-        }
-        if (!currentOrganization) {
-          currentOrganization = availableOrganizations[0];
-        }
-      }
-
-      setState({
-        status: "authenticated",
-        user: data,
-        systemRoles,
-        availableOrganizations,
-        currentOrganization,
-      });
+      const changedUser = previousUser.current !== null && previousUser.current !== data.id;
+      const currentOrganization = selectOrganization(data.organizations, changedUser ? null : readOrganizationPreference());
+      saveOrganizationPreference(currentOrganization?.organization.id ?? null);
+      previousUser.current = data.id;
+      setState({ status: "authenticated", user: data, systemRoles: data.system_roles, availableOrganizations: data.organizations, currentOrganization });
     } catch (err) {
-      setState({ status: "error", error: err instanceof Error ? err : new Error("Failed to authenticate") });
+      if (version !== requestVersion.current) return;
+      setState({ status: "error", error: err instanceof Error ? err : new Error("Session request failed") });
     }
   }, []);
 
   useEffect(() => {
+    // Refresh on return to the page and periodically so expired sessions lose UX privileges.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadUser(true);
+    void loadUser();
+    const onFocus = () => { void loadUser(); };
+    window.addEventListener("focus", onFocus);
+    const interval = window.setInterval(onFocus, 60_000);
+    return () => {
+      // This is a request counter, not a DOM ref: invalidate the latest request.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      ++requestVersion.current;
+      window.removeEventListener("focus", onFocus);
+      window.clearInterval(interval);
+    };
   }, [loadUser]);
 
-  const setOrganization = useCallback(
-    (organizationId: string) => {
-      setState((prev) => {
-        if (prev.status !== "authenticated") return prev;
+  const setOrganization = useCallback((organizationId: string) => {
+    if (state.status !== "authenticated") return;
+    const org = state.availableOrganizations.find((o) => o.organization.id === organizationId);
+    if (!org) return;
+    saveOrganizationPreference(organizationId);
+    setState({ ...state, currentOrganization: org });
+  }, [state]);
 
-        const org = prev.availableOrganizations.find((o) => o.organization.id === organizationId);
-        if (org) {
-          if (typeof window !== "undefined") {
-            localStorage.setItem(ORG_PREF_KEY, organizationId);
-          }
-          return { ...prev, currentOrganization: org };
-        }
-        return prev;
-      });
-    },
-    []
-  );
-
-  return (
-    <AuthContext.Provider value={{ state, setOrganization, refresh: loadUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ state, setOrganization, refresh: loadUser }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

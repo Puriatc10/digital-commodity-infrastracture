@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Derived from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). This is a navigation/reference document; the complete sources remain unchanged. Epic 1 implements the platform foundation described below; later domain work still requires its own authorization.
+Derived from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). This is a navigation/reference document; the complete sources remain unchanged. Epic 1 implements the platform foundation; Epic 2 adds Identity, Organizations, authorization, and frontend session context. Later domain work still requires its own authorization.
 
 ## Required stack
 
@@ -37,7 +37,7 @@ The Procurement Engine uses both the existing network and Market Discovery / Opp
 
 ## Repository and domain boundaries
 
-Specification §53 and roadmap T0101 prescribe a monorepo with apps/api, apps/web, docs, infra/docker, and scripts. Epic 1 implements that layout, API/frontend bootstraps, local infrastructure, contract generation, and CI; no domain modules are implemented.
+Specification §53 and roadmap T0101 prescribe a monorepo with apps/api, apps/web, docs, infra/docker, and scripts. Epic 1 implements that layout, API/frontend bootstraps, local infrastructure, contract generation, and CI; Epic 2 adds only Identity and Organizations domain modules.
 
 Specification §51 suggests these backend modules (not a finalized ownership/interface design):
 
@@ -80,7 +80,7 @@ Domain boundaries must be clear. REST/OpenAPI provides the frontend contract; ro
 
 The business actors are Buyer, Supplier, Broker, Operator, and Admin. Buyer/Supplier/Broker are Organization capabilities; organizations can have multiple capabilities. Operator/Admin are system roles. OrganizationMembership and example organization roles are given in T0202–T0203. Do not introduce Trader as a business role.
 
-Specification §4 defines actor actions; roadmap T0204 and the Epic 2 gate require server-side authorization and permission-matrix review. UI hiding or a demo persona switcher cannot replace authorization. Demo persona switching is limited to development/demo paths. A complete permission matrix remains to be defined and reviewed.
+Specification §4 defines actor actions; roadmap T0204 and the Epic 2 gate require server-side authorization and permission-matrix review. UI hiding or a demo persona switcher cannot replace authorization. Demo persona switching is limited to development/demo paths. The Epic 2 Organization permission matrix and inactive-state semantics are recorded in the [backend guide](../../apps/api/README.md) and reviewed in the [Epic 2 gate](../delivery/epic-02-review-gate.md). Future business-module permissions remain outside this foundation.
 
 ## Frontend and quality
 
@@ -92,4 +92,4 @@ Features require authorization, validation, appropriate auditability, and error/
 
 All eight requested decisions are recorded in the [ADR index](../adr/README.md), including S3-compatible storage and demo MinIO, now explicit in specification §50 and T0104/T0405. The project owner has approved the documentation foundation; the ADRs record decisions, not implementation.
 
-See [source review](source-review.md) for disagreements and ambiguities. Exact permission/transition matrices, schema lifecycle policy, calculation conventions, production storage settings, and detailed module interfaces remain unresolved. Epic 1 uses drf-spectacular, openapi-typescript, and openapi-fetch for the contract boundary; API business models and migrations remain future work. See the [setup guide](../../README.md) for executable commands.
+See [source review](source-review.md) for disagreements and ambiguities. Exact permission/transition matrices, schema lifecycle policy, calculation conventions, production storage settings, and detailed module interfaces remain unresolved. Epic 1 uses drf-spectacular, openapi-typescript, and openapi-fetch for the contract boundary; Identity and Organization models/migrations are implemented; subsequent business models remain future work. [ADR 0009](../adr/0009-authentication-architecture.md) records server-side sessions, CSRF, and the first-party browser transport. See the [setup guide](../../README.md) for executable commands.

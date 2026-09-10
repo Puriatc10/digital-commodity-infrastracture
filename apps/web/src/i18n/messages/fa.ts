@@ -1,4 +1,19 @@
 const fa = {
+  session: {
+    loading: "در حال دریافت نشست…",
+    unauthenticated: "وارد نشده‌اید",
+    error: "دریافت نشست ناموفق بود",
+    noOrganization: "بدون سازمان",
+    organization: "سازمان جاری",
+    demoPersona: "شخصیت نمایشی",
+    selectPersona: "انتخاب شخصیت…",
+    switchError: "تغییر شخصیت ناموفق بود. دوباره تلاش کنید.",
+    roles: {
+      buyer: "خریدار", supplier: "تأمین‌کننده", broker: "کارگزار",
+      operator: "اپراتور", admin: "مدیر سامانه", owner: "مالک",
+      manager: "مدیر سازمان", member: "عضو", viewer: "مشاهده‌گر",
+    },
+  },
   metadata: {
     title: "بستر تأمین و تجارت کالا | محیط نمایشی",
     description: "پوسته اولیه فارسی بستر تأمین و تجارت کالا برای کسب‌وکارها.",

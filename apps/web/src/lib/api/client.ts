@@ -1,37 +1,23 @@
 import createClient from "openapi-fetch";
 import type { paths } from "./generated/schema";
 
-/**
- * Minimal generic client foundation for consuming the generated API contract.
- * Ensure NEXT_PUBLIC_API_BASE_URL is set in the environment.
- */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-if (!API_BASE_URL) {
-  throw new Error("Set NEXT_PUBLIC_API_BASE_URL before importing the API client.");
-}
-
+// Next's local proxy or the production ingress routes same-origin /api to Django.
 export const apiClient = createClient<paths>({
-  fetch: (url: RequestInfo | URL, init?: RequestInit) => {
-    const options = init || {};
-    options.credentials = "include";
-
-    // Extract CSRF token from cookies for state-changing requests
-    if (
-      typeof window !== "undefined" &&
-      options.method &&
-      ["POST", "PUT", "PATCH", "DELETE"].includes(options.method.toUpperCase())
-    ) {
-      const match = document.cookie.match(new RegExp("(^| )csrftoken=([^;]+)"));
-      if (match && match[2]) {
-        // Convert existing headers to a Headers object, or append appropriately
-        const headers = new Headers(options.headers);
-        headers.set("X-CSRFToken", match[2]);
-        options.headers = headers;
-      }
-    }
-
-    return fetch(url, options);
-  },
-  baseUrl: API_BASE_URL,
+  baseUrl: typeof window === "undefined" ? process.env.API_PROXY_TARGET : window.location.origin,
+  credentials: "include",
 });
+
+apiClient.use({
+  onRequest({ request }) {
+    if (typeof document !== "undefined" && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+      const token = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/)?.[1];
+      if (token) request.headers.set("X-CSRFToken", token);
+    }
+    return request;
+  },
+});
+
+export async function bootstrapCsrf() {
+  const { response } = await apiClient.GET("/api/auth/csrf");
+  if (!response.ok) throw new Error("CSRF bootstrap failed");
+}

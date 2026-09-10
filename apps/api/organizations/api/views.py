@@ -36,8 +36,3 @@ class OrganizationViewSet(mixins.RetrieveModelMixin,
             memberships__user=user,
             memberships__is_active=True
         ).distinct()
-
-    def update(self, request, *args, **kwargs):
-        # We only support PATCH as per requirements. But DRF GenericViewSet maps PUT to update by default.
-        kwargs['partial'] = True
-        return super().update(request, *args, **kwargs)

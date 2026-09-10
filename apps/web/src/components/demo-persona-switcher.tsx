@@ -1,16 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { apiClient } from "@/lib/api/client";
+import { apiClient, bootstrapCsrf } from "@/lib/api/client";
+import type { components } from "@/lib/api/generated/schema";
+import type { Messages } from "@/i18n/messages";
+import { saveOrganizationPreference } from "@/lib/organization-preference";
 
-type AllowedPersona = "buyer" | "supplier" | "broker" | "operator" | "admin";
+type AllowedPersona = components["schemas"]["DemoPersonaSwitcherRequest"]["persona"];
 
-export function DemoPersonaSwitcher() {
+export function DemoPersonaSwitcher({ messages }: { messages: Messages["session"] }) {
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [personas, setPersonas] = useState<AllowedPersona[]>([]);
 
-  const ORG_PREF_KEY = "commodity_platform_pref_org_id";
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     async function checkEnabled() {
@@ -36,19 +39,21 @@ export function DemoPersonaSwitcher() {
     if (!persona) return;
 
     setLoading(true);
+    setFailed(false);
     try {
+      await bootstrapCsrf();
       const { data, error } = await apiClient.POST("/api/auth/demo-switch", {
         body: { persona }
       });
 
       if (!error && data) {
         if (typeof window !== "undefined") {
-          localStorage.removeItem(ORG_PREF_KEY);
+          saveOrganizationPreference(null);
           window.location.reload();
         }
-      }
-    } catch (err) {
-      console.error("Failed to switch persona", err);
+      } else setFailed(true);
+    } catch {
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -57,21 +62,23 @@ export function DemoPersonaSwitcher() {
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Demo Persona
+        {messages.demoPersona}
       </span>
       <select
+        aria-label={messages.demoPersona}
         className="rounded-md border border-primary/20 bg-primary/10 text-primary px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary"
         onChange={handleSwitch}
         disabled={loading}
         value=""
       >
-        <option value="" disabled>Select...</option>
+        <option value="" disabled>{messages.selectPersona}</option>
         {personas.map(p => (
           <option key={p} value={p}>
-            {p.charAt(0).toUpperCase() + p.slice(1)}
+            {messages.roles[p]}
           </option>
         ))}
       </select>
+      {failed && <span role="alert" className="text-xs text-destructive">{messages.switchError}</span>}
     </div>
   );
 }

@@ -1,4 +1,5 @@
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from organizations.models import Organization, OrganizationMembership, OrganizationCapability
@@ -10,6 +11,8 @@ class Command(BaseCommand):
     help = "Seeds the database with deterministic demo personas for the switcher."
 
     def handle(self, *args, **kwargs):
+        if not settings.DEMO_PERSONA_SWITCHER_ENABLED:
+            raise CommandError("Enable DEMO_PERSONA_SWITCHER_ENABLED in a demo environment before seeding.")
         personas = [
             {
                 "email": "buyer@demo.local",
@@ -46,7 +49,7 @@ class Command(BaseCommand):
                     defaults={"is_active": True}
                 )
                 if created:
-                    user.set_password("demo1234")
+                    user.set_unusable_password()
                     user.save()
                     self.stdout.write(self.style.SUCCESS(f"Created user: {p['email']}"))
 
