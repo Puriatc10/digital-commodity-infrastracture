@@ -9,6 +9,7 @@ env = environ.Env()
 
 SECRET_KEY = env.str("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
+DEMO_PERSONA_SWITCHER_ENABLED = env.bool("DEMO_PERSONA_SWITCHER_ENABLED", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
 INSTALLED_APPS = [

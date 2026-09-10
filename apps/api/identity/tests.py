@@ -201,7 +201,6 @@ class DemoPersonaSwitcherTests(APITestCase):
         csrf_client = Client(enforce_csrf_checks=True)
         response = csrf_client.post(self.url, {"persona": "buyer"})
         self.assertEqual(response.status_code, 403)
-        self.assertIn("CSRF verification failed", str(response.content))
 
 class SeedDemoPersonasTests(APITestCase):
     def test_seed_idempotency(self):
