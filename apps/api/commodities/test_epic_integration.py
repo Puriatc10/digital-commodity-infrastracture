@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APITestCase
 from django.urls import reverse
 from commodities.models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition
-from commodities.services import validate_commodity_payload, clone_schema_version, publish_schema_version
+from commodities.services import validate_commodity_payload, clone_schema_to_draft, publish_schema
 
 class EpicIntegrationTests(TestCase):
     def test_version_evolution_and_historical_stability(self):
@@ -34,7 +34,7 @@ class EpicIntegrationTests(TestCase):
         validate_commodity_payload(v1_schema, valid_v1_payload)
 
         # 2. Clone v2 Draft
-        v2_schema = clone_schema_version(v1_schema)
+        v2_schema = clone_schema_to_draft(v1_schema)
         self.assertEqual(v2_schema.version, 2)
         self.assertEqual(v2_schema.status, CommoditySchemaVersion.SchemaStatus.DRAFT)
         self.assertEqual(commodity.active_schema_version.version, 1) # active is still v1
@@ -50,7 +50,7 @@ class EpicIntegrationTests(TestCase):
         )
 
         # 4. Publish/Activate v2
-        publish_schema_version(v2_schema)
+        publish_schema(v2_schema, activate=True)
 
         commodity.refresh_from_db()
         self.assertEqual(commodity.active_schema_version.version, 2)
