@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { EnabledLocale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
 import { AuthStatusBar } from "./auth-status-bar";
+import { DemoPersonaSwitcher } from "./demo-persona-switcher";
 
 
 export function ApplicationShell({
@@ -42,6 +43,7 @@ export function ApplicationShell({
       <div className="min-w-0">
         <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 border-b border-border bg-card/70 px-6 lg:px-10">
           <p className="text-sm font-medium">{messages.home}</p>
+          <DemoPersonaSwitcher />
           <AuthStatusBar />
           <div className="flex items-center gap-3 text-xs">
             <span className="text-muted-foreground">{messages.locale}</span>

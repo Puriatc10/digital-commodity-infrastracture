@@ -3,8 +3,12 @@ from django.db import IntegrityError
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-
 from .models import SystemRoleAssignment
+from django.test import override_settings
+from django.core.management import call_command
+import io
+
+
 
 User = get_user_model()
 
@@ -143,3 +147,69 @@ class SystemRoleTests(APITestCase):
             role=SystemRoleAssignment.SystemRole.OPERATOR
         )
         self.assertEqual(role.user, self.user)
+
+
+
+class DemoPersonaSwitcherTests(APITestCase):
+    def setUp(self):
+        self.url = reverse("demo-switch")
+
+    def test_switcher_disabled_by_default(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        response = self.client.post(self.url, {"persona": "buyer"})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @override_settings(DEMO_PERSONA_SWITCHER_ENABLED=True)
+    def test_switcher_enabled_get(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("buyer", response.data)
+
+    @override_settings(DEMO_PERSONA_SWITCHER_ENABLED=True)
+    def test_switcher_enabled_post_invalid_persona(self):
+        response = self.client.post(self.url, {"persona": "invalid"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(DEMO_PERSONA_SWITCHER_ENABLED=True)
+    def test_switcher_enabled_valid_but_not_seeded(self):
+        response = self.client.post(self.url, {"persona": "buyer"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @override_settings(DEMO_PERSONA_SWITCHER_ENABLED=True)
+    def test_switcher_enabled_success(self):
+        user = User.objects.create(email="buyer@demo.local", is_active=True)
+        user.set_password("demo1234")
+        user.save()
+
+        response = self.client.post(self.url, {"persona": "buyer"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], "buyer@demo.local")
+
+        response = self.client.get(reverse("me"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], "buyer@demo.local")
+
+    @override_settings(DEMO_PERSONA_SWITCHER_ENABLED=True)
+    def test_switcher_csrf_enforced(self):
+        user = User.objects.create(email="buyer@demo.local", is_active=True)
+        user.set_password("demo1234")
+        user.save()
+
+        from django.test import Client
+        csrf_client = Client(enforce_csrf_checks=True)
+        response = csrf_client.post(self.url, {"persona": "buyer"})
+        self.assertEqual(response.status_code, 403)
+
+class SeedDemoPersonasTests(APITestCase):
+    def test_seed_idempotency(self):
+        out = io.StringIO()
+        call_command("seed_demo_personas", stdout=out)
+        self.assertIn("Successfully seeded demo personas.", out.getvalue())
+        self.assertEqual(User.objects.filter(email="buyer@demo.local").count(), 1)
+
+        out = io.StringIO()
+        call_command("seed_demo_personas", stdout=out)
+        self.assertIn("Successfully seeded demo personas.", out.getvalue())
+        self.assertEqual(User.objects.filter(email="buyer@demo.local").count(), 1)
