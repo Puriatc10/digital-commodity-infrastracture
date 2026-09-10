@@ -13,6 +13,7 @@ dependencies = [
   "psycopg[binary]==3.3.5",
   "django-environ==0.14.0",
   "drf-spectacular==0.30.0",
+  "jsonschema>=4.26.0",
 ]
 
 [tool.setuptools.packages.find]
