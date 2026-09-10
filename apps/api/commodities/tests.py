@@ -3,6 +3,7 @@ from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from .models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition
 from .services import publish_schema, retire_schema, clone_schema_to_draft
+from .services import generate_json_schema, validate_commodity_payload
 
 
 class CommodityDefinitionTests(TestCase):
@@ -277,3 +278,217 @@ class CommodityAttributeDefinitionTests(TestCase):
 
         with self.assertRaises(ValidationError):
             attr.delete()
+
+
+class CommodityValidationTests(TestCase):
+    def setUp(self):
+        self.commodity = CommodityDefinition.objects.create(code="val_test", name_en="ValTest", name_fa="ValTest")
+        self.schema = CommoditySchemaVersion.objects.create(
+            commodity=self.commodity,
+            version=1,
+            status=CommoditySchemaVersion.SchemaStatus.DRAFT
+        )
+
+        # Add varied attributes to cover types
+        CommodityAttributeDefinition.objects.create(
+            schema_version=self.schema,
+            key="str_field",
+            data_type="string",
+            is_required=True,
+            validation_metadata={"minLength": 2, "maxLength": 10},
+            sort_order=1
+        )
+        CommodityAttributeDefinition.objects.create(
+            schema_version=self.schema,
+            key="num_field",
+            data_type="number",
+            is_required=False,
+            validation_metadata={"minimum": 0, "maximum": 100},
+            sort_order=2
+        )
+        CommodityAttributeDefinition.objects.create(
+            schema_version=self.schema,
+            key="int_field",
+            data_type="integer",
+            is_required=True,
+            sort_order=3
+        )
+        CommodityAttributeDefinition.objects.create(
+            schema_version=self.schema,
+            key="bool_field",
+            data_type="boolean",
+            is_required=False,
+            sort_order=4
+        )
+        CommodityAttributeDefinition.objects.create(
+            schema_version=self.schema,
+            key="enum_field",
+            data_type="enum",
+            is_required=True,
+            enum_metadata={"options": [{"value": "A"}, {"value": "B"}]},
+            sort_order=5
+        )
+
+    def test_schema_generation_deterministic(self):
+        json_schema = generate_json_schema(self.schema)
+        self.assertEqual(json_schema["type"], "object")
+        self.assertFalse(json_schema["additionalProperties"])
+        self.assertCountEqual(json_schema["required"], ["str_field", "int_field", "enum_field"])
+
+        props = json_schema["properties"]
+        self.assertEqual(props["str_field"]["type"], "string")
+        self.assertEqual(props["str_field"]["minLength"], 2)
+        self.assertEqual(props["str_field"]["maxLength"], 10)
+
+        self.assertEqual(props["num_field"]["type"], "number")
+        self.assertEqual(props["num_field"]["minimum"], 0)
+        self.assertEqual(props["num_field"]["maximum"], 100)
+
+        self.assertEqual(props["int_field"]["type"], "integer")
+        self.assertEqual(props["bool_field"]["type"], "boolean")
+
+        self.assertEqual(props["enum_field"]["type"], "string")
+        self.assertEqual(props["enum_field"]["enum"], ["A", "B"])
+
+        # Test Generation leaves definition unchanged
+        # Since generating schema just reads, it naturally doesn't change it, but we can assert no save was needed
+        # Just ensure the schema is still draft and unchanged
+        schema_refresh = CommoditySchemaVersion.objects.get(pk=self.schema.pk)
+        self.assertEqual(schema_refresh.status, CommoditySchemaVersion.SchemaStatus.DRAFT)
+
+    def test_validation_valid_payload(self):
+        payload = {
+            "str_field": "hello",
+            "num_field": 50.5,
+            "int_field": 10,
+            "bool_field": True,
+            "enum_field": "A"
+        }
+        # Should not raise
+        validate_commodity_payload(self.schema, payload)
+
+        # num and bool are optional, missing them is fine
+        payload_optional_missing = {
+            "str_field": "hello",
+            "int_field": 10,
+            "enum_field": "B"
+        }
+        validate_commodity_payload(self.schema, payload_optional_missing)
+
+    def test_validation_missing_required(self):
+        payload = {
+            "int_field": 10,
+            "enum_field": "A"
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            validate_commodity_payload(self.schema, payload)
+
+        errors = ctx.exception.params["errors"]
+        self.assertTrue(any(e["field"] == "str_field" and e["code"] == "required" for e in errors))
+
+    def test_validation_unknown_field(self):
+        payload = {
+            "str_field": "hello",
+            "int_field": 10,
+            "enum_field": "A",
+            "magic_field": 123
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            validate_commodity_payload(self.schema, payload)
+
+        errors = ctx.exception.params["errors"]
+        self.assertTrue(any(e["field"] == "magic_field" and e["code"] == "unknown_field" for e in errors))
+
+    def test_validation_invalid_type_and_bool_strictness(self):
+        payload = {
+            "str_field": 123, # Wrong type
+            "int_field": 10.5, # Wrong type (number vs int)
+            "enum_field": "A"
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            validate_commodity_payload(self.schema, payload)
+
+        errors = ctx.exception.params["errors"]
+        self.assertTrue(any(e["field"] == "str_field" and e["code"] == "invalid_type" for e in errors))
+        self.assertTrue(any(e["field"] == "int_field" and e["code"] == "invalid_type" for e in errors))
+
+        # Test bool strictness (1 is not True)
+        payload2 = {
+            "str_field": "hi",
+            "int_field": 10,
+            "enum_field": "A",
+            "bool_field": 1 # Should fail
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            validate_commodity_payload(self.schema, payload2)
+        errors2 = ctx.exception.params["errors"]
+        self.assertTrue(any(e["field"] == "bool_field" and e["code"] == "invalid_type" for e in errors2))
+
+    def test_validation_explicit_null(self):
+        payload = {
+            "str_field": "hello",
+            "int_field": 10,
+            "enum_field": "A",
+            "num_field": None # explicit null
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            validate_commodity_payload(self.schema, payload)
+
+        errors = ctx.exception.params["errors"]
+        self.assertTrue(any(e["field"] == "num_field" and e["code"] == "invalid_type" for e in errors))
+
+    def test_validation_enum_bounds(self):
+        payload = {
+            "str_field": "hello",
+            "int_field": 10,
+            "enum_field": "C" # Invalid enum
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            validate_commodity_payload(self.schema, payload)
+
+        errors = ctx.exception.params["errors"]
+        self.assertTrue(any(e["field"] == "enum_field" and e["code"] == "invalid_enum" for e in errors))
+
+    def test_validation_numeric_and_string_constraints(self):
+        payload = {
+            "str_field": "h", # minLength is 2
+            "num_field": 101, # max is 100
+            "int_field": 10,
+            "enum_field": "A"
+        }
+        with self.assertRaises(ValidationError) as ctx:
+            validate_commodity_payload(self.schema, payload)
+
+        errors = ctx.exception.params["errors"]
+        self.assertTrue(any(e["field"] == "str_field" and e["code"] == "min_length" for e in errors))
+        self.assertTrue(any(e["field"] == "num_field" and e["code"] == "max_value" for e in errors))
+
+    def test_schema_version_aware(self):
+        # Create v2
+        v2 = CommoditySchemaVersion.objects.create(
+            commodity=self.commodity,
+            version=2,
+            status=CommoditySchemaVersion.SchemaStatus.DRAFT
+        )
+        CommodityAttributeDefinition.objects.create(
+            schema_version=v2,
+            key="new_field",
+            data_type="string",
+            is_required=True
+        )
+
+        # Valid for v1, but missing required new_field for v2
+        payload_v1 = {
+            "str_field": "hello",
+            "int_field": 10,
+            "enum_field": "A"
+        }
+        # v1 passes
+        validate_commodity_payload(self.schema, payload_v1)
+
+        # v2 fails (new_field is required, plus unknown fields)
+        with self.assertRaises(ValidationError) as ctx:
+            validate_commodity_payload(v2, payload_v1)
+
+        errors = ctx.exception.params["errors"]
+        self.assertTrue(any(e["field"] == "new_field" and e["code"] == "required" for e in errors))
