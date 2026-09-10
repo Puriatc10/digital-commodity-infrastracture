@@ -2,7 +2,6 @@ import React from 'react'
 import { CommoditySpecificationView, CommoditySchemaVersion } from '@/components/commodity/commodity-specification-view'
 import { CommoditySpecificationForm } from '@/components/commodity/commodity-specification-form'
 import { render, screen, cleanup, within } from '@testing-library/react'
-import { components } from "@/lib/api/generated/schema"
 import { afterEach, describe, it, expect, vi } from 'vitest'
 
 // Fix for radix-ui pointer capture in jsdom (needed for Form interaction tests, kept for consistency)

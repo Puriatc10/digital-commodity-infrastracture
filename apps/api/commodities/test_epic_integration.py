@@ -82,7 +82,7 @@ class EpicIntegrationAPI_Flow_Tests(APITestCase):
     def test_bitumen_epic_integration_pipeline(self):
         # 1. Seed
         call_command('seed_bitumen')
-        commodity = CommodityDefinition.objects.get(code="bitumen")
+        CommodityDefinition.objects.get(code="bitumen")
 
         # 2. Retrieve through API
         url = reverse("commodity-active-schema", kwargs={"code": "bitumen"})
@@ -100,7 +100,7 @@ class EpicIntegrationAPI_Flow_Tests(APITestCase):
     def test_base_oil_epic_integration_pipeline(self):
         # 1. Seed Base Oil
         call_command('seed_base_oil')
-        commodity = CommodityDefinition.objects.get(code="base_oil")
+        CommodityDefinition.objects.get(code="base_oil")
 
         # 2. Retrieve through API
         url = reverse("commodity-active-schema", kwargs={"code": "base_oil"})
