@@ -32,19 +32,19 @@ class VerificationPermissionTests(APITestCase):
 
     def test_owner_can_submit(self):
         self.client.force_authenticate(user=self.owner)
-        response = self.client.post(self.submit_url, {})
+        response = self.client.post(self.submit_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_viewer_cannot_submit(self):
         self.client.force_authenticate(user=self.viewer)
-        response = self.client.post(self.submit_url, {})
+        response = self.client.post(self.submit_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_owner_cannot_review(self):
         self.client.force_authenticate(user=self.owner)
-        self.client.post(self.submit_url, {})
+        self.client.post(self.submit_url, {}, format='json')
 
-        response = self.client.post(self.start_review_url, {})
+        response = self.client.post(self.start_review_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_operator_can_review(self):
@@ -69,13 +69,13 @@ class VerificationPermissionTests(APITestCase):
         self.org.save()
 
         self.client.force_authenticate(user=self.owner)
-        response = self.client.post(self.submit_url, {})
+        response = self.client.post(self.submit_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         VerificationService.get_or_create_verification(self.org.id)
         # Attempt review with operator
         self.client.force_authenticate(user=self.operator)
-        response = self.client.post(self.start_review_url, {})
+        response = self.client.post(self.start_review_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_detail_read_projection(self):
@@ -104,5 +104,5 @@ class VerificationPermissionTests(APITestCase):
         self.client.force_authenticate(user=self.owner)
         # Owner of self.org tries to submit for self.other_org
         submit_other_url = reverse('verification:submit', kwargs={'org_id': self.other_org.id})
-        response = self.client.post(submit_other_url, {})
+        response = self.client.post(submit_other_url, {}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
