@@ -1,24 +1,38 @@
 from django.contrib import admin
-
-from .models import Organization, OrganizationCapability, OrganizationMembership
-
+from .models import Organization, OrganizationMembership, OrganizationCapability
+from .verification.models import OrganizationVerification, VerificationDecision, VerificationNote
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ("name", "registration_identifier", "country", "is_active", "created_at")
+    list_display = ("name", "country", "is_active", "created_at")
     list_filter = ("is_active", "country")
     search_fields = ("name", "registration_identifier")
 
-
 @admin.register(OrganizationMembership)
 class OrganizationMembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "organization", "role", "is_active", "created_at")
+    list_display = ("organization", "user", "role", "is_active")
     list_filter = ("role", "is_active")
-    search_fields = ("user__email", "organization__name")
-
+    search_fields = ("organization__name", "user__email")
 
 @admin.register(OrganizationCapability)
 class OrganizationCapabilityAdmin(admin.ModelAdmin):
-    list_display = ("organization", "capability", "created_at")
+    list_display = ("organization", "capability")
     list_filter = ("capability",)
     search_fields = ("organization__name",)
+
+@admin.register(OrganizationVerification)
+class OrganizationVerificationAdmin(admin.ModelAdmin):
+    list_display = ("organization", "status", "version")
+    list_filter = ("status",)
+    search_fields = ("organization__name",)
+
+@admin.register(VerificationDecision)
+class VerificationDecisionAdmin(admin.ModelAdmin):
+    list_display = ("verification", "actor", "previous_status", "new_status", "created_at")
+    list_filter = ("new_status",)
+    search_fields = ("verification__organization__name", "actor__email")
+
+@admin.register(VerificationNote)
+class VerificationNoteAdmin(admin.ModelAdmin):
+    list_display = ("verification", "actor", "created_at")
+    search_fields = ("verification__organization__name", "actor__email", "note")
