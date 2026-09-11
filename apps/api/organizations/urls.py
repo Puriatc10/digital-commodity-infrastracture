@@ -6,5 +6,6 @@ router = DefaultRouter()
 router.register(r'', OrganizationViewSet, basename='organization')
 
 urlpatterns = [
+    path('<uuid:org_id>/verification/', include(('organizations.verification.urls', 'verification'), namespace='verification')),
     path('', include(router.urls)),
 ]

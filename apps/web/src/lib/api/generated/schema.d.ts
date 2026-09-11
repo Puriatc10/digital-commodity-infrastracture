@@ -172,6 +172,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organizations/{org_id}/verification/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_verification_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{org_id}/verification/approve_basic/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verification_approve_basic_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{org_id}/verification/approve_full/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verification_approve_full_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{org_id}/verification/notes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verification_notes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{org_id}/verification/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verification_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{org_id}/verification/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verification_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{org_id}/verification/start_review/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verification_start_review_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{org_id}/verification/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verification_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organizations/{org_id}/verification/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["organizations_verification_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organizations/{id}/": {
         parameters: {
             query?: never;
@@ -229,9 +373,16 @@ export interface components {
             readonly commodity_id: string;
             /** @description Version number (e.g., 1, 2) */
             version: number;
-            status?: components["schemas"]["StatusEnum"];
+            status?: components["schemas"]["CommoditySchemaVersionStatusEnum"];
             readonly attributes: components["schemas"]["CommodityAttributeDefinition"][];
         };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `retired` - Retired
+         * @enum {string}
+         */
+        CommoditySchemaVersionStatusEnum: "draft" | "published" | "retired";
         CsrfViewResponse: {
             detail: string;
         };
@@ -283,6 +434,18 @@ export interface components {
             role: string;
             capabilities: string[];
         };
+        OrganizationVerificationDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["VerificationStatusEnum"];
+            readonly version: number;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly decisions: components["schemas"]["VerificationDecision"][];
+            readonly notes: {
+                [key: string]: unknown;
+            }[];
+        };
         PatchedOrganization: {
             /** Format: uuid */
             readonly id?: string;
@@ -306,13 +469,6 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
-        /**
-         * @description * `draft` - Draft
-         *     * `published` - Published
-         *     * `retired` - Retired
-         * @enum {string}
-         */
-        StatusEnum: "draft" | "published" | "retired";
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
@@ -334,6 +490,40 @@ export interface components {
             minLength?: number;
             maxLength?: number;
         };
+        VerificationAction: {
+            reason?: string;
+            expected_version?: number | null;
+        };
+        VerificationDecision: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: email */
+            readonly actor_email: string;
+            readonly previous_status: components["schemas"]["VerificationStatusEnum"];
+            readonly new_status: components["schemas"]["VerificationStatusEnum"];
+            readonly reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        VerificationNote: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: email */
+            readonly actor_email: string;
+            note: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `unverified` - Unverified
+         *     * `documents_submitted` - Documents Submitted
+         *     * `under_review` - Under Review
+         *     * `basic_verified` - Basic Verified
+         *     * `verified` - Verified
+         *     * `suspended` - Suspended
+         * @enum {string}
+         */
+        VerificationStatusEnum: "unverified" | "documents_submitted" | "under_review" | "basic_verified" | "verified" | "suspended";
     };
     responses: never;
     parameters: never;
@@ -692,6 +882,325 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Organization"][];
                 };
+            };
+        };
+    };
+    organizations_verification_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                };
+            };
+        };
+    };
+    organizations_verification_approve_basic_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerificationAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                };
+            };
+            /** @description Domain error (e.g. invalid transition) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict (stale version) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    organizations_verification_approve_full_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerificationAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                };
+            };
+            /** @description Domain error (e.g. invalid transition) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict (stale version) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    organizations_verification_notes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerificationNote"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationNote"];
+                };
+            };
+        };
+    };
+    organizations_verification_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerificationAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                };
+            };
+            /** @description Domain error (e.g. invalid transition) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict (stale version) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    organizations_verification_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerificationAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                };
+            };
+            /** @description Domain error (e.g. invalid transition) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict (stale version) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    organizations_verification_start_review_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerificationAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                };
+            };
+            /** @description Domain error (e.g. invalid transition) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict (stale version) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    organizations_verification_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerificationAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                };
+            };
+            /** @description Domain error (e.g. invalid transition) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict (stale version) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    organizations_verification_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["VerificationAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                };
+            };
+            /** @description Domain error (e.g. invalid transition) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict (stale version) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

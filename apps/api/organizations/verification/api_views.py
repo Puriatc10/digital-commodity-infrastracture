@@ -1,0 +1,113 @@
+from rest_framework import views, status, generics
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, OpenApiResponse
+from django.shortcuts import get_object_or_404
+from organizations.models import Organization
+from .serializers import OrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer
+from .services import VerificationService, VerificationDomainException
+from .permissions import CanViewVerification, CanSubmitVerification, CanPerformVerificationReview
+
+class VerificationDetailView(generics.RetrieveAPIView):
+    serializer_class = OrganizationVerificationDetailSerializer
+    permission_classes = [IsAuthenticated, CanViewVerification]
+
+    def get_object(self):
+        org_id = self.kwargs['org_id']
+        org = get_object_or_404(Organization, id=org_id)
+        self.check_object_permissions(self.request, org)
+        return VerificationService.get_or_create_verification(org.id)
+
+class BaseVerificationActionView(views.APIView):
+    def get_organization(self):
+        org_id = self.kwargs['org_id']
+        org = get_object_or_404(Organization, id=org_id)
+        self.check_object_permissions(self.request, org)
+        return org
+
+    def perform_action(self, org, actor, data):
+        raise NotImplementedError
+
+    @extend_schema(
+        request=VerificationActionSerializer,
+        responses={
+            200: OrganizationVerificationDetailSerializer,
+            400: OpenApiResponse(description="Domain error (e.g. invalid transition)"),
+            409: OpenApiResponse(description="Conflict (stale version)")
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        org = self.get_organization()
+        serializer = VerificationActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            verification = self.perform_action(org, request.user, serializer.validated_data)
+            response_serializer = OrganizationVerificationDetailSerializer(verification, context={'request': request})
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+        except VerificationDomainException as e:
+            if "Stale object" in str(e):
+                return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class VerificationSubmitView(BaseVerificationActionView):
+    permission_classes = [IsAuthenticated, CanSubmitVerification]
+
+    def perform_action(self, org, actor, data):
+        return VerificationService.submit(org.id, actor, data.get('expected_version'))
+
+class VerificationStartReviewView(BaseVerificationActionView):
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+
+    def perform_action(self, org, actor, data):
+        return VerificationService.start_review(org.id, actor, data.get('expected_version'))
+
+class VerificationApproveBasicView(BaseVerificationActionView):
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+
+    def perform_action(self, org, actor, data):
+        return VerificationService.basic_approval(org.id, actor, data.get('expected_version'))
+
+class VerificationApproveFullView(BaseVerificationActionView):
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+
+    def perform_action(self, org, actor, data):
+        return VerificationService.full_approval(org.id, actor, data.get('expected_version'))
+
+class VerificationRejectView(BaseVerificationActionView):
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+
+    def perform_action(self, org, actor, data):
+        return VerificationService.reject(org.id, actor, data.get('reason'), data.get('expected_version'))
+
+class VerificationSuspendView(BaseVerificationActionView):
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+
+    def perform_action(self, org, actor, data):
+        return VerificationService.suspend(org.id, actor, data.get('reason'), data.get('expected_version'))
+
+class VerificationReopenView(BaseVerificationActionView):
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+
+    def perform_action(self, org, actor, data):
+        return VerificationService.reopen(org.id, actor, data.get('expected_version'))
+
+class VerificationNoteCreateView(views.APIView):
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+
+    @extend_schema(
+        request=VerificationNoteSerializer,
+        responses={201: VerificationNoteSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        org_id = self.kwargs['org_id']
+        org = get_object_or_404(Organization, id=org_id)
+        self.check_object_permissions(request, org)
+
+        serializer = VerificationNoteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+             note = VerificationService.add_internal_note(org.id, request.user, serializer.validated_data['note'])
+             return Response(VerificationNoteSerializer(note).data, status=status.HTTP_201_CREATED)
+        except VerificationDomainException as e:
+             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

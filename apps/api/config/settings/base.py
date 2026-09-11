@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "identity",
     "organizations",
+    "organizations.verification",
     "commodities",
 ]
 
@@ -72,6 +73,9 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Backend OpenAPI for the commodity procurement platform",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "VerificationStatusEnum": "organizations.verification.models.VerificationStatus"
+    },
 }
 
 LANGUAGE_CODE = "fa-ir"
