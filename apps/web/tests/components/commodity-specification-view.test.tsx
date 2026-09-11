@@ -23,7 +23,7 @@ describe('CommoditySpecificationView - Rendering and Metadata', () => {
     status: 'published',
     attributes: [
       {
-        id: '1',
+        ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '1',
         key: 'grade',
         label_en: 'Grade',
         label_fa: 'گرید',
@@ -33,13 +33,13 @@ describe('CommoditySpecificationView - Rendering and Metadata', () => {
         display_group: 'Quality',
         enum_metadata: {
           options: [
-            { canonical_value: 'a', label_en: 'Type A', label_fa: 'نوع آ', sort_order: 2 },
-            { canonical_value: 'b', label_en: 'Type B', label_fa: 'نوع ب', sort_order: 1 }
+            { value: 'a', label_en: 'Type A', label_fa: 'نوع آ', sort_order: 2 },
+            { value: 'b', label_en: 'Type B', label_fa: 'نوع ب', sort_order: 1 }
           ]
         }
       },
       {
-        id: '2',
+        ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '2',
         key: 'viscosity',
         label_en: 'Viscosity',
         label_fa: 'گرانروی',
@@ -48,10 +48,10 @@ describe('CommoditySpecificationView - Rendering and Metadata', () => {
         sort_order: 2,
         display_group: 'Quality',
         unit_metadata: { canonical_unit: 'cSt' },
-        validation_metadata: { min: 10, max: 100 }
+        validation_metadata: { minimum: 10, maximum: 100 }
       },
       {
-        id: '3',
+        ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '3',
         key: 'active',
         label_en: 'Active',
         label_fa: 'فعال',
@@ -60,27 +60,27 @@ describe('CommoditySpecificationView - Rendering and Metadata', () => {
         sort_order: 3
       },
       {
-        id: '4',
+        ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '4',
         key: 'notes',
         label_en: 'Notes',
         label_fa: 'یادداشت',
         data_type: 'string',
         is_required: false,
         sort_order: 4,
-        validation_metadata: { min_length: 5, max_length: 255 }
+        validation_metadata: { minLength: 5, maxLength: 255 }
       },
       {
-        id: '5',
+        ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '5',
         key: 'count',
         label_en: 'Count',
         label_fa: 'تعداد',
         data_type: 'integer',
         is_required: true,
         sort_order: 5,
-        validation_metadata: { min: 0 }
+        validation_metadata: { minimum: 0 }
       },
       {
-        id: '6',
+        ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '6',
         key: 'missing_optional',
         label_en: 'Missing',
         label_fa: 'خالی',
@@ -142,14 +142,14 @@ describe('CommoditySpecificationView - Historical Rendering Stability', () => {
   const v1Schema: CommoditySchemaVersion = {
     id: 'schema-v1', version: 1, commodity_id: 'test', status: 'published',
     attributes: [
-      { id: '1', key: 'grade', label_en: 'Grade', label_fa: 'گرید', data_type: 'enum', sort_order: 1, enum_metadata: { options: [{ canonical_value: 'old_a', label_en: 'Old Type A', label_fa: 'نوع آ قدیم' }] } }
+      { ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '1', key: 'grade', label_en: 'Grade', label_fa: 'گرید', data_type: 'enum', sort_order: 1, enum_metadata: { options: [{ value: 'old_a', label_en: 'Old Type A', label_fa: 'نوع آ قدیم' }] } }
     ]
   }
 
   const v2Schema: CommoditySchemaVersion = {
     id: 'schema-v2', version: 2, commodity_id: 'test', status: 'published',
     attributes: [
-      { id: '1', key: 'grade', label_en: 'Grade', label_fa: 'گرید', data_type: 'enum', sort_order: 1, enum_metadata: { options: [{ canonical_value: 'old_a', label_en: 'New Type A', label_fa: 'نوع آ جدید' }] } }
+      { ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '1', key: 'grade', label_en: 'Grade', label_fa: 'گرید', data_type: 'enum', sort_order: 1, enum_metadata: { options: [{ value: 'old_a', label_en: 'New Type A', label_fa: 'نوع آ جدید' }] } }
     ]
   }
 
@@ -169,14 +169,14 @@ describe('CommoditySpecificationView - Epic Integration Form to View Flow', () =
   const bitumenSchema: CommoditySchemaVersion = {
     id: 'bitumen', version: 1, commodity_id: 'bitumen', status: 'published',
     attributes: [
-      { id: '1', key: 'penetration', label_en: 'Penetration Grade', label_fa: 'درجه نفوذ', data_type: 'string', sort_order: 1 }
+      { ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '1', key: 'penetration', label_en: 'Penetration Grade', label_fa: 'درجه نفوذ', data_type: 'string', sort_order: 1 }
     ]
   }
 
   const baseOilSchema: CommoditySchemaVersion = {
     id: 'base-oil', version: 1, commodity_id: 'base-oil', status: 'published',
     attributes: [
-      { id: '2', key: 'viscosity_grade', label_en: 'Viscosity Grade', label_fa: 'گرید گرانروی', data_type: 'enum', sort_order: 1, enum_metadata: { options: [{ canonical_value: 'sn500', label_en: 'SN500', label_fa: 'SN500' }] } }
+      { ...{ unit_metadata: {}, enum_metadata: {}, validation_metadata: {} }, id: '2', key: 'viscosity_grade', label_en: 'Viscosity Grade', label_fa: 'گرید گرانروی', data_type: 'enum', sort_order: 1, enum_metadata: { options: [{ value: 'sn500', label_en: 'SN500', label_fa: 'SN500' }] } }
     ]
   }
 

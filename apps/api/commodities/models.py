@@ -1,7 +1,15 @@
 import uuid
+import re
 
-from django.db import models
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
+
+
+def lock_commodities(ids):
+    """Serialize supported definition mutations with lifecycle/active changes."""
+    list(CommodityDefinition.objects.select_for_update().filter(pk__in=ids).order_by("pk"))
 
 
 class CommodityDefinition(models.Model):
@@ -12,8 +20,7 @@ class CommodityDefinition(models.Model):
     is_active = models.BooleanField(default=True)
 
     # Active schema version reference.
-    # Must belong to the same commodity and be Published, but we will enforce
-    # the business logic in T0302. For T0301, we provide structural support.
+    # Same-commodity Published state is enforced in supported model/domain paths.
     active_schema_version = models.ForeignKey(
         "CommoditySchemaVersion",
         on_delete=models.SET_NULL,
@@ -28,13 +35,21 @@ class CommodityDefinition(models.Model):
 
     def clean(self):
         super().clean()
-        if self.active_schema_version:
-            if self.active_schema_version.commodity_id != self.id:
+        if not re.fullmatch(r"[a-z][a-z0-9_-]*", self.code):
+            raise ValidationError({"code": "Use a canonical lowercase commodity code."})
+        original_code = CommodityDefinition.objects.filter(pk=self.pk).values_list("code", flat=True).first()
+        if original_code is not None and original_code != self.code:
+            raise ValidationError({"code": "Commodity codes are stable identifiers."})
+        if self.active_schema_version_id:
+            active = CommoditySchemaVersion.objects.get(pk=self.active_schema_version_id)
+            if active.commodity_id != self.id:
                 raise ValidationError({"active_schema_version": "Active schema must belong to the same commodity."})
-            if self.active_schema_version.status != "published":
+            if active.status != CommoditySchemaVersion.SchemaStatus.PUBLISHED:
                 raise ValidationError({"active_schema_version": "Only a published schema can be active."})
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
+        lock_commodities([self.pk])
         self.clean()
         super().save(*args, **kwargs)
 
@@ -61,6 +76,8 @@ class CommoditySchemaVersion(models.Model):
 
     def clean(self):
         super().clean()
+        if self._state.adding and self.status == self.SchemaStatus.RETIRED:
+            raise ValidationError({"status": "New schemas must not start retired."})
         if self.pk:
             try:
                 orig = CommoditySchemaVersion.objects.get(pk=self.pk)
@@ -70,6 +87,8 @@ class CommoditySchemaVersion(models.Model):
                         raise ValidationError("Cannot modify commodity or version of a published/retired schema.")
 
                 # Status transitions
+                if orig.status == self.SchemaStatus.DRAFT and self.status == self.SchemaStatus.RETIRED:
+                    raise ValidationError({"status": "Draft schemas must be published before retirement."})
                 if orig.status == self.SchemaStatus.PUBLISHED:
                     if self.status == self.SchemaStatus.DRAFT:
                         raise ValidationError({"status": "Cannot revert published schema to draft."})
@@ -79,18 +98,24 @@ class CommoditySchemaVersion(models.Model):
 
                 # Check if retiring an active schema
                 if self.status == self.SchemaStatus.RETIRED and orig.status == self.SchemaStatus.PUBLISHED:
-                    if self.commodity.active_schema_version_id == self.pk:
+                    if CommodityDefinition.objects.filter(pk=self.commodity_id, active_schema_version_id=self.pk).exists():
                         raise ValidationError({"status": "Cannot retire an active schema. Change the active schema first."})
             except CommoditySchemaVersion.DoesNotExist:
                 pass
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
+        original = CommoditySchemaVersion.objects.filter(pk=self.pk).first()
+        lock_commodities([self.commodity_id] + ([original.commodity_id] if original else []))
+        # A draft can be reparented; serialize against attribute edits as well.
+        list(CommoditySchemaVersion.objects.select_for_update().filter(pk=self.pk))
         self.clean()
+        if self.status == self.SchemaStatus.PUBLISHED and (not original or original.status == self.SchemaStatus.DRAFT):
+            from .services import validate_schema_definition
+            validate_schema_definition(self)
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.status in [self.SchemaStatus.PUBLISHED, self.SchemaStatus.RETIRED]:
-            raise ValidationError("Cannot delete a published or retired schema.")
         return super().delete(*args, **kwargs)
 
     class Meta:
@@ -138,26 +163,23 @@ class CommodityAttributeDefinition(models.Model):
 
     def clean(self):
         super().clean()
-        if self.pk:
-            try:
-                orig = CommodityAttributeDefinition.objects.get(pk=self.pk)
-                if orig.schema_version.status in ["published", "retired"]:
-                    raise ValidationError("Cannot modify an attribute of a published or retired schema.")
-            except CommodityAttributeDefinition.DoesNotExist:
-                # If we're creating an object and force setting self.pk (e.g. fixtures or specific test cases),
-                # we fall back to the creation logic.
-                if getattr(self, "schema_version", None) and self.schema_version.status in ["published", "retired"]:
-                    raise ValidationError("Cannot add attributes to a published or retired schema.")
-        elif getattr(self, "schema_version", None) and self.schema_version.status in ["published", "retired"]:
-            raise ValidationError("Cannot add attributes to a published or retired schema.")
+        original_id = CommodityAttributeDefinition.objects.filter(pk=self.pk).values_list("schema_version_id", flat=True).first()
+        parents = CommoditySchemaVersion.objects.filter(pk__in=[original_id, self.schema_version_id])
+        if parents.exclude(status=CommoditySchemaVersion.SchemaStatus.DRAFT).exists():
+            raise ValidationError("Cannot change attributes of a published or retired schema.")
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
+        original_id = CommodityAttributeDefinition.objects.filter(pk=self.pk).values_list("schema_version_id", flat=True).first()
+        lock_commodities(CommoditySchemaVersion.objects.filter(pk__in=[original_id, self.schema_version_id]).values_list("commodity_id", flat=True))
+        list(CommoditySchemaVersion.objects.select_for_update().filter(pk__in=[original_id, self.schema_version_id]).order_by("pk"))
+        current = CommodityAttributeDefinition.objects.select_for_update().filter(pk=self.pk).first()
+        if current and current.schema_version_id != original_id:
+            raise ValidationError("Attribute ownership changed concurrently; reload before editing.")
         self.clean()
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.schema_version.status in ["published", "retired"]:
-            raise ValidationError("Cannot delete an attribute of a published or retired schema.")
         return super().delete(*args, **kwargs)
 
     class Meta:
@@ -175,3 +197,24 @@ class CommodityAttributeDefinition(models.Model):
 
     def __str__(self):
         return f"{self.key} ({self.schema_version})"
+
+
+@receiver(pre_delete, sender=CommodityDefinition)
+@receiver(pre_delete, sender=CommoditySchemaVersion)
+@receiver(pre_delete, sender=CommodityAttributeDefinition)
+def protect_historical_deletion(sender, instance, **kwargs):
+    # Django's collector calls signals for model, queryset, Admin and cascade deletes.
+    if sender is CommodityDefinition:
+        commodity_id = instance.pk
+        schemas = CommoditySchemaVersion.objects.filter(commodity_id=commodity_id)
+    elif sender is CommoditySchemaVersion:
+        commodity_id = instance.commodity_id
+        schemas = CommoditySchemaVersion.objects.filter(pk=instance.pk)
+    else:
+        schema_id = CommodityAttributeDefinition.objects.filter(pk=instance.pk).values_list("schema_version_id", flat=True).first()
+        schemas = CommoditySchemaVersion.objects.filter(pk=schema_id)
+        commodity_id = schemas.values_list("commodity_id", flat=True).first()
+    lock_commodities([commodity_id])
+    list(schemas.select_for_update().order_by("pk"))
+    if schemas.exclude(status=CommoditySchemaVersion.SchemaStatus.DRAFT).exists():
+        raise ValidationError("Cannot delete published or retired schema history.")

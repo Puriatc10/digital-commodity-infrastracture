@@ -203,12 +203,9 @@ export interface components {
             label_en: string;
             data_type: components["schemas"]["DataTypeEnum"];
             is_required?: boolean;
-            /** @description Unit metadata (e.g., canonical unit, allowed units) */
-            unit_metadata?: unknown;
-            /** @description Enum metadata (canonical value, localized labels, sort order) */
-            enum_metadata?: unknown;
-            /** @description Validation rules (e.g., min/max values, min/max length) */
-            validation_metadata?: unknown;
+            readonly unit_metadata: components["schemas"]["UnitMetadata"];
+            readonly enum_metadata: components["schemas"]["EnumMetadata"];
+            readonly validation_metadata: components["schemas"]["ValidationMetadata"];
             /** @description Logical group for UI presentation */
             display_group?: string;
             /** @description Deterministic sort order */
@@ -249,6 +246,15 @@ export interface components {
         DataTypeEnum: "string" | "number" | "integer" | "boolean" | "enum";
         DemoPersonaSwitcherRequest: {
             persona: components["schemas"]["PersonaEnum"];
+        };
+        EnumMetadata: {
+            options?: components["schemas"]["EnumOption"][];
+        };
+        EnumOption: {
+            value: string;
+            label_fa?: string;
+            label_en?: string;
+            sort_order?: number;
         };
         HealthResponse: {
             status: string;
@@ -307,6 +313,11 @@ export interface components {
          * @enum {string}
          */
         StatusEnum: "draft" | "published" | "retired";
+        UnitMetadata: {
+            canonical_unit?: string;
+            unit_family?: string;
+            allowed_units?: string[];
+        };
         User: {
             readonly id: number;
             /** Format: email */
@@ -314,6 +325,14 @@ export interface components {
             readonly is_active: boolean;
             readonly system_roles: string[];
             readonly organizations: components["schemas"]["OrganizationContext"][];
+        };
+        ValidationMetadata: {
+            /** Format: double */
+            minimum?: number;
+            /** Format: double */
+            maximum?: number;
+            minLength?: number;
+            maxLength?: number;
         };
     };
     responses: never;
@@ -544,6 +563,16 @@ export interface operations {
                     "application/json": components["schemas"]["CommodityDefinition"][];
                 };
             };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     commodities_active_schema_retrieve: {
@@ -565,6 +594,26 @@ export interface operations {
                     "application/json": components["schemas"]["CommoditySchemaVersion"];
                 };
             };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     commodity_schemas_retrieve: {
@@ -584,6 +633,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommoditySchemaVersion"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

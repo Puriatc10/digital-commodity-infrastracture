@@ -35,6 +35,8 @@ class CommoditySchemaVersionAdmin(admin.ModelAdmin):
     list_filter = ("status", "commodity")
     search_fields = ("commodity__code", "commodity__name_en")
     inlines = [CommodityAttributeDefinitionInline]
+    # Lifecycle uses the transactional domain functions, after draft inline edits.
+    readonly_fields = ("status",)
 
     def get_readonly_fields(self, request, obj=None):
         if obj and obj.status in [CommoditySchemaVersion.SchemaStatus.PUBLISHED, CommoditySchemaVersion.SchemaStatus.RETIRED]:
