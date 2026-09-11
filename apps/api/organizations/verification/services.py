@@ -18,7 +18,11 @@ class VerificationService:
     @staticmethod
     @transaction.atomic
     def _transition(organization_id, actor, expected_status_list, new_status: str, reason: str = "", expected_version: int = None):
-        verification = OrganizationVerification.objects.select_for_update().get(organization_id=organization_id)
+        try:
+            verification = OrganizationVerification.objects.select_for_update().get(organization_id=organization_id)
+        except OrganizationVerification.DoesNotExist:
+            raise VerificationDomainException(f"Verification record does not exist. Cannot transition to {new_status}")
+
         if expected_version is not None and verification.version != expected_version:
              raise VerificationDomainException("Stale object error: another transaction modified this verification")
 

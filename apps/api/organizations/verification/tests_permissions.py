@@ -4,6 +4,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from organizations.models import Organization, OrganizationMembership
 from identity.models import SystemRoleAssignment
+from organizations.verification.models import VerificationStatus
 from organizations.verification.services import VerificationService
 
 User = get_user_model()
@@ -51,14 +52,17 @@ class VerificationPermissionTests(APITestCase):
         VerificationService.submit(self.org.id, self.owner)
 
         self.client.force_authenticate(user=self.operator)
-        response = self.client.post(self.start_review_url, {})
+        # Note: Need expected version
+        v = VerificationService.get_or_create_verification(self.org.id)
+        response = self.client.post(self.start_review_url, {"expected_version": v.version}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_django_superuser_cannot_review_without_product_role(self):
         VerificationService.submit(self.org.id, self.owner)
 
         self.client.force_authenticate(user=self.superuser)
-        response = self.client.post(self.start_review_url, {})
+        v = VerificationService.get_or_create_verification(self.org.id)
+        response = self.client.post(self.start_review_url, {"expected_version": v.version}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_inactive_organization_mutations_blocked(self):
@@ -81,11 +85,11 @@ class VerificationPermissionTests(APITestCase):
 
         # Owner can read
         self.client.force_authenticate(user=self.owner)
-        response = self.client.post(reverse('verification:notes-create', kwargs={'org_id': self.org.id}), {'note': 'Test'})
+        response = self.client.post(reverse('verification:notes-create', kwargs={'org_id': self.org.id}), {'note': 'Test'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN) # only operator can write notes
 
         self.client.force_authenticate(user=self.operator)
-        self.client.post(reverse('verification:notes-create', kwargs={'org_id': self.org.id}), {'note': 'Internal note'})
+        self.client.post(reverse('verification:notes-create', kwargs={'org_id': self.org.id}), {'note': 'Internal note'}, format='json')
 
         self.client.force_authenticate(user=self.owner)
         response = self.client.get(detail_url)

@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from organizations.models import Organization
-from organizations.verification.models import VerificationStatus
+from organizations.verification.models import OrganizationVerification, VerificationStatus, VerificationDecision
 from organizations.verification.services import VerificationService, VerificationDomainException
 
 User = get_user_model()
@@ -78,6 +78,8 @@ class VerificationDomainTests(TestCase):
 
     def test_invalid_transition(self):
         # Attempt to suspend an unverified org
+        # Must initialize Verification first because suspend reads the state
+        VerificationService.get_or_create_verification(self.org.id)
         with self.assertRaises(VerificationDomainException):
             VerificationService.suspend(self.org.id, self.actor, reason="Test")
 
