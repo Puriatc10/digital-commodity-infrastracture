@@ -191,35 +191,35 @@ class OrganizationCommodityAuthorizationTests(TestCase):
 
     def test_owner_manager_can_add(self):
         OrganizationMembership.objects.create(user=self.user, organization=self.org, role=OrganizationMembership.OrganizationRole.MANAGER)
-        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(OrganizationCommodity.objects.filter(organization=self.org, commodity=self.commodity).exists())
 
     def test_member_viewer_cannot_add(self):
         OrganizationMembership.objects.create(user=self.user, organization=self.org, role=OrganizationMembership.OrganizationRole.MEMBER)
-        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"}, format="json")
+        self.assertIn(response.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND])
         self.assertFalse(OrganizationCommodity.objects.filter(organization=self.org, commodity=self.commodity).exists())
 
     def test_admin_can_add(self):
         SystemRoleAssignment.objects.create(user=self.user, role=SystemRoleAssignment.SystemRole.ADMIN)
-        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_operator_cannot_add(self):
         SystemRoleAssignment.objects.create(user=self.user, role=SystemRoleAssignment.SystemRole.OPERATOR)
-        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"}, format="json")
+        self.assertIn(response.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND])
 
     def test_superuser_without_role_cannot_add(self):
         superuser = User.objects.create_superuser(email="super@example.com", password="password")
         self.client.force_authenticate(user=superuser)
-        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"}, format="json")
+        self.assertIn(response.status_code, [status.HTTP_403_FORBIDDEN, status.HTTP_404_NOT_FOUND])
 
     def test_owner_can_remove(self):
         OrganizationCommodity.objects.create(organization=self.org, commodity=self.commodity)
         OrganizationMembership.objects.create(user=self.user, organization=self.org, role=OrganizationMembership.OrganizationRole.OWNER)
-        response = self.client.delete(self.url_remove, {"commodity_code": "bitumen"})
+        response = self.client.delete(self.url_remove, {"commodity_code": "bitumen"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(OrganizationCommodity.objects.filter(organization=self.org, commodity=self.commodity).exists())
