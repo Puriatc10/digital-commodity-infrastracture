@@ -8,7 +8,7 @@ from commodities.models import CommodityDefinition
 from organizations.models import OrganizationCommodity
 from rest_framework import viewsets, mixins
 from organizations.models import Organization
-from organizations.api.serializers import OrganizationSerializer
+from organizations.api.serializers import OrganizationSerializer, OrganizationProfileSerializer
 from organizations.api.permissions import IsOrganizationMemberOrAdmin, get_active_system_roles
 from identity.models import SystemRoleAssignment
 
@@ -16,8 +16,12 @@ class OrganizationViewSet(mixins.RetrieveModelMixin,
                           mixins.UpdateModelMixin,
                           mixins.ListModelMixin,
                           viewsets.GenericViewSet):
-    serializer_class = OrganizationSerializer
     permission_classes = [IsOrganizationMemberOrAdmin]
+
+    def get_serializer_class(self):
+        if self.action in ['retrieve', 'partial_update', 'update']:
+            return OrganizationProfileSerializer
+        return OrganizationSerializer
 
     def get_queryset(self):
         user = self.request.user

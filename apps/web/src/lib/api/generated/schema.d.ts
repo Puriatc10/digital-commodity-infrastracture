@@ -540,6 +540,23 @@ export interface components {
             role: string;
             capabilities: string[];
         };
+        OrganizationProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            name: string;
+            registration_identifier?: string;
+            website?: string;
+            /** @description ISO 3166-1 alpha-2 country code */
+            country?: string;
+            readonly is_active: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly capabilities: string[];
+            readonly commodities: string[];
+            readonly verification_status: string;
+        };
         OrganizationVerificationDetail: {
             /** Format: uuid */
             readonly id: string;
@@ -552,7 +569,7 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
-        PatchedOrganization: {
+        PatchedOrganizationProfile: {
             /** Format: uuid */
             readonly id?: string;
             name?: string;
@@ -565,6 +582,9 @@ export interface components {
             readonly created_at?: string;
             /** Format: date-time */
             readonly updated_at?: string;
+            readonly capabilities?: string[];
+            readonly commodities?: string[];
+            readonly verification_status?: string;
         };
         /**
          * @description * `buyer` - buyer
@@ -1427,7 +1447,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Organization"];
+                    "application/json": components["schemas"]["OrganizationProfile"];
                 };
             };
         };
@@ -1444,7 +1464,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Organization"];
+                "application/json": components["schemas"]["OrganizationProfile"];
             };
         };
         responses: {
@@ -1453,7 +1473,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Organization"];
+                    "application/json": components["schemas"]["OrganizationProfile"];
                 };
             };
         };
@@ -1470,7 +1490,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["PatchedOrganization"];
+                "application/json": components["schemas"]["PatchedOrganizationProfile"];
             };
         };
         responses: {
@@ -1479,7 +1499,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Organization"];
+                    "application/json": components["schemas"]["OrganizationProfile"];
                 };
             };
         };

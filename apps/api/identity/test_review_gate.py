@@ -243,3 +243,25 @@ class ReviewGateTests(TestCase):
         result = subprocess.run([sys.executable, '-c', code], env={**env, 'DEMO_PERSONA_SWITCHER_ENABLED': 'true'}, capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Demo persona switching is unavailable in production', result.stderr)
+
+    def test_me_regression_safe_fields(self):
+        self.membership.role = 'owner'
+        self.membership.save()
+        self.client.force_login(self.user)
+        response = self.client.get('/api/auth/me')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        org_context = data['organizations'][0]
+        org = org_context['organization']
+
+        # Capabilities exist on OrganizationContextSerializer directly under 'capabilities', not inside 'organization'
+        self.assertIn('capabilities', org_context)
+
+        # Ensure no sensitive fields leak in organization
+        self.assertNotIn('documents', org)
+        self.assertNotIn('internal_notes', org)
+        self.assertNotIn('bank_details', org)
+
+        # Ensure profile-only fields are NOT included in the identity serializer to maintain a narrow contract
+        self.assertNotIn('commodities', org)
+        self.assertNotIn('verification_status', org)
