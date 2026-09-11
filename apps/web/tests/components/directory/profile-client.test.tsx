@@ -91,7 +91,7 @@ describe("ProfileClient Component", () => {
     });
 
     // We check text nodes explicitly by using a custom function that matches elements directly containing the dash
-    const missingValues = await screen.findAllByText((content, element) => {
+    const missingValues = await screen.findAllByText((content) => {
         return content === "-" || content.includes("-");
     });
     // This could match anything, so just verify at least one missing field representation rendered.
