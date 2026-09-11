@@ -4,7 +4,6 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from organizations.models import Organization, OrganizationMembership
 from identity.models import SystemRoleAssignment
-from organizations.verification.models import VerificationStatus
 from organizations.verification.services import VerificationService
 
 User = get_user_model()

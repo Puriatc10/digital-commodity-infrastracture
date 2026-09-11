@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from organizations.models import Organization
-from organizations.verification.models import OrganizationVerification, VerificationStatus, VerificationDecision
+from organizations.verification.models import VerificationStatus
 from organizations.verification.services import VerificationService, VerificationDomainException
 
 User = get_user_model()
