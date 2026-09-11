@@ -5,10 +5,8 @@ from rest_framework import status
 from identity.models import SystemRoleAssignment
 from django.test import TestCase
 from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
 
-from identity.models import User, SystemRoleAssignment
+from identity.models import User
 from organizations.models import Organization, OrganizationMembership, OrganizationCapability
 
 class OrganizationAuthorizationTests(TestCase):

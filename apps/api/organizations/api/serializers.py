@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from organizations.models import Organization
 
@@ -17,7 +18,6 @@ class OrganizationSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "is_active", "created_at", "updated_at"]
 
 
-from drf_spectacular.utils import extend_schema_field
 
 class DirectoryOrganizationSerializer(serializers.ModelSerializer):
     capabilities = serializers.SerializerMethodField()

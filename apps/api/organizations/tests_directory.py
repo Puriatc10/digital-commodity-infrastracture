@@ -3,7 +3,6 @@ from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from .models import Organization, OrganizationCapability, OrganizationMembership, OrganizationCommodity
-from identity.models import SystemRoleAssignment
 from commodities.models import CommodityDefinition
 from organizations.verification.models import OrganizationVerification, VerificationStatus
 
