@@ -7,6 +7,7 @@ This repository is a B2B Commodity Procurement & Trade Platform, initially focus
 - [Product specification](docs/product/product-spec.md): authoritative product context and scope.
 - [Epic 3 Design Contract](docs/product/epic-03-dynamic-commodity-design-contract.md): authoritative detailed Epic 3 implementation contract; read in full before Epic 3 work.
 - [Delivery roadmap](docs/delivery/roadmap.md): authorized phase and delivery scope.
+- [Epic 4 execution plan](docs/delivery/epic-04-execution-plan.md): read in full before Epic 4 work; owner-approved policies, task boundaries, common-base waves, tests and integration barriers.
 - [Domain glossary](docs/domain/glossary.md): actors and business terminology.
 - [Architecture overview](docs/architecture/overview.md): stack, business flow, and architectural invariants.
 - [Architecture decision records](docs/adr/README.md): supplied decisions and open implementation details.
@@ -15,7 +16,7 @@ The supplied Product Specification is authoritative for product scope; the suppl
 
 ## Current scope
 
-The current authorized task is the final Epic 3 Review Gate on `codex/epic-03-dynamic-commodity-model` against `master`. T0301–T0308 are implemented. The owner's review request authorizes local fixes for demonstrated Epic 3 defects and regression tests; leave all changes uncommitted for owner review. Do not begin Epic 4, create another implementation branch, commit, push, or merge. Preserve approved Epic 1/2 foundations and unrelated unresolved source ambiguities. See `docs/delivery/epic-03-review-gate.md` for review evidence and merge conditions.
+Epic 4 is authorized on `codex/epic-04-organizations-network-verification` under `docs/delivery/epic-04-execution-plan.md`, including its owner-approved policies. Preserve approved Epic 1–3 foundations and unrelated unresolved source ambiguities. The current documentation synchronization task is documentation-only: do not implement T0401–T0406, create branches, commit, push or merge in this task. Future implementation sessions work only their assigned Issue and wave; Wave 1 is T0403 alone. The Epic 3 review record remains historical evidence, not current execution authorization.
 
 ## Required guardrails
 
@@ -30,7 +31,7 @@ The current authorized task is the final Epic 3 Review Gate on `codex/epic-03-dy
 
 ## Delivery, testing, and Git
 
-- Work one scoped issue/capability at a time, sequentially while architecture stabilizes; follow dependencies, acceptance criteria, non-goals, and review gates. Do not implement multiple epics from one broad prompt.
+- Each agent works one scoped issue/capability at a time; Epic 4 concurrency follows the execution plan's waves, dependencies, file ownership and review gates. Parallel siblings start from the exact same recorded Wave Base SHA on isolated temporary `jules/t04xx-...` branches. PRs target `codex/epic-04-organizations-network-verification`, never `master`. After the first sibling merge, remaining siblings must sync with the latest Epic state, resolve conflicts, regenerate combined contracts and rerun canonical CI before merge. Wave N+1 cannot start before Wave N's full integration/CI barrier completes. Do not implement multiple epics from one broad prompt.
 - Add tests for business rules. Run relevant unit/API/PostgreSQL integration tests, critical frontend tests, and Playwright Hero Flow/permission checks as applicable; run relevant lint/type/build/migration checks. See specification sections 59–60 and roadmap section 19.
 - Review the diff for scope and unintended changes. Report changes, reasons, validation results, risks, and follow-up; human review remains required.
-- The owner has superseded the roadmap's per-task branch convention: use one branch per Epic, with separate task-scoped Conventional Commits. This review task stays on `codex/epic-03-dynamic-commodity-model`; do not create another branch. Preserve reviewed remote/PR history when transitioning existing branches. Never force-push, merge a PR without explicit approval, or commit secrets/real `.env` files. Do not rewrite history or delete remote branches without explicit direction. Commits and pushes remain prohibited until review for this task.
+- The owner has superseded the roadmap's generic branch examples: use the Epic integration branch and isolated task branches under the execution plan, with task-scoped Conventional Commits when authorized. Preserve reviewed remote/PR history. Never force-push, merge a PR without explicit approval, or commit secrets/real `.env` files. Do not rewrite history or delete remote branches without explicit direction. Leave this documentation synchronization uncommitted for owner review; it authorizes no commit, push or merge.
