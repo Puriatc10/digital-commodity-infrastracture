@@ -81,3 +81,22 @@ class IsOrganizationMemberOrAdmin(permissions.BasePermission):
             return is_admin or is_manager_or_owner
 
         return False
+
+class CanManageOrganizationCommodities(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if not request.user or not request.user.is_authenticated or not request.user.is_active:
+            return False
+
+        system_roles = get_active_system_roles(request.user)
+        is_admin = SystemRoleAssignment.SystemRole.ADMIN in system_roles
+
+        membership = get_active_membership(request.user, obj)
+        is_active_member = membership is not None
+        is_manager_or_owner = False
+        if is_active_member and membership.role in [
+            OrganizationMembership.OrganizationRole.MANAGER,
+            OrganizationMembership.OrganizationRole.OWNER,
+        ]:
+            is_manager_or_owner = True
+
+        return is_admin or is_manager_or_owner

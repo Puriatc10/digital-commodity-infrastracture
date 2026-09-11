@@ -1,3 +1,8 @@
+from commodities.models import CommodityDefinition
+from .models import OrganizationCommodity
+from rest_framework.test import APIClient
+from rest_framework import status
+from identity.models import SystemRoleAssignment
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
@@ -174,3 +179,49 @@ class OrganizationAuthorizationTests(TestCase):
         # Ensure read_only fields are ignored
         self.assertEqual(self.org1.is_active, original_is_active)
         self.assertNotEqual(str(self.org1.id), "123e4567-e89b-12d3-a456-426614174000")
+
+
+class OrganizationCommodityAuthorizationTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="user@example.com", password="password")
+        self.org = Organization.objects.create(name="Test Org")
+        self.commodity = CommodityDefinition.objects.create(name_en="Bitumen", code="bitumen")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.url_add = f"/api/organizations/{self.org.id}/add_commodity/"
+        self.url_remove = f"/api/organizations/{self.org.id}/remove_commodity/"
+
+    def test_owner_manager_can_add(self):
+        OrganizationMembership.objects.create(user=self.user, organization=self.org, role=OrganizationMembership.OrganizationRole.MANAGER)
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(OrganizationCommodity.objects.filter(organization=self.org, commodity=self.commodity).exists())
+
+    def test_member_viewer_cannot_add(self):
+        OrganizationMembership.objects.create(user=self.user, organization=self.org, role=OrganizationMembership.OrganizationRole.MEMBER)
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(OrganizationCommodity.objects.filter(organization=self.org, commodity=self.commodity).exists())
+
+    def test_admin_can_add(self):
+        SystemRoleAssignment.objects.create(user=self.user, role=SystemRoleAssignment.SystemRole.ADMIN)
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_operator_cannot_add(self):
+        SystemRoleAssignment.objects.create(user=self.user, role=SystemRoleAssignment.SystemRole.OPERATOR)
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superuser_without_role_cannot_add(self):
+        superuser = User.objects.create_superuser(email="super@example.com", password="password")
+        self.client.force_authenticate(user=superuser)
+        response = self.client.post(self.url_add, {"commodity_code": "bitumen"})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_owner_can_remove(self):
+        OrganizationCommodity.objects.create(organization=self.org, commodity=self.commodity)
+        OrganizationMembership.objects.create(user=self.user, organization=self.org, role=OrganizationMembership.OrganizationRole.OWNER)
+        response = self.client.delete(self.url_remove, {"commodity_code": "bitumen"})
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(OrganizationCommodity.objects.filter(organization=self.org, commodity=self.commodity).exists())
