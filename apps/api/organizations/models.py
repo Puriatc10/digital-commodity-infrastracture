@@ -78,3 +78,20 @@ class OrganizationCapability(models.Model):
 
     def __str__(self):
         return f"{self.organization.name} - {self.get_capability_display()}"
+
+class OrganizationCommodity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="commodities")
+    commodity = models.ForeignKey("commodities.CommodityDefinition", on_delete=models.CASCADE, related_name="organizations")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "commodity"],
+                name="unique_organization_commodity"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.organization.name} - {self.commodity.code}"

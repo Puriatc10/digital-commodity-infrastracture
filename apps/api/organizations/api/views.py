@@ -1,3 +1,11 @@
+from .serializers import DirectoryOrganizationSerializer
+from rest_framework import permissions
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from organizations.api.permissions import CanManageOrganizationCommodities
+from commodities.models import CommodityDefinition
+from organizations.models import OrganizationCommodity
 from rest_framework import viewsets, mixins
 from organizations.models import Organization
 from organizations.api.serializers import OrganizationSerializer
@@ -36,3 +44,67 @@ class OrganizationViewSet(mixins.RetrieveModelMixin,
             memberships__user=user,
             memberships__is_active=True
         ).distinct()
+
+    @action(detail=True, methods=['post'], permission_classes=[CanManageOrganizationCommodities])
+    def add_commodity(self, request, pk=None):
+        organization = self.get_object()
+        commodity_code = request.data.get("commodity_code")
+        if not commodity_code:
+            return Response({"detail": "commodity_code is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            commodity = CommodityDefinition.objects.get(code=commodity_code)
+        except CommodityDefinition.DoesNotExist:
+            return Response({"detail": "Commodity not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        OrganizationCommodity.objects.get_or_create(organization=organization, commodity=commodity)
+        return Response({"detail": "Commodity added successfully."}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['delete'], permission_classes=[CanManageOrganizationCommodities])
+    def remove_commodity(self, request, pk=None):
+        organization = self.get_object()
+        commodity_code = request.data.get("commodity_code")
+        if not commodity_code:
+            return Response({"detail": "commodity_code is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            commodity = CommodityDefinition.objects.get(code=commodity_code)
+        except CommodityDefinition.DoesNotExist:
+            return Response({"detail": "Commodity not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        OrganizationCommodity.objects.filter(organization=organization, commodity=commodity).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class DirectoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+    serializer_class = DirectoryOrganizationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated or not user.is_active:
+            return Organization.objects.none()
+
+        qs = Organization.objects.filter(is_active=True).distinct()
+
+        search = self.request.query_params.get("search")
+        if search:
+            qs = qs.filter(name__icontains=search)
+
+        capabilities = self.request.query_params.getlist("capability")
+        if capabilities:
+            qs = qs.filter(capabilities__capability__in=capabilities)
+
+        country = self.request.query_params.get("country")
+        if country:
+            qs = qs.filter(country=country)
+
+        commodities = self.request.query_params.getlist("commodity")
+        if commodities:
+            qs = qs.filter(commodities__commodity__code__in=commodities)
+
+        verifications = self.request.query_params.getlist("verification")
+        if verifications:
+            qs = qs.filter(verification__status__in=verifications)
+
+        return qs.order_by("name")
