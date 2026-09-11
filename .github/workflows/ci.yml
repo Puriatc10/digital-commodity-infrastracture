@@ -6,6 +6,7 @@ on:
       - master
       - codex/epic-01-*
       - codex/epic-02-*
+      - codex/epic-03-*
   pull_request:
 
 permissions:
@@ -114,7 +115,7 @@ jobs:
 
       - name: Run frontend session regressions
         working-directory: apps/web
-        run: npm test
+        run: npm test && npm run test:components
 
   contract:
     name: OpenAPI Contract Validation

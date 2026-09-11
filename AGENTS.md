@@ -5,6 +5,7 @@ This repository is a B2B Commodity Procurement & Trade Platform, initially focus
 ## Read before working
 
 - [Product specification](docs/product/product-spec.md): authoritative product context and scope.
+- [Epic 3 Design Contract](docs/product/epic-03-dynamic-commodity-design-contract.md): authoritative detailed Epic 3 implementation contract; read in full before Epic 3 work.
 - [Delivery roadmap](docs/delivery/roadmap.md): authorized phase and delivery scope.
 - [Domain glossary](docs/domain/glossary.md): actors and business terminology.
 - [Architecture overview](docs/architecture/overview.md): stack, business flow, and architectural invariants.
@@ -14,13 +15,13 @@ The supplied Product Specification is authoritative for product scope; the suppl
 
 ## Current scope
 
-The current authorized task is the Epic 2 Review Gate for T0201–T0206 on `codex/epic-02-identity-organizations`, against `master`: review, validate, and fix concrete Identity, Organization, authorization, session, and demo persona defects. Epic 1 is the approved foundation. Do not begin Epic 3 or implement future business modules or application-level storage integration. Do not commit, push, or merge until the owner reviews the work and authorizes those actions. Recorded source ambiguities remain unresolved.
+The current authorized task is the final Epic 3 Review Gate on `codex/epic-03-dynamic-commodity-model` against `master`. T0301–T0308 are implemented. The owner's review request authorizes local fixes for demonstrated Epic 3 defects and regression tests; leave all changes uncommitted for owner review. Do not begin Epic 4, create another implementation branch, commit, push, or merge. Preserve approved Epic 1/2 foundations and unrelated unresolved source ambiguities. See `docs/delivery/epic-03-review-gate.md` for review evidence and merge conditions.
 
 ## Required guardrails
 
 - Backend: Django 6, Django REST Framework, PostgreSQL, modular monolith, REST + OpenAPI. Frontend: Next.js + TypeScript, Tailwind CSS, shadcn/ui; generate the API client from OpenAPI rather than duplicating contracts.
 - Business actors: Buyer, Supplier, Broker, Operator, Admin. Buyer/Supplier/Broker are Organization capabilities (multiple allowed); Operator/Admin are system roles. Never introduce Trader as a business role. Preserve Opportunity- and Deal-specific Broker attribution, not permanent customer ownership.
-- Never hard-code commodity-specific attributes into core database tables or reusable forms. Use JSONB with versioned JSON Schema, backend validation, and schema-driven UI; preserve historical meaning. Retain multi-commodity extensibility without building a generic commodity-builder product.
+- Never hard-code commodity-specific attributes into core database tables or reusable forms. Relational Attribute Definitions are the schema source of truth; JSON Schema is derived. Published schema semantics are immutable; future specification-bearing records retain their creation-time schema version with JSONB values. Generic validation/rendering must not branch on commodity code. Active schemas must belong to the same Commodity and be Published. Do not build fake specification instance tables, premature JSONB indexes, or a generic low-code Schema Builder. See the Epic 3 Design Contract for the complete invariants.
 - Market Discovery / Opportunity Desk is human-assisted during the pilot. Execution Monitor provides visibility and orchestration only; no real settlement, escrow, financing, insurance, payment processing, or logistics execution.
 - PostgreSQL is the source of truth and initial search backend. Files use S3-compatible storage (MinIO for demo); the database holds metadata. Use in-process domain events. Do not introduce additional infrastructure without explicit approval; respect specification section 56 non-goals.
 - Always enforce authorization server-side. Demo UI is Persian/RTL at `/fa`; keep architecture ready for English/LTR at `/en`, inactive in demo. Do not hard-code user-facing text in reusable components.
@@ -32,4 +33,4 @@ The current authorized task is the Epic 2 Review Gate for T0201–T0206 on `code
 - Work one scoped issue/capability at a time, sequentially while architecture stabilizes; follow dependencies, acceptance criteria, non-goals, and review gates. Do not implement multiple epics from one broad prompt.
 - Add tests for business rules. Run relevant unit/API/PostgreSQL integration tests, critical frontend tests, and Playwright Hero Flow/permission checks as applicable; run relevant lint/type/build/migration checks. See specification sections 59–60 and roadmap section 19.
 - Review the diff for scope and unintended changes. Report changes, reasons, validation results, risks, and follow-up; human review remains required.
-- The owner has superseded the roadmap's per-task branch convention: use one branch per Epic, with separate task-scoped Conventional Commits. This review stays on `codex/epic-02-identity-organizations`; do not create another branch. Preserve reviewed remote/PR history when transitioning existing branches. Never force-push, merge a PR without explicit approval, or commit secrets/real `.env` files. Do not rewrite history or delete remote branches without explicit direction. Commits and pushes remain prohibited until review for this task.
+- The owner has superseded the roadmap's per-task branch convention: use one branch per Epic, with separate task-scoped Conventional Commits. This review task stays on `codex/epic-03-dynamic-commodity-model`; do not create another branch. Preserve reviewed remote/PR history when transitioning existing branches. Never force-push, merge a PR without explicit approval, or commit secrets/real `.env` files. Do not rewrite history or delete remote branches without explicit direction. Commits and pushes remain prohibited until review for this task.

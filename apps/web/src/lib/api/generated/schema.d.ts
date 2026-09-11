@@ -84,6 +84,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/commodities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return active usable Commodities in deterministic order. */
+        get: operations["commodities_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commodities/{code}/schema/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return the Commodity's explicitly selected active Published schema. */
+        get: operations["commodities_active_schema_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/commodity-schemas/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * @description Historical schema retrieval.
+         *     Published and Retired schemas remain retrievable by stable ID.
+         *     Draft definitions are internal and must not be exposed.
+         */
+        get: operations["commodity_schemas_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -137,11 +192,69 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CommodityAttributeDefinition: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical machine-readable key */
+            key: string;
+            /** @description Persian label */
+            label_fa: string;
+            /** @description English label */
+            label_en: string;
+            data_type: components["schemas"]["DataTypeEnum"];
+            is_required?: boolean;
+            readonly unit_metadata: components["schemas"]["UnitMetadata"];
+            readonly enum_metadata: components["schemas"]["EnumMetadata"];
+            readonly validation_metadata: components["schemas"]["ValidationMetadata"];
+            /** @description Logical group for UI presentation */
+            display_group?: string;
+            /** @description Deterministic sort order */
+            sort_order?: number;
+        };
+        CommodityDefinition: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Unique canonical code (e.g., bitumen) */
+            code: string;
+            /** @description Persian name */
+            name_fa: string;
+            /** @description English name */
+            name_en: string;
+            is_active?: boolean;
+        };
+        CommoditySchemaVersion: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly commodity_id: string;
+            /** @description Version number (e.g., 1, 2) */
+            version: number;
+            status?: components["schemas"]["StatusEnum"];
+            readonly attributes: components["schemas"]["CommodityAttributeDefinition"][];
+        };
         CsrfViewResponse: {
             detail: string;
         };
+        /**
+         * @description * `string` - String
+         *     * `number` - Number
+         *     * `integer` - Integer
+         *     * `boolean` - Boolean
+         *     * `enum` - Enum
+         * @enum {string}
+         */
+        DataTypeEnum: "string" | "number" | "integer" | "boolean" | "enum";
         DemoPersonaSwitcherRequest: {
             persona: components["schemas"]["PersonaEnum"];
+        };
+        EnumMetadata: {
+            options?: components["schemas"]["EnumOption"][];
+        };
+        EnumOption: {
+            value: string;
+            label_fa?: string;
+            label_en?: string;
+            sort_order?: number;
         };
         HealthResponse: {
             status: string;
@@ -193,6 +306,18 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `retired` - Retired
+         * @enum {string}
+         */
+        StatusEnum: "draft" | "published" | "retired";
+        UnitMetadata: {
+            canonical_unit?: string;
+            unit_family?: string;
+            allowed_units?: string[];
+        };
         User: {
             readonly id: number;
             /** Format: email */
@@ -200,6 +325,14 @@ export interface components {
             readonly is_active: boolean;
             readonly system_roles: string[];
             readonly organizations: components["schemas"]["OrganizationContext"][];
+        };
+        ValidationMetadata: {
+            /** Format: double */
+            minimum?: number;
+            /** Format: double */
+            maximum?: number;
+            minLength?: number;
+            maxLength?: number;
         };
     };
     responses: never;
@@ -402,6 +535,117 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    commodities_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommodityDefinition"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    commodities_active_schema_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommoditySchemaVersion"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    commodity_schemas_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommoditySchemaVersion"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

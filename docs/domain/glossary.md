@@ -59,12 +59,20 @@ The allowed business actor vocabulary is Buyer, Supplier, Broker, Operator, and 
 
 ## Commodity and locale concepts
 
+Detailed commodity semantics are authoritative in the [Epic 3 Design Contract](../product/epic-03-dynamic-commodity-design-contract.md).
+
 | Term | Meaning in this product | Source |
 | --- | --- | --- |
-| Commodity Definition | CommodityDefinition identifies a commodity by code/name and active schema version reference. | Spec §8 |
-| Commodity Schema / Schema Version | CommoditySchemaVersion identifies commodity/version/status and has runtime JSON Schema validation. RFQ/Supply/Offer records store the version used; later definitions must not reinterpret history. | Spec §§8–10; T0301–T0303 |
-| Commodity Attribute Definition | Version-scoped attribute definition with key/label, data type, units, required flag, enum choices, validation rules, display group, and order. | Spec §8 |
-| Dynamic Specifications | Commodity-specific values held in PostgreSQL JSONB and validated against versioned JSON Schema; never hard-coded core-table columns or reusable form fields. | Spec §§6–10, 50 |
+| CommodityDefinition / Commodity Definition | Platform-level relational commodity identity with stable canonical code, Persian/English names, active/inactive state, and active schema reference; not inventory, pricing, or an Organization-owned schema. | Spec §8; Epic 3 contract §§5, 41–44 |
+| CommoditySchemaVersion / Commodity Schema Version | Relational version belonging to one Commodity, unique by commodity/version; owns Attribute Definitions from which deterministic JSON Schema is derived. Future records retain the version used at creation. | Spec §§8–10; Epic 3 contract §§6–9, 17–21 |
+| CommodityAttributeDefinition / Commodity Attribute Definition | Authoritative relational, version-scoped definition of a canonical key, localized labels, type, required state, units, canonical enum choices, validation rules, display group, and order. It does not hold actual business values. | Spec §8; Epic 3 contract §§10–17 |
+| Specification Definition | Versioned relational description of which attributes exist, what values are valid, and how they are displayed; source of derived JSON Schema. Distinct from a Specification Instance Value. | Epic 3 contract §§2, 4, 17 |
+| Specification Instance Value | Actual value for a particular future business record, stored in its flat specifications JSONB with commodity_id and original schema_version_id. No artificial instance table is created in Epic 3. | Epic 3 contract §§4, 13–15, 20–21, 72 |
+| Active Schema | The Commodity's current schema for new records; must belong to that same Commodity and be Published. Setup may have no active schema; a usable active Commodity requires one. Historical rendering uses the record's own version instead. | Epic 3 contract §§9, 21, 64 and owner synchronization clarification |
+| Draft | Editable schema version used to prepare definitions or the next version; not an active usable schema. | Epic 3 contract §§7–9, 65 |
+| Published | Authoritative usable schema version whose semantics are immutable. Changing attributes, constraints, enum or unit meaning requires a new version; internal admin cannot bypass protection. | Epic 3 contract §§7–8, 34, 53–54 |
+| Retired | Historical schema unavailable for new instances but still retrievable for historical validation/rendering; retirement does not permit semantic mutation or deletion. | Epic 3 contract §§7, 32, 53, 64 |
+| Dynamic Specifications | Future schema-bound JSONB instance values, validated by the backend against JSON Schema derived from relational definitions. Flat in v1, with canonical enum values and units in definition metadata; optional does not imply nullable and unknown fields are rejected. | Spec §§6–10, 50; Epic 3 contract §§13–19, 47–51 |
 | Bitumen | Initial product/demo commodity. Penetration grade, penetration, softening point, flash point, and ductility are example dynamic seed attributes, not core database columns. | Spec §§1, 7, 10; T0304 |
 | Base Oil Architecture Test | Small secondary schema to demonstrate adding another commodity without migration; does not expand the primary Bitumen demo or authorize a generic builder UI. | T0305 |
 | Locale-aware Frontend | Persian and English architectural targets with /fa RTL and /en LTR routing; only Persian is active in the demo. User-facing text must not be hard-coded in reusable components. | Spec §45; T0103, T1303–T1304 |

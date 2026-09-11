@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Derived from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). This is a navigation/reference document; the complete sources remain unchanged. Epic 1 implements the platform foundation; Epic 2 adds Identity, Organizations, authorization, and frontend session context. Later domain work still requires its own authorization.
+Derived from the authoritative [Product Specification](../product/product-spec.md) and [Delivery Roadmap](../delivery/roadmap.md). The [approved Epic 3 Design Contract](../product/epic-03-dynamic-commodity-design-contract.md) governs detailed Dynamic Commodity design. This is a navigation/reference document; the roadmap is synchronized to that contract. Epic 1 implements the platform foundation; Epic 2 adds Identity, Organizations, authorization, and frontend session context. Later domain work still requires its own authorization.
 
 ## Required stack
 
@@ -9,7 +9,7 @@ Derived from the authoritative [Product Specification](../product/product-spec.m
 | Backend | Django 6 + Django REST Framework |
 | Application structure | Modular monolith |
 | Source of truth | PostgreSQL |
-| Dynamic specifications | PostgreSQL JSONB + versioned JSON Schema; server-side JSON Schema validation |
+| Dynamic specifications | Relational versioned definitions → derived JSON Schema → server-side validation; future instance values in PostgreSQL JSONB |
 | API | REST + OpenAPI generation and generated frontend API client |
 | Frontend | Next.js + TypeScript, Tailwind CSS, shadcn/ui |
 | Object storage | S3-compatible; MinIO for demo; files in object storage, metadata in PostgreSQL |
@@ -51,13 +51,47 @@ Domain boundaries must be clear. REST/OpenAPI provides the frontend contract; ro
 
 ## Data and workflow rules
 
-- Shared commercial fields remain relational; commodity attributes use JSONB with versioned JSON Schema. CommodityDefinition, CommoditySchemaVersion, and CommodityAttributeDefinition define the metadata. RFQ/Supply/Offer records retain their schema version and historical meaning. Forms and displays are schema-driven; backend validation rejects invalid specifications (specification §§6–10; T0301–T0308).
-- Bitumen is the demo focus. A small Base Oil schema is an architecture test proving extension without migration (T0305), not a generic commodity-builder product.
+- Shared commercial fields remain relational. Commodity-specific definitions are relational, versioned, and authoritative; JSON Schema is derived, never independently maintained. Future specification values use schema-bound JSONB (specification §§6–10; Epic 3 contract).
+- Bitumen is the demo focus. Base Oil proves extension through data without commodity-specific models, specification-field migrations, validators, React components, or commodity-code branches in the generic engine.
 - Opportunities preserve sources and Broker attribution through conversions. External counterparties need no account. Operator-entered Offers must remain traceable. Broker attribution is Opportunity/Deal-specific, not permanent customer ownership (specification §§18–24, 30; T0605–T0611, T0804).
 - Offer versions never overwrite history. Award creates an immutable initial Deal snapshot; subsequent RFQ changes must not change it (specification §§25, 29; T0901–T0902).
 - Matching is rule-based and explainable, including Qualified Opportunities; recommendations inform decisions. Analytics must disclose insufficient data rather than fabricate benchmarks (specification §§15, 23, 27, 40).
 - Execution uses workflow templates, milestone definitions, and Deal-instance milestones. It tracks commercial, payment, logistics, quality, document, and issue status only; no workflow-builder UI is needed in the demo (specification §§32–33).
 - Document bytes use object storage; PostgreSQL stores metadata. Verification is manual. Internal Notes are not customer-visible, and important mutations require audit records (specification §§34–35, 42–43).
+
+## Dynamic Commodity foundation
+
+The authoritative [Epic 3 Design Contract](../product/epic-03-dynamic-commodity-design-contract.md) defines the complete requirements and review checks. The architecture is:
+
+```text
+CommodityDefinition
+        ↓
+CommoditySchemaVersion
+        ↓
+CommodityAttributeDefinition
+        ↓
+Derived JSON Schema
+        ↓
+Reusable Runtime Validation
+```
+
+Definitions describe allowed fields and validation/display metadata; they are not instance values. Future RFQ, Supply Listing, Opportunity, and Offer records follow:
+
+```text
+commodity_id
+schema_version_id
+specifications JSONB
+```
+
+Future records retain their creation-time schema version. Published semantics cannot be edited or deleted; evolve through a new Draft version. Retired schemas remain available for historical validation/rendering. Active schemas must belong to the same Commodity and be Published; a usable active Commodity requires one. Internal management must enforce these rules beyond UI conventions.
+
+v1 supports string, number, integer, boolean, and enum in flat payloads. Backend validation is authoritative and schema-version-aware, with deterministic field-level errors, unknown-field rejection, required/optional distinction, explicit null semantics, numeric bounds, and basic string constraints. Optional does not imply nullable. Enums store canonical values; units are definition metadata, never {value, unit} wrappers.
+
+Read-only discovery, active schema, and historical schema APIs follow Django → OpenAPI → generated TypeScript → typed client. Generic form/view components consume localized labels, required state, units, enum options, grouping, ordering, and validation metadata. Persian/RTL remains the active demo; English/LTR stays inactive. There is no public schema write API or generic low-code Schema Builder.
+
+Epic 3 itself creates no fake specification-bearing business tables or JSONB indexes. Introduce JSONB indexing when the first real business entity, such as RFQ or Supply Listing, is implemented and real query patterns exist. Relational definition constraints remain required.
+
+Epic 3 excludes RFQ, Supply Listing, Opportunity, Offer, Matching, procurement scoring, inventory, pricing, workflow, schema-builder UI, arbitrary nested schemas, calculated/formula fields, AI, Redis, Kafka, RabbitMQ, Elasticsearch, Temporal, Kubernetes, and microservices. See the contract for the full non-goals, including unit conversion and premature matching metadata.
 
 ## Architectural invariants
 
@@ -92,4 +126,4 @@ Features require authorization, validation, appropriate auditability, and error/
 
 All eight requested decisions are recorded in the [ADR index](../adr/README.md), including S3-compatible storage and demo MinIO, now explicit in specification §50 and T0104/T0405. The project owner has approved the documentation foundation; the ADRs record decisions, not implementation.
 
-See [source review](source-review.md) for disagreements and ambiguities. Exact permission/transition matrices, schema lifecycle policy, calculation conventions, production storage settings, and detailed module interfaces remain unresolved. Epic 1 uses drf-spectacular, openapi-typescript, and openapi-fetch for the contract boundary; Identity and Organization models/migrations are implemented; subsequent business models remain future work. [ADR 0009](../adr/0009-authentication-architecture.md) records server-side sessions, CSRF, and the first-party browser transport. See the [setup guide](../../README.md) for executable commands.
+See [source review](source-review.md) for disagreements and ambiguities. Unrelated permission/transition matrices, calculation conventions, production storage settings, and detailed module interfaces remain unresolved. The Epic 3 contract now defines commodity lifecycle, active-schema integrity, validation semantics, and historical interpretation. Epic 1 uses drf-spectacular, openapi-typescript, and openapi-fetch for the contract boundary; Identity and Organization models/migrations are implemented; subsequent business models remain future work. [ADR 0009](../adr/0009-authentication-architecture.md) records server-side sessions, CSRF, and the first-party browser transport. See the [setup guide](../../README.md) for executable commands.

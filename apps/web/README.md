@@ -41,3 +41,11 @@ The typed client includes cookies and copies the current CSRF cookie into `X-CSR
 | `npm run api:generate` | Export/validate Django OpenAPI, then regenerate TypeScript. Requires the backend virtual environment active and Django environment configured. No API server is needed. |
 
 Contracts come from `src/lib/api/generated/schema.d.ts`; do not manually edit them or duplicate DTOs. `schema.yaml` is an ignored intermediate. CI repeats generation and rejects drift. The scoped Redocly `js-yaml` override retains the approved Epic 1 dependency fix.
+
+## Epic 3 specification components
+
+`CommoditySpecificationForm` and `CommoditySpecificationView` consume generated `CommoditySchemaVersion` metadata. Pass the record's explicit historical schema to the View; neither component fetches or infers an active schema. The Form emits flat values with canonical enum strings and units retained in metadata. Decimal input in an integer field is preserved for backend rejection, never truncated. Its optional `errors` property accepts field-keyed messages from the caller. Client constraints are input hints; backend validation remains authoritative.
+
+Labels/options come from the supplied schema. Shared renderer messages and presentation-group translations live in `src/i18n/commodity-messages.ts`; `/en` remains inactive. Both renderers support Persian RTL. The Form passes direction to the select portal and uses unique field IDs per instance.
+
+Run `npm test` for the three session regressions and `npm run test:components` for all specification Form/View and API-fixture integration tests. Both commands run in Frontend CI. The shared fixture is verified against actual PostgreSQL seed/API output by Backend CI; change it only through the backend procedure. This closes the gap where handwritten metadata fixtures could pass tests while differing from the actual API.
