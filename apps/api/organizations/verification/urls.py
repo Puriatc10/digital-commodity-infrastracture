@@ -11,6 +11,7 @@ urlpatterns = [
     path("approve_full/", api_views.VerificationApproveFullView.as_view(), name="approve-full"),
     path("reject/", api_views.VerificationRejectView.as_view(), name="reject"),
     path("suspend/", api_views.VerificationSuspendView.as_view(), name="suspend"),
+    path("checklist/", api_views.VerificationChecklistView.as_view(), name="checklist-review"),
     path("reopen/", api_views.VerificationReopenView.as_view(), name="reopen"),
     path("notes/", api_views.VerificationNoteCreateView.as_view(), name="notes-create"),
 ]

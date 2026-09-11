@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from organizations.models import Organization
+from documents.models import VerificationDocument, DocumentType
 from organizations.verification.models import VerificationStatus
 from organizations.verification.services import VerificationService, VerificationDomainException
 
@@ -10,6 +11,38 @@ class VerificationDomainTests(TestCase):
     def setUp(self):
         self.actor = User.objects.create_user(email="admin@test.com", password="password")
         self.org = Organization.objects.create(name="Test Org", country="IR")
+        VerificationService.get_or_create_verification(self.org.id)
+        self.doc_reg = VerificationDocument.objects.create(
+            organization=self.org, type=DocumentType.COMPANY_REGISTRATION,
+            object_key="key1", size_bytes=100
+        )
+        self.doc_tax = VerificationDocument.objects.create(
+            organization=self.org, type=DocumentType.TAX_ID,
+            object_key="key2", size_bytes=100
+        )
+        self.doc_auth = VerificationDocument.objects.create(
+            organization=self.org, type=DocumentType.AUTHORIZED_REPRESENTATIVE,
+            object_key="key3", size_bytes=100
+        )
+        self.doc_trade = VerificationDocument.objects.create(
+            organization=self.org, type=DocumentType.TRADE_LICENSE,
+            object_key="key4", size_bytes=100
+        )
+        self.doc_bank = VerificationDocument.objects.create(
+            organization=self.org, type=DocumentType.BANK_DETAILS,
+            object_key="key5", size_bytes=100
+        )
+        self.doc_reg.verification_status = "accepted"
+        self.doc_reg.save()
+        self.doc_tax.verification_status = "accepted"
+        self.doc_tax.save()
+        self.doc_auth.verification_status = "accepted"
+        self.doc_auth.save()
+        self.doc_trade.verification_status = "accepted"
+        self.doc_trade.save()
+        self.doc_bank.verification_status = "accepted"
+        self.doc_bank.save()
+
 
     def test_initial_state(self):
         verification = VerificationService.get_or_create_verification(self.org.id)
@@ -26,6 +59,12 @@ class VerificationDomainTests(TestCase):
         self.assertEqual(verification.status, VerificationStatus.UNDER_REVIEW)
         self.assertEqual(verification.version, 3)
 
+        self.doc_reg.verification_status = "accepted"
+        self.doc_reg.save()
+        self.doc_tax.verification_status = "accepted"
+        self.doc_tax.save()
+        self.doc_auth.verification_status = "accepted"
+        self.doc_auth.save()
         # 3. Basic Verified
         verification = VerificationService.basic_approval(self.org.id, self.actor)
         self.assertEqual(verification.status, VerificationStatus.BASIC_VERIFIED)
@@ -36,6 +75,10 @@ class VerificationDomainTests(TestCase):
         verification = VerificationService.reopen(self.org.id, self.actor)
         self.assertEqual(verification.status, VerificationStatus.UNDER_REVIEW)
 
+        self.doc_trade.verification_status = "accepted"
+        self.doc_trade.save()
+        self.doc_bank.verification_status = "accepted"
+        self.doc_bank.save()
         # 5. Verified
         verification = VerificationService.full_approval(self.org.id, self.actor)
         self.assertEqual(verification.status, VerificationStatus.VERIFIED)
@@ -60,6 +103,16 @@ class VerificationDomainTests(TestCase):
     def test_suspension_requires_reason(self):
         VerificationService.submit(self.org.id, self.actor)
         VerificationService.start_review(self.org.id, self.actor)
+        self.doc_reg.verification_status = "accepted"
+        self.doc_reg.save()
+        self.doc_tax.verification_status = "accepted"
+        self.doc_tax.save()
+        self.doc_auth.verification_status = "accepted"
+        self.doc_auth.save()
+        self.doc_trade.verification_status = "accepted"
+        self.doc_trade.save()
+        self.doc_bank.verification_status = "accepted"
+        self.doc_bank.save()
         VerificationService.full_approval(self.org.id, self.actor)
 
         with self.assertRaisesMessage(VerificationDomainException, "requires a reason"):
@@ -71,6 +124,12 @@ class VerificationDomainTests(TestCase):
     def test_reset_evidence_replacement(self):
         VerificationService.submit(self.org.id, self.actor)
         VerificationService.start_review(self.org.id, self.actor)
+        self.doc_reg.verification_status = "accepted"
+        self.doc_reg.save()
+        self.doc_tax.verification_status = "accepted"
+        self.doc_tax.save()
+        self.doc_auth.verification_status = "accepted"
+        self.doc_auth.save()
         VerificationService.basic_approval(self.org.id, self.actor)
 
         verification = VerificationService.reset_due_to_evidence_replacement(self.org.id, self.actor)
