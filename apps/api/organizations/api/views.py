@@ -1,4 +1,4 @@
-from .serializers import DirectoryOrganizationSerializer
+from .serializers import DirectoryOrganizationSerializer, OrganizationProfileSerializer
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
@@ -108,3 +108,17 @@ class DirectoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             qs = qs.filter(verification__status__in=verifications)
 
         return qs.order_by("name")
+
+
+class ProfileViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    serializer_class = OrganizationProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated or not user.is_active:
+            return Organization.objects.none()
+
+        # Profiles can only be viewed if the organization is active
+        # All authenticated users can view profiles of active organizations
+        return Organization.objects.filter(is_active=True).distinct()
