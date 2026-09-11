@@ -5,9 +5,8 @@ import { apiClient as client } from "@/lib/api/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
-import { components } from "@/lib/api/generated/schema";
 
-type OrganizationProfile = components["schemas"]["OrganizationProfile"];
+
 
 function getVerificationBadge(status: string) {
   switch (status) {
