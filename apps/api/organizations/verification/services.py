@@ -1,6 +1,5 @@
 from django.db import transaction
 from .models import OrganizationVerification, VerificationStatus, VerificationDecision, VerificationNote
-from documents.models import VerificationDocument, DocumentType
 
 class VerificationDomainException(Exception):
     pass
@@ -43,35 +42,6 @@ class VerificationService:
         verification, _ = OrganizationVerification.objects.get_or_create(organization_id=organization_id)
         return verification
 
-
-    @staticmethod
-    @transaction.atomic
-    def review_checklist_item(organization_id, document_id, actor, outcome: str, expected_version: int = None):
-        if outcome not in ["accepted", "rejected"]:
-            raise VerificationDomainException("Outcome must be 'accepted' or 'rejected'")
-
-        try:
-            document = VerificationDocument.objects.select_for_update().get(id=document_id, organization_id=organization_id)
-        except VerificationDocument.DoesNotExist:
-            raise VerificationDomainException("Document not found for this organization")
-
-        if document.verification_status == "replaced":
-            raise VerificationDomainException("Cannot review superseded evidence")
-
-        try:
-            verification = OrganizationVerification.objects.select_for_update().get(organization_id=organization_id)
-        except OrganizationVerification.DoesNotExist:
-            raise VerificationDomainException("Verification record does not exist")
-
-        if expected_version is not None and verification.version != expected_version:
-             raise VerificationDomainException("Stale object error: another transaction modified this verification")
-
-        document.verification_status = outcome
-        document.verification_version = verification.version
-        document.save()
-
-        return verification
-
     @staticmethod
     @transaction.atomic
     def submit(organization_id, actor, expected_version: int = None):
@@ -96,24 +66,8 @@ class VerificationService:
         )
 
     @staticmethod
-    def _check_documents_accepted(organization_id, required_types):
-        accepted_docs = VerificationDocument.objects.filter(
-            organization_id=organization_id,
-            verification_status="accepted",
-            type__in=required_types
-        ).values_list("type", flat=True)
-
-        missing = set(required_types) - set(accepted_docs)
-        if missing:
-            raise VerificationDomainException(f"Missing accepted documents for: {', '.join(missing)}")
-
-    @staticmethod
     @transaction.atomic
     def basic_approval(organization_id, actor, expected_version: int = None):
-        VerificationService._check_documents_accepted(
-            organization_id,
-            [DocumentType.COMPANY_REGISTRATION, DocumentType.TAX_ID, DocumentType.AUTHORIZED_REPRESENTATIVE]
-        )
         return VerificationService._transition(
             organization_id, actor,
             [VerificationStatus.UNDER_REVIEW],
@@ -124,10 +78,6 @@ class VerificationService:
     @staticmethod
     @transaction.atomic
     def full_approval(organization_id, actor, expected_version: int = None):
-        VerificationService._check_documents_accepted(
-            organization_id,
-            [DocumentType.COMPANY_REGISTRATION, DocumentType.TAX_ID, DocumentType.AUTHORIZED_REPRESENTATIVE, DocumentType.TRADE_LICENSE, DocumentType.BANK_DETAILS]
-        )
         return VerificationService._transition(
             organization_id, actor,
             [VerificationStatus.UNDER_REVIEW],

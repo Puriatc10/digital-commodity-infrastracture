@@ -1,7 +1,6 @@
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from organizations.models import Organization
-from documents.models import VerificationDocument, DocumentType
 from organizations.verification.models import OrganizationVerification, VerificationStatus
 from organizations.verification.services import VerificationService
 from django.urls import reverse
@@ -23,26 +22,6 @@ class VerificationConcurrencyTests(TransactionTestCase):
         verification = VerificationService.get_or_create_verification(self.org.id)
         verification.status = VerificationStatus.UNDER_REVIEW
         verification.save()
-        self.doc_reg = VerificationDocument.objects.create(
-            organization=self.org, type=DocumentType.COMPANY_REGISTRATION,
-            object_key="key1", size_bytes=100
-        )
-        self.doc_tax = VerificationDocument.objects.create(
-            organization=self.org, type=DocumentType.TAX_ID,
-            object_key="key2", size_bytes=100
-        )
-        self.doc_auth = VerificationDocument.objects.create(
-            organization=self.org, type=DocumentType.AUTHORIZED_REPRESENTATIVE,
-            object_key="key3", size_bytes=100
-        )
-
-        self.doc_reg.verification_status = "accepted"
-        self.doc_reg.save()
-        self.doc_tax.verification_status = "accepted"
-        self.doc_tax.save()
-        self.doc_auth.verification_status = "accepted"
-        self.doc_auth.save()
-
 
     def test_stale_update_is_rejected(self):
         client1 = APIClient()

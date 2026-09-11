@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from django.shortcuts import get_object_or_404
 from organizations.models import Organization
-from .serializers import OrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer, ChecklistReviewSerializer
+from .serializers import OrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer
 from .services import VerificationService, VerificationDomainException
 from .permissions import CanViewVerification, CanSubmitVerification, CanPerformVerificationReview
 
@@ -111,33 +111,3 @@ class VerificationNoteCreateView(views.APIView):
              return Response(VerificationNoteSerializer(note).data, status=status.HTTP_201_CREATED)
         except VerificationDomainException as e:
              return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-class VerificationChecklistView(BaseVerificationActionView):
-    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
-
-    @extend_schema(
-        request=ChecklistReviewSerializer,
-        responses={
-            200: OrganizationVerificationDetailSerializer,
-            400: OpenApiResponse(description="Domain error (e.g. missing document, invalid transition)"),
-            409: OpenApiResponse(description="Conflict (stale version)")
-        }
-    )
-    def post(self, request, *args, **kwargs):
-        org = self.get_organization()
-        serializer = ChecklistReviewSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            verification = VerificationService.review_checklist_item(
-                org.id,
-                serializer.validated_data['document_id'],
-                request.user,
-                serializer.validated_data['outcome'],
-                serializer.validated_data.get('expected_version')
-            )
-            response_serializer = OrganizationVerificationDetailSerializer(verification, context={'request': request})
-            return Response(response_serializer.data, status=status.HTTP_200_OK)
-        except VerificationDomainException as e:
-            if "Stale object" in str(e):
-                return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

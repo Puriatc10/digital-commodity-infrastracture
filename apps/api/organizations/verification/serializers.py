@@ -43,8 +43,3 @@ class OrganizationVerificationDetailSerializer(serializers.ModelSerializer):
 class VerificationActionSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True)
     expected_version = serializers.IntegerField(required=False, allow_null=True)
-
-class ChecklistReviewSerializer(serializers.Serializer):
-    document_id = serializers.UUIDField()
-    outcome = serializers.ChoiceField(choices=["accepted", "rejected"])
-    expected_version = serializers.IntegerField(required=False, allow_null=True)
