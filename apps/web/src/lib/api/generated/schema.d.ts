@@ -139,6 +139,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["documents_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["documents_download_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/upload/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["documents_upload_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -469,10 +517,27 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
+        /**
+         * @description * `company_registration` - Company Registration
+         *     * `tax_id` - Tax ID
+         *     * `trade_license` - Trade License
+         *     * `bank_details` - Bank Details
+         *     * `authorized_representative` - Authorized Representative
+         *     * `certifications` - Certifications
+         * @enum {string}
+         */
+        TypeEnum: "company_registration" | "tax_id" | "trade_license" | "bank_details" | "authorized_representative" | "certifications";
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
             allowed_units?: string[];
+        };
+        UploadDocument: {
+            type: components["schemas"]["TypeEnum"];
+            /** Format: uri */
+            file: string;
+            /** Format: uuid */
+            organization: string;
         };
         User: {
             readonly id: number;
@@ -504,6 +569,24 @@ export interface components {
             readonly reason: string;
             /** Format: date-time */
             readonly created_at: string;
+        };
+        VerificationDocument: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            organization: string;
+            type: components["schemas"]["TypeEnum"];
+            file_name: string;
+            readonly object_key: string;
+            readonly mime_type: string;
+            readonly size_bytes: number;
+            readonly uploaded_by: number | null;
+            readonly verification_status: string;
+            readonly verification_version: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
         };
         VerificationNote: {
             /** Format: uuid */
@@ -843,6 +926,71 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    documents_list: {
+        parameters: {
+            query: {
+                organization: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationDocument"][];
+                };
+            };
+        };
+    };
+    documents_download_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+        };
+    };
+    documents_upload_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadDocument"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationDocument"];
                 };
             };
         };
