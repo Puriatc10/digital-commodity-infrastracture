@@ -444,6 +444,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organizations/profiles/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizations_profiles_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -561,6 +577,21 @@ export interface components {
             organization: components["schemas"]["Organization"];
             role: string;
             capabilities: string[];
+        };
+        OrganizationProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            /** @description ISO 3166-1 alpha-2 country code */
+            readonly country: string;
+            /** Format: uri */
+            readonly website: string;
+            readonly capabilities: string[];
+            readonly commodities: string[];
+            readonly verification_status: string;
+            readonly activity_summary: {
+                [key: string]: string;
+            };
         };
         OrganizationVerificationDetail: {
             /** Format: uuid */
@@ -1613,6 +1644,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DirectoryOrganization"][];
+                };
+            };
+        };
+    };
+    organizations_profiles_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این organization را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationProfile"];
                 };
             };
         };
