@@ -5,7 +5,6 @@ from rest_framework import status
 from django.urls import reverse
 from organizations.models import Organization, OrganizationMembership
 from documents.models import VerificationDocument, DocumentType
-from organizations.verification.models import VerificationStatus
 from identity.models import SystemRoleAssignment
 
 User = get_user_model()

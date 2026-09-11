@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from organizations.models import Organization
 from documents.models import VerificationDocument, DocumentType
-from organizations.verification.models import VerificationStatus, OrganizationVerification
+from organizations.verification.models import VerificationStatus
 from organizations.verification.services import VerificationService, VerificationDomainException
 import uuid
 
