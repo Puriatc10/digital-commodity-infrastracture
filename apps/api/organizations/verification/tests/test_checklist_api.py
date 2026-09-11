@@ -40,23 +40,23 @@ class VerificationChecklistAPITests(TestCase):
     def test_operator_can_review(self):
         client = APIClient()
         client.force_authenticate(user=self.operator_user)
-        response = client.post(self.url, {"document_id": self.doc.id, "outcome": "accepted"})
+        response = client.post(self.url, {"document_id": self.doc.id, "outcome": "accepted"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_owner_cannot_review(self):
         client = APIClient()
         client.force_authenticate(user=self.owner_user)
-        response = client.post(self.url, {"document_id": self.doc.id, "outcome": "accepted"})
+        response = client.post(self.url, {"document_id": self.doc.id, "outcome": "accepted"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_member_cannot_review(self):
         client = APIClient()
         client.force_authenticate(user=self.member_user)
-        response = client.post(self.url, {"document_id": self.doc.id, "outcome": "accepted"})
+        response = client.post(self.url, {"document_id": self.doc.id, "outcome": "accepted"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_superuser_without_role_cannot_review(self):
         client = APIClient()
         client.force_authenticate(user=self.superuser)
-        response = client.post(self.url, {"document_id": self.doc.id, "outcome": "accepted"})
+        response = client.post(self.url, {"document_id": self.doc.id, "outcome": "accepted"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
