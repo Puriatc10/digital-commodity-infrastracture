@@ -38,16 +38,17 @@ describe("OrganizationProfileClient", () => {
 
   it("renders loading state initially", () => {
     // Setup pending promise to keep it loading
-    (apiClient.GET as any).mockReturnValue(new Promise(() => {}));
+    vi.mocked(apiClient.GET).mockReturnValue(new Promise(() => {}) as ReturnType<typeof apiClient.GET>);
     const { container } = renderComponent();
     expect(container.querySelector(".animate-spin")).toBeInTheDocument();
   });
 
   it("renders error/not-found state on API failure", async () => {
-    (apiClient.GET as any).mockResolvedValue({
+    vi.mocked(apiClient.GET).mockResolvedValue({
       error: { detail: "Not found" },
-      data: null,
-    });
+      data: undefined,
+      response: new Response()
+    } as Awaited<ReturnType<typeof apiClient.GET>>);
     renderComponent();
 
     await waitFor(() => {
@@ -56,7 +57,7 @@ describe("OrganizationProfileClient", () => {
   });
 
   it("renders organization data on successful fetch", async () => {
-    (apiClient.GET as any).mockResolvedValue({
+    vi.mocked(apiClient.GET).mockResolvedValue({
       data: {
         id: "test-org-123",
         name: "Test Organization",
@@ -70,8 +71,9 @@ describe("OrganizationProfileClient", () => {
         commodities: ["bitumen", "base-oil"],
         verification_status: "basic_verified"
       },
-      error: null,
-    });
+      error: undefined,
+      response: new Response()
+    } as Awaited<ReturnType<typeof apiClient.GET>>);
 
     renderComponent();
 
@@ -101,7 +103,7 @@ describe("OrganizationProfileClient", () => {
   });
 
   it("renders safe defaults when optional fields are empty", async () => {
-    (apiClient.GET as any).mockResolvedValue({
+    vi.mocked(apiClient.GET).mockResolvedValue({
       data: {
         id: "test-org-123",
         name: "Minimal Org",
@@ -113,8 +115,9 @@ describe("OrganizationProfileClient", () => {
         commodities: [],
         verification_status: "unverified"
       },
-      error: null,
-    });
+      error: undefined,
+      response: new Response()
+    } as Awaited<ReturnType<typeof apiClient.GET>>);
 
     renderComponent();
 

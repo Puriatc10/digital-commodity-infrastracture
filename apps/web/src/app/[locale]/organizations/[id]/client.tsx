@@ -39,7 +39,7 @@ function getCapabilityBadge(cap: string) {
 }
 
 export function OrganizationProfileClient({ id }: OrganizationProfileClientProps) {
-  const { data: org, isLoading, isError, error } = useQuery({
+  const { data: org, isLoading, isError } = useQuery({
     queryKey: ["organization", id],
     queryFn: async () => {
       const { data, error } = await client.GET("/api/organizations/{id}/", {
