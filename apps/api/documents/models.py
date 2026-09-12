@@ -21,10 +21,12 @@ class VerificationDocument(models.Model):
     size_bytes = models.IntegerField()
 
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="uploaded_documents")
-    verification_status = models.CharField(max_length=50, default="pending") # e.g. pending, accepted, rejected, replaced
 
-    # Optional tie to specific Verification version
+    # Keeping these for legacy serialization if needed, though replaced by new checklist model and is_current
+    verification_status = models.CharField(max_length=50, default="pending")
     verification_version = models.IntegerField(null=True, blank=True)
+
+    is_current = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -34,6 +36,11 @@ class VerificationDocument(models.Model):
             models.CheckConstraint(
                 condition=models.Q(type__in=[c[0] for c in DocumentType.choices]),
                 name="check_valid_document_type"
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "type"],
+                condition=models.Q(is_current=True),
+                name="unique_current_document_per_type"
             )
         ]
 

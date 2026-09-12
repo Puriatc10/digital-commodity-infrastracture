@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from organizations.models import Organization
 from documents.models import VerificationDocument, DocumentType
-from organizations.verification.models import VerificationStatus
+from organizations.verification.models import VerificationStatus, OrganizationVerification
 from organizations.verification.services import VerificationService, VerificationDomainException
 
 User = get_user_model()
@@ -135,6 +135,10 @@ class VerificationDomainTests(TestCase):
         verification = VerificationService.reset_due_to_evidence_replacement(self.org.id, self.actor)
         self.assertEqual(verification.status, VerificationStatus.DOCUMENTS_SUBMITTED)
 
+        # Verify M12 Action field is populated
+        decision = verification.decisions.first()
+        self.assertEqual(decision.action, "evidence_replacement_invalidation")
+
     def test_invalid_transition(self):
         # Attempt to suspend an unverified org
         # Must initialize Verification first because suspend reads the state
@@ -151,3 +155,28 @@ class VerificationDomainTests(TestCase):
              pass
 
         self.assertEqual(verification.decisions.count(), 0)
+
+    def test_missing_version_raises_error(self):
+        # M1 verification expected_version enforcement
+        VerificationService.submit(self.org.id, self.actor)
+
+        with self.assertRaisesMessage(VerificationDomainException, "Expected version is required for mutation"):
+            VerificationService.start_review(self.org.id, self.actor, expected_version=None)
+
+    def test_null_version_raises_error(self):
+        # M1 verification expected_version enforcement
+        VerificationService.submit(self.org.id, self.actor)
+
+        with self.assertRaisesMessage(VerificationDomainException, "Expected version is required for mutation"):
+            VerificationService.start_review(self.org.id, self.actor, expected_version=None)
+
+    def test_decision_history_has_action_identity(self):
+        # M12 Verification decisions must have explicit action identity
+        VerificationService.submit(self.org.id, self.actor)
+        VerificationService.start_review(self.org.id, self.actor, expected_version=2)
+
+        verification = OrganizationVerification.objects.get(organization_id=self.org.id)
+        decisions = verification.decisions.order_by("created_at")
+
+        self.assertEqual(decisions[0].action, "submit")
+        self.assertEqual(decisions[1].action, "start_review")

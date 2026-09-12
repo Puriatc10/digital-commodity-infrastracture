@@ -74,7 +74,7 @@ export default function VerificationCaseDetailPage() {
         "/api/organizations/{org_id}/verification/start_review/",
         {
           params: { path: { org_id: organizationId } },
-          body: { expected_version: verificationData?.version },
+          body: { expected_version: verificationData?.version ?? 0 },
         }
       );
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -91,7 +91,7 @@ export default function VerificationCaseDetailPage() {
         "/api/organizations/{org_id}/verification/approve_basic/",
         {
           params: { path: { org_id: organizationId } },
-          body: { expected_version: verificationData?.version },
+          body: { expected_version: verificationData?.version ?? 0 },
         }
       );
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,7 +108,7 @@ export default function VerificationCaseDetailPage() {
         "/api/organizations/{org_id}/verification/approve_full/",
         {
           params: { path: { org_id: organizationId } },
-          body: { expected_version: verificationData?.version },
+          body: { expected_version: verificationData?.version ?? 0 },
         }
       );
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,7 +125,7 @@ export default function VerificationCaseDetailPage() {
         "/api/organizations/{org_id}/verification/reject/",
         {
           params: { path: { org_id: organizationId } },
-          body: { expected_version: verificationData?.version, reason },
+          body: { expected_version: verificationData?.version ?? 0, reason },
         }
       );
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,7 +142,7 @@ export default function VerificationCaseDetailPage() {
         "/api/organizations/{org_id}/verification/suspend/",
         {
           params: { path: { org_id: organizationId } },
-          body: { expected_version: verificationData?.version, reason },
+          body: { expected_version: verificationData?.version ?? 0, reason },
         }
       );
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -159,7 +159,7 @@ export default function VerificationCaseDetailPage() {
         "/api/organizations/{org_id}/verification/reopen/",
         {
           params: { path: { org_id: organizationId } },
-          body: { expected_version: verificationData?.version },
+          body: { expected_version: verificationData?.version ?? 0 },
         }
       );
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -194,7 +194,7 @@ export default function VerificationCaseDetailPage() {
         "/api/organizations/{org_id}/verification/checklist/",
         {
           params: { path: { org_id: organizationId } },
-          body: { document_id: documentId, outcome, expected_version: verificationData?.version },
+          body: { document_id: documentId, outcome, expected_version: verificationData?.version ?? 0 },
         }
       );
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

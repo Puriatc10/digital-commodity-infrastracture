@@ -484,7 +484,7 @@ export interface components {
             /** Format: uuid */
             document_id: string;
             outcome: components["schemas"]["OutcomeEnum"];
-            expected_version?: number | null;
+            expected_version: number;
         };
         CommodityAttributeDefinition: {
             /** Format: uuid */
@@ -690,13 +690,14 @@ export interface components {
         };
         VerificationAction: {
             reason?: string;
-            expected_version?: number | null;
+            expected_version: number;
         };
         VerificationDecision: {
             /** Format: uuid */
             readonly id: string;
             /** Format: email */
             readonly actor_email: string;
+            readonly action: string | null;
             readonly previous_status: components["schemas"]["VerificationStatusEnum"];
             readonly new_status: components["schemas"]["VerificationStatusEnum"];
             readonly reason: string;
@@ -716,6 +717,8 @@ export interface components {
             readonly uploaded_by: number | null;
             readonly verification_status: string;
             readonly verification_version: number | null;
+            /** @default true */
+            readonly is_current: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -1207,7 +1210,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1246,7 +1249,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1349,7 +1352,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1388,7 +1391,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1427,7 +1430,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1466,7 +1469,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1505,7 +1508,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };

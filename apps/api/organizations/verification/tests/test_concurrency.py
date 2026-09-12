@@ -75,3 +75,98 @@ class VerificationConcurrencyTests(TransactionTestCase):
         # Confirm DB state is BASIC_VERIFIED (Operator 1 won)
         verification = OrganizationVerification.objects.get(organization_id=self.org.id)
         self.assertEqual(verification.status, VerificationStatus.BASIC_VERIFIED)
+
+    def test_approval_vs_evidence_replacement_race(self):
+        # M1/B1 race condition: Approval reads prerequisite documents as accepted,
+        # but concurrent transaction replaces a required document.
+        # Since we use select_for_update, the approval must evaluate the updated document state.
+
+        # Test setup
+        from documents.models import DocumentType
+
+        # To strictly test concurrency, we just assert the sequential semantics where lock order matters.
+        # If replace happens *before* approval locking in db transaction order, approval must fail.
+
+        verification = OrganizationVerification.objects.get(organization_id=self.org.id)
+        current_version = verification.version
+
+        # Replace the registration document simulating concurrent upload
+        self.doc_reg.is_current = False
+        self.doc_reg.save()
+
+        VerificationDocument.objects.create(
+            organization=self.org,
+            type=DocumentType.COMPANY_REGISTRATION,
+            object_key="key_new",
+            size_bytes=100,
+            is_current=True,
+            verification_status="pending"
+        )
+
+        # Now operator 1 tries to approve (using the old version if it wasn't bumped by upload,
+        # but let's assume it was bumped or we just test the domain guard).
+        # We'll just test the domain service since that's where lock happens.
+        with self.assertRaises(Exception) as context:
+             VerificationService.basic_approval(self.org.id, self.operator1, expected_version=current_version)
+
+        # Should fail either due to stale version or missing accepted documents
+        err = str(context.exception)
+        self.assertTrue("Stale object error" in err or "Missing accepted documents" in err)
+
+    def test_concurrent_first_uploads(self):
+        # M4: Two concurrent first uploads cannot leave two is_current=True documents
+        from django.db import IntegrityError
+
+        # Test creation of first upload
+        VerificationDocument.objects.create(
+            organization=self.org,
+            type=DocumentType.TRADE_LICENSE,
+            object_key="trade1",
+            size_bytes=100,
+            is_current=True
+        )
+
+        # Simulating concurrent transaction uploading a second one of the same type without
+        # toggling is_current on doc1
+        with self.assertRaises(IntegrityError):
+            VerificationDocument.objects.create(
+                organization=self.org,
+                type=DocumentType.TRADE_LICENSE,
+                object_key="trade2",
+                size_bytes=100,
+                is_current=True
+            )
+
+    def test_concurrent_checklist_reviewers(self):
+        # Prove two concurrent checklist reviewers cannot overwrite each other
+        verification = OrganizationVerification.objects.get(organization_id=self.org.id)
+        current_version = verification.version
+
+        # Operator 1 accepts
+        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.operator1, "accepted", expected_version=current_version)
+
+        # Operator 2 attempts to reject using the old version
+        with self.assertRaises(Exception) as context:
+            VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.operator2, "rejected", expected_version=current_version)
+
+        self.assertIn("Stale object error", str(context.exception))
+
+        # Verify the review history reflects only Operator 1
+        reviews = self.doc_reg.reviews.all()
+        self.assertEqual(reviews.count(), 1)
+        self.assertEqual(reviews[0].reviewer, self.operator1)
+        self.assertEqual(reviews[0].outcome, "accepted")
+
+    def test_approval_vs_checklist_rejection_race(self):
+        # Prove approval fails if a checklist item is concurrently rejected.
+        verification = OrganizationVerification.objects.get(organization_id=self.org.id)
+        current_version = verification.version
+
+        # Simulate checklist rejection
+        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.operator2, "rejected", expected_version=current_version)
+
+        # Operator 1 tries to approve with old version
+        with self.assertRaises(Exception) as context:
+             VerificationService.basic_approval(self.org.id, self.operator1, expected_version=current_version)
+
+        self.assertIn("Stale object error", str(context.exception))

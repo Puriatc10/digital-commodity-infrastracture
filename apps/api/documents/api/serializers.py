@@ -7,11 +7,11 @@ class VerificationDocumentSerializer(serializers.ModelSerializer):
         fields = [
             "id", "organization", "type", "file_name", "object_key",
             "mime_type", "size_bytes", "uploaded_by", "verification_status",
-            "verification_version", "created_at", "updated_at"
+            "verification_version", "is_current", "created_at", "updated_at"
         ]
         read_only_fields = [
             "id", "object_key", "mime_type", "size_bytes", "uploaded_by",
-            "verification_status", "verification_version", "created_at", "updated_at"
+            "verification_status", "verification_version", "is_current", "created_at", "updated_at"
         ]
 
 class UploadDocumentSerializer(serializers.Serializer):
