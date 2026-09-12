@@ -16,16 +16,6 @@ def get_verification_serializer_class(user):
         return InternalOrganizationVerificationDetailSerializer
     return OrganizationVerificationDetailSerializer
 
-def get_verification_serializer_class(user):
-    if user and user.is_authenticated and user.system_roles.filter(role__in=['operator', 'admin']).exists():
-        return InternalOrganizationVerificationDetailSerializer
-    return OrganizationVerificationDetailSerializer
-
-def get_verification_serializer_class(user):
-    if user and user.is_authenticated and user.system_roles.filter(role__in=['operator', 'admin']).exists():
-        return InternalOrganizationVerificationDetailSerializer
-    return OrganizationVerificationDetailSerializer
-
 class VerificationDetailView(generics.RetrieveAPIView):
     def get_serializer_class(self):
         return get_verification_serializer_class(self.request.user)
