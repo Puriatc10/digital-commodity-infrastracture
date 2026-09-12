@@ -77,41 +77,89 @@ class VerificationConcurrencyTests(TransactionTestCase):
         self.assertEqual(verification.status, VerificationStatus.BASIC_VERIFIED)
 
     def test_approval_vs_evidence_replacement_race(self):
-        # M1/B1 race condition: Approval reads prerequisite documents as accepted,
-        # but concurrent transaction replaces a required document.
-        # Since we use select_for_update, the approval must evaluate the updated document state.
+        # Real B1 race condition test using threading and multiple database connections.
+        # Reviewer A begins Basic approval using current accepted evidence, but a
+        # concurrent request replaces required evidence before they acquire the lock.
 
-        # Test setup
+        from django.db import connection, transaction
         from documents.models import DocumentType
-
-        # To strictly test concurrency, we just assert the sequential semantics where lock order matters.
-        # If replace happens *before* approval locking in db transaction order, approval must fail.
+        import threading
+        import time
 
         verification = OrganizationVerification.objects.get(organization_id=self.org.id)
         current_version = verification.version
+        org_id = self.org.id
+        operator = self.operator1
 
-        # Replace the registration document simulating concurrent upload
-        self.doc_reg.is_current = False
-        self.doc_reg.save()
+        barrier = threading.Barrier(2)
+        results = {}
 
-        VerificationDocument.objects.create(
-            organization=self.org,
-            type=DocumentType.COMPANY_REGISTRATION,
-            object_key="key_new",
-            size_bytes=100,
-            is_current=True,
-            verification_status="pending"
+        def thread_approve():
+            try:
+                barrier.wait()
+                time.sleep(0.1) # yield to let upload acquire lock
+
+                VerificationService.basic_approval(org_id, operator, expected_version=current_version)
+                results['approve'] = 'success'
+            except Exception as e:
+                results['approve'] = str(e)
+            finally:
+                connection.close()
+
+        def thread_upload():
+            try:
+                barrier.wait()
+                with transaction.atomic():
+                    # lock verification
+                    v = OrganizationVerification.objects.select_for_update().get(organization_id=org_id)
+
+                    VerificationDocument.objects.filter(
+                        organization_id=org_id,
+                        type=DocumentType.COMPANY_REGISTRATION,
+                        is_current=True
+                    ).update(is_current=False)
+
+                    VerificationDocument.objects.create(
+                        organization_id=org_id,
+                        type=DocumentType.COMPANY_REGISTRATION,
+                        object_key="key_new_concurrent",
+                        size_bytes=100,
+                        is_current=True,
+                        verification_status="pending"
+                    )
+
+                    time.sleep(0.5)
+
+                    v.version += 1
+                    v.save()
+
+                results['upload'] = 'success'
+            except Exception as e:
+                results['upload'] = str(e)
+            finally:
+                connection.close()
+
+        t1 = threading.Thread(target=thread_approve)
+        t2 = threading.Thread(target=thread_upload)
+
+        t1.start()
+        t2.start()
+
+        t1.join()
+        t2.join()
+
+        # Upload should succeed
+        self.assertEqual(results['upload'], 'success')
+
+        # Approval MUST fail since evidence was replaced and is no longer accepted
+        err = results.get('approve', '')
+        self.assertTrue(
+            "Stale object error" in err or "Missing accepted documents" in err,
+            f"Expected domain exception for approve, got: {err}"
         )
 
-        # Now operator 1 tries to approve (using the old version if it wasn't bumped by upload,
-        # but let's assume it was bumped or we just test the domain guard).
-        # We'll just test the domain service since that's where lock happens.
-        with self.assertRaises(Exception) as context:
-             VerificationService.basic_approval(self.org.id, self.operator1, expected_version=current_version)
-
-        # Should fail either due to stale version or missing accepted documents
-        err = str(context.exception)
-        self.assertTrue("Stale object error" in err or "Missing accepted documents" in err)
+        verification.refresh_from_db()
+        self.assertEqual(verification.status, VerificationStatus.UNDER_REVIEW)
 
     def test_concurrent_first_uploads(self):
         # M4: Two concurrent first uploads cannot leave two is_current=True documents

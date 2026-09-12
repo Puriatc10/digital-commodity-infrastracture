@@ -91,8 +91,10 @@ class VerificationEpicIntegrationTests(TransactionTestCase):
 
         # 6. Op reviews checklist
         checklist_url = reverse('verification:checklist-review', kwargs={'org_id': self.org.id})
-        client_op.post(checklist_url, {"document_id": doc_reg.id, "outcome": "accepted"}, format='json')
-        client_op.post(checklist_url, {"document_id": doc_tax.id, "outcome": "accepted"}, format='json')
+        res = client_op.post(checklist_url, {"document_id": doc_reg.id, "outcome": "accepted", "expected_version": current_version}, format='json')
+        current_version = res.data['version']
+        res = client_op.post(checklist_url, {"document_id": doc_tax.id, "outcome": "accepted", "expected_version": current_version}, format='json')
+        current_version = res.data['version']
         res = client_op.post(checklist_url, {"document_id": doc_auth.id, "outcome": "accepted", "expected_version": current_version}, format='json')
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         current_version = res.data['version']
