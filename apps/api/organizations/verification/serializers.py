@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from .models import OrganizationVerification, VerificationDecision, VerificationNote
 
@@ -16,6 +17,9 @@ class VerificationNoteSerializer(serializers.ModelSerializer):
         model = VerificationNote
         fields = ['id', 'actor_email', 'note', 'created_at']
         read_only_fields = ['id', 'actor_email', 'created_at']
+
+class VerificationNoteCreateSerializer(serializers.Serializer):
+    note = serializers.CharField(required=True, allow_blank=False)
 
 class OrganizationVerificationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,11 +42,18 @@ class InternalOrganizationVerificationDetailSerializer(serializers.ModelSerializ
         fields = ['id', 'status', 'version', 'updated_at', 'decisions', 'notes']
         read_only_fields = fields
 
-    def get_notes(self, obj) -> list[dict]:
+    @property
+    def _notes(self):
+        pass # Placeholder for drf-spectacular
+
+    @extend_schema_field(VerificationNoteSerializer(many=True))
+    def get_notes(self, obj):
         return VerificationNoteSerializer(obj.notes.all(), many=True).data
 
+class VerificationSubmitSerializer(serializers.Serializer):
+    expected_version = serializers.IntegerField(required=False, allow_null=True)
+
 class VerificationActionSerializer(serializers.Serializer):
-    reason = serializers.CharField(required=False, allow_blank=True)
     expected_version = serializers.IntegerField(required=True, allow_null=False)
 
 class ChecklistReviewSerializer(serializers.Serializer):
@@ -58,3 +69,14 @@ class VerificationQueueSerializer(serializers.ModelSerializer):
         model = OrganizationVerification
         fields = ['id', 'organization_id', 'organization_name', 'status', 'version', 'updated_at']
         read_only_fields = fields
+
+class VerificationRejectSerializer(serializers.Serializer):
+    reason = serializers.CharField(required=True, allow_blank=False)
+    expected_version = serializers.IntegerField(required=True, allow_null=False)
+
+class VerificationSuspendSerializer(serializers.Serializer):
+    reason = serializers.CharField(required=True, allow_blank=False)
+    expected_version = serializers.IntegerField(required=True, allow_null=False)
+
+class VerificationErrorDetailSerializer(serializers.Serializer):
+    detail = serializers.CharField()

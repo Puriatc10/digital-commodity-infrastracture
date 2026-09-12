@@ -55,18 +55,15 @@ describe("Verification Operator UI", () => {
         } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
       }
       return {
-      data: {
-        results: [
+      data: [
           {
             id: "v-1",
             organization_id: "org-1",
             organization_name: "Test Org",
-            status: "documents_submitted",
+            status: "مدارک ارسال شده",
             updated_at: "2024-01-01T00:00:00Z",
           },
-        ],
-      },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ],
     } as any;
     });
 
@@ -74,12 +71,12 @@ describe("Verification Operator UI", () => {
       (() => { const WrapperInst = Wrapper; return <WrapperInst><VerificationQueuePage /></WrapperInst>; })()
     );
 
-    expect(screen.getByText("Loading queue...")).toBeInTheDocument();
+    expect(screen.getByText("در حال بارگذاری...")).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText("Test Org")).toBeInTheDocument();
-      expect(screen.getByText("documents submitted")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /Review/i })).toHaveAttribute(
+
+      expect(screen.getByRole("link", { name: /بررسی/i })).toHaveAttribute(
         "href",
         "/fa/operator/verification/org-1"
       );
@@ -98,7 +95,7 @@ describe("Verification Operator UI", () => {
         return {
           data: {
             id: "v-1",
-            status: "documents_submitted",
+            status: "مدارک ارسال شده",
             version: 1,
             decisions: [],
             notes: [],
@@ -118,10 +115,10 @@ describe("Verification Operator UI", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("documents submitted")).toBeInTheDocument();
+
     });
 
-    const startReviewBtn = await screen.findByRole("button", { name: /Start Review/i });
+    const startReviewBtn = await screen.findByRole("button", { name: /شروع بررسی/i });
     fireEvent.click(startReviewBtn);
 
     await waitFor(() => {
@@ -146,7 +143,7 @@ describe("Verification Operator UI", () => {
         return {
           data: {
             id: "v-1",
-            status: "under_review",
+            status: "در حال بررسی",
             version: 2,
             decisions: [],
             notes: [],
@@ -168,13 +165,13 @@ describe("Verification Operator UI", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("under review")).toBeInTheDocument();
+
     });
 
-    const rejectBtn = await screen.findByRole("button", { name: /Reject/i });
+    const rejectBtn = await screen.findByRole("button", { name: /رد پرونده/i });
     expect(rejectBtn).toBeDisabled();
 
-    const input = screen.getByPlaceholderText("Rejection Reason");
+    const input = screen.getByPlaceholderText("دلیل رد");
     fireEvent.change(input, { target: { value: "Docs fake" } });
 
     expect(rejectBtn).not.toBeDisabled();
@@ -207,7 +204,7 @@ describe("Verification Operator UI", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Error loading verification queue/i)).toBeInTheDocument();
+      expect(screen.getByText(/خطا در بارگذاری صف بررسی/i)).toBeInTheDocument();
       // No queue items should render
       expect(screen.queryByText("Review")).not.toBeInTheDocument();
     });

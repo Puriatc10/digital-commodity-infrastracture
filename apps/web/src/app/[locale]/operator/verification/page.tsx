@@ -22,17 +22,17 @@ export default function VerificationQueuePage() {
         params: {
           query: {
             is_pending: true,
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any,
+
+          },
         },
       });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((response as any).error) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        throw new Error((response.error as any)?.detail || "Failed to load queue");
+
+      if (response.error) {
+
+        throw new Error((response.error as any)?.detail || "خطا در بارگذاری صف بررسی.");
       }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return ((response.data as any)?.results || response.data) || [];
+
+      return response.data || [];
     },
   });
 
@@ -40,26 +40,26 @@ export default function VerificationQueuePage() {
     <div className="container mx-auto p-4 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Verification Queue</CardTitle>
+          <CardTitle>صف بررسی</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading && <p>Loading queue...</p>}
-          {isError && <p className="text-red-500">Error loading verification queue.</p>}
+          {isLoading && <p>در حال بارگذاری...</p>}
+          {isError && <p className="text-red-500">خطا در بارگذاری صف بررسی.</p>}
           {!isLoading && !isError && data && data.length === 0 && (
-            <p>No pending verification cases.</p>
+            <p>پرونده بررسی در انتظار وجود ندارد.</p>
           )}
           {!isLoading && !isError && data && data.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Organization</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Updated</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>سازمان</TableHead>
+                  <TableHead>وضعیت</TableHead>
+                  <TableHead>آخرین بروزرسانی</TableHead>
+                  <TableHead>عملیات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-{data.map((caseItem: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{data.map((caseItem: NonNullable<typeof data>[0]) => (
                   <TableRow key={caseItem.id}>
                     <TableCell className="font-medium">
                       {caseItem.organization_name}

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient as client } from "@/lib/api/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { CustomerVerificationPanel } from "@/components/verification/CustomerVerificationPanel";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 
@@ -15,9 +16,12 @@ function getVerificationBadge(status: string) {
     case "basic_verified":
       return <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">تاییدیه پایه</Badge>;
     case "under_review":
-      return <Badge variant="outline">در حال بررسی</Badge>;
+      return <Badge variant="secondary">در حال بررسی</Badge>;
+    case "documents_submitted":
+      return <Badge variant="outline" className="border-blue-500 text-blue-600">مدارک ارسال شده</Badge>;
     case "suspended":
       return <Badge variant="destructive">معلق</Badge>;
+    case "unverified":
     default:
       return <Badge variant="outline">تایید نشده</Badge>;
   }
@@ -140,6 +144,9 @@ export function ProfileClient({ id }: { id: string }) {
           <p className="text-sm text-muted-foreground">اطلاعات فعالیت در حال حاضر در دسترس نیست.</p>
         </CardContent>
       </Card>
+
+      {/* We mount the panel. It checks auth and will just fail to load docs/verification if not authorized, which is fine since the API protects it. */}
+      <CustomerVerificationPanel orgId={id} />
     </div>
   );
 }

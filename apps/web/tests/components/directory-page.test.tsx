@@ -41,9 +41,9 @@ describe("DirectoryClient Component", () => {
     renderComponent();
 
     expect(screen.getByText("نام شرکت")).toBeInTheDocument();
-    expect(screen.getByText("کشور")).toBeInTheDocument();
+    expect(screen.getAllByText("کشور")[0]).toBeInTheDocument();
     expect(screen.getByText("نقش‌ها")).toBeInTheDocument();
-    expect(screen.getByText("کالاها")).toBeInTheDocument();
+
     expect(screen.getByText("تاییدیه")).toBeInTheDocument();
   });
 

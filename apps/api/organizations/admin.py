@@ -28,11 +28,27 @@ class OrganizationVerificationAdmin(admin.ModelAdmin):
 
 @admin.register(VerificationDecision)
 class VerificationDecisionAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
     list_display = ("verification", "actor", "previous_status", "new_status", "created_at")
     list_filter = ("new_status",)
     search_fields = ("verification__organization__name", "actor__email")
 
 @admin.register(VerificationNote)
 class VerificationNoteAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
     list_display = ("verification", "actor", "created_at")
     search_fields = ("verification__organization__name", "actor__email", "note")

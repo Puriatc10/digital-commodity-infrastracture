@@ -6,6 +6,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Loader2 } from "lucide-react";
+import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -35,9 +36,12 @@ function getVerificationBadge(status: string) {
     case "basic_verified":
       return <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">تاییدیه پایه</Badge>;
     case "under_review":
-      return <Badge variant="outline">در حال بررسی</Badge>;
+      return <Badge variant="secondary">در حال بررسی</Badge>;
+    case "documents_submitted":
+      return <Badge variant="outline" className="border-blue-500 text-blue-600">مدارک ارسال شده</Badge>;
     case "suspended":
       return <Badge variant="destructive">معلق</Badge>;
+    case "unverified":
     default:
       return <Badge variant="outline">تایید نشده</Badge>;
   }
@@ -60,6 +64,7 @@ export function DirectoryClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const locale = pathname.split('/')[1] || 'fa';
 
   const search = searchParams.get("search") || "";
   const capability = searchParams.get("capability") || "";
@@ -137,6 +142,28 @@ export function DirectoryClient() {
           </div>
 
           <div className="w-full sm:w-48 space-y-1">
+            <label htmlFor="country" className="text-sm font-medium">کشور</label>
+            <Input
+              id="country"
+              name="country"
+              defaultValue={country}
+              placeholder="مثال: IR"
+              onBlur={(e) => updateFilters("country", e.target.value)}
+            />
+          </div>
+
+          <div className="w-full sm:w-48 space-y-1">
+            <label htmlFor="commodity" className="text-sm font-medium">کالا</label>
+            <Input
+              id="commodity"
+              name="commodity"
+              defaultValue={commodity}
+              placeholder="کد کالا..."
+              onBlur={(e) => updateFilters("commodity", e.target.value)}
+            />
+          </div>
+
+          <div className="w-full sm:w-48 space-y-1">
             <label className="text-sm font-medium">وضعیت تاییدیه</label>
             <Select value={verification} onValueChange={(val) => updateFilters("verification", val === "all" ? "" : val)}>
               <SelectTrigger>
@@ -147,6 +174,7 @@ export function DirectoryClient() {
                 <SelectItem value="verified">تایید شده</SelectItem>
                 <SelectItem value="basic_verified">تاییدیه پایه</SelectItem>
                 <SelectItem value="under_review">در حال بررسی</SelectItem>
+                <SelectItem value="documents_submitted">مدارک ارسال شده</SelectItem>
                 <SelectItem value="unverified">تایید نشده</SelectItem>
                 <SelectItem value="suspended">معلق</SelectItem>
               </SelectContent>
@@ -187,7 +215,11 @@ export function DirectoryClient() {
               ) : data && data.length > 0 ? (
                 data.map((org: Organization) => (
                   <TableRow key={org.id}>
-                    <TableCell className="font-medium">{org.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={`/${locale}/directory/${org.id}`} className="text-blue-600 hover:underline">
+                        {org.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>{org.country || "-"}</TableCell>
                     <TableCell className="flex gap-1 flex-wrap">
                       {org.capabilities.length > 0

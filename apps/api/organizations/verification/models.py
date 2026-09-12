@@ -54,7 +54,7 @@ class VerificationDecision(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-created_at", "-id"]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(previous_status__in=[c[0] for c in VerificationStatus.choices]),
@@ -83,7 +83,7 @@ class VerificationNote(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-created_at", "-id"]
 
     def __str__(self):
         return f"Note for {self.verification.organization.name} at {self.created_at}"
@@ -100,7 +100,7 @@ class VerificationChecklistReview(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-created_at", "-id"]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(outcome__in=["pending", "accepted", "rejected"]),

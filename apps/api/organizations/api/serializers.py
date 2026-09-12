@@ -88,3 +88,7 @@ class OrganizationProfileSerializer(serializers.ModelSerializer):
     def get_activity_summary(self, obj):
         # Always return empty/unavailable state as there is no real transaction data yet.
         return {}
+
+
+class CommodityAssociationSerializer(serializers.Serializer):
+    commodity_code = serializers.CharField(required=True)

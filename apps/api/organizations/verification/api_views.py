@@ -1,9 +1,10 @@
 from rest_framework import views, status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter, inline_serializer
+from rest_framework import serializers
 from drf_spectacular.types import OpenApiTypes
-from .serializers import OrganizationVerificationDetailSerializer, InternalOrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer, ChecklistReviewSerializer, VerificationQueueSerializer
+from .serializers import OrganizationVerificationDetailSerializer, InternalOrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer, VerificationNoteCreateSerializer, ChecklistReviewSerializer, VerificationQueueSerializer, VerificationSubmitSerializer, VerificationRejectSerializer, VerificationSuspendSerializer, VerificationErrorDetailSerializer
 from .models import OrganizationVerification, VerificationStatus
 from django.shortcuts import get_object_or_404
 from organizations.models import Organization
@@ -42,8 +43,8 @@ class BaseVerificationActionView(views.APIView):
         request=VerificationActionSerializer,
         responses={
             200: InternalOrganizationVerificationDetailSerializer,
-            400: OpenApiResponse(description="Domain error (e.g. invalid transition)"),
-            409: OpenApiResponse(description="Conflict (stale version)")
+            400: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Domain error"),
+            409: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Conflict (stale version)")
         }
     )
     def post(self, request, *args, **kwargs):
@@ -62,15 +63,14 @@ class BaseVerificationActionView(views.APIView):
 
 class VerificationSubmitView(views.APIView):
     permission_classes = [IsAuthenticated, CanSubmitVerification]
-    serializer_class = VerificationActionSerializer # Needed for openapi guess
+    serializer_class = VerificationSubmitSerializer
 
-    # For submit, it could be the very first time so expected_version isn't strictly required
     @extend_schema(
-        request=VerificationActionSerializer,
+        request=VerificationSubmitSerializer,
         responses={
             200: InternalOrganizationVerificationDetailSerializer,
-            400: OpenApiResponse(description="Domain error (e.g. invalid transition)"),
-            409: OpenApiResponse(description="Conflict (stale version)")
+            400: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Domain error"),
+            409: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Conflict (stale version)")
         }
     )
     def post(self, request, *args, **kwargs):
@@ -110,11 +110,33 @@ class VerificationApproveFullView(BaseVerificationActionView):
 class VerificationRejectView(BaseVerificationActionView):
     permission_classes = [IsAuthenticated, CanPerformVerificationReview]
 
+    @extend_schema(
+        request=VerificationRejectSerializer,
+        responses={
+            200: InternalOrganizationVerificationDetailSerializer,
+            400: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Domain error"),
+            409: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Conflict (stale version)")
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
     def perform_action(self, org, actor, data):
         return VerificationService.reject(org.id, actor, data.get('reason'), data.get('expected_version'))
 
 class VerificationSuspendView(BaseVerificationActionView):
     permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+
+    @extend_schema(
+        request=VerificationSuspendSerializer,
+        responses={
+            200: InternalOrganizationVerificationDetailSerializer,
+            400: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Domain error"),
+            409: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Conflict (stale version)")
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
     def perform_action(self, org, actor, data):
         return VerificationService.suspend(org.id, actor, data.get('reason'), data.get('expected_version'))
@@ -129,7 +151,7 @@ class VerificationNoteCreateView(views.APIView):
     permission_classes = [IsAuthenticated, CanPerformVerificationReview]
 
     @extend_schema(
-        request=VerificationNoteSerializer,
+        request=VerificationNoteCreateSerializer,
         responses={201: VerificationNoteSerializer}
     )
     def post(self, request, *args, **kwargs):
@@ -153,8 +175,8 @@ class VerificationChecklistView(BaseVerificationActionView):
         request=ChecklistReviewSerializer,
         responses={
             200: InternalOrganizationVerificationDetailSerializer,
-            400: OpenApiResponse(description="Domain error (e.g. missing document, invalid transition)"),
-            409: OpenApiResponse(description="Conflict (stale version)")
+            400: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Domain error"),
+            409: OpenApiResponse(response=VerificationErrorDetailSerializer, description="Conflict (stale version)")
         }
     )
     def post(self, request, *args, **kwargs):
@@ -190,8 +212,11 @@ class VerificationQueueListView(generics.ListAPIView):
             OpenApiParameter(name="status", type=OpenApiTypes.STR, description="Filter by exact status", required=False),
         ]
     )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
-        qs = OrganizationVerification.objects.all().select_related('organization')
+        qs = OrganizationVerification.objects.all().select_related('organization', 'organization__verification')
 
         is_pending = self.request.query_params.get('is_pending')
         if is_pending and is_pending.lower() == 'true':
@@ -201,4 +226,4 @@ class VerificationQueueListView(generics.ListAPIView):
         if status_param:
             qs = qs.filter(status=status_param)
 
-        return qs.order_by('updated_at')
+        return qs.order_by('updated_at', 'id')

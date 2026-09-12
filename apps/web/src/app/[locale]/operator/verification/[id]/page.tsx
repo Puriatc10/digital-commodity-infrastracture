@@ -31,9 +31,9 @@ export default function VerificationCaseDetailPage() {
           params: { path: { org_id: organizationId } },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       if ((response as any).error) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         throw new Error((response.error as any)?.detail || "Failed to load case detail");
       }
       return response.data;
@@ -46,12 +46,12 @@ export default function VerificationCaseDetailPage() {
       const response = await client.GET("/api/documents/", {
         params: { query: { organization: organizationId } },
       });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       if ((response as any).error) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         throw new Error((response.error as any)?.detail || "Failed to load documents");
       }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       return ((response.data as any)?.results || response.data) || [];
     },
   });
@@ -65,7 +65,7 @@ export default function VerificationCaseDetailPage() {
   };
 
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const handleMutationError = (error: any) => {
     setActionError(error.message || "Action failed");
     // Force refetch on error to catch stale state
@@ -82,8 +82,8 @@ export default function VerificationCaseDetailPage() {
           body: { expected_version: verificationData?.version ?? 0 },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to start review");
+
+      if (res.error) throw new Error((res.error as any)?.detail || "خطا در شروع بررسی. وضعیت تغییر کرده است.");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -99,8 +99,8 @@ export default function VerificationCaseDetailPage() {
           body: { expected_version: verificationData?.version ?? 0 },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to approve basic");
+
+      if (res.error) throw new Error((res.error as any)?.detail || "خطا در تایید پایه");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -116,8 +116,8 @@ export default function VerificationCaseDetailPage() {
           body: { expected_version: verificationData?.version ?? 0 },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to approve full");
+
+      if (res.error) throw new Error((res.error as any)?.detail || "خطا در تایید کامل");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -133,8 +133,8 @@ export default function VerificationCaseDetailPage() {
           body: { expected_version: verificationData?.version ?? 0, reason },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to reject");
+
+      if (res.error) throw new Error((res.error as any)?.detail || "خطا در رد");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -150,8 +150,8 @@ export default function VerificationCaseDetailPage() {
           body: { expected_version: verificationData?.version ?? 0, reason },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to suspend");
+
+      if (res.error) throw new Error((res.error as any)?.detail || "خطا در تعلیق");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -167,8 +167,8 @@ export default function VerificationCaseDetailPage() {
           body: { expected_version: verificationData?.version ?? 0 },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to reopen");
+
+      if (res.error) throw new Error((res.error as any)?.detail || "خطا در بازگشایی");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -181,12 +181,12 @@ export default function VerificationCaseDetailPage() {
         "/api/organizations/{org_id}/verification/notes/",
         {
           params: { path: { org_id: organizationId } },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-          body: { note: internalNote } as any,
+
+          body: { note: internalNote },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((res as any).error) throw new Error(((res as any).error as any)?.detail || "Failed to add note");
+
+      if (res.error) throw new Error((res.error as any)?.detail || "خطا در ثبت یادداشت");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -202,32 +202,32 @@ export default function VerificationCaseDetailPage() {
           body: { document_id: documentId, outcome, expected_version: verificationData?.version ?? 0 },
         }
       );
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to review checklist");
+
+      if (res.error) throw new Error((res.error as any)?.detail || "خطا در بررسی چک‌لیست");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
     onError: handleMutationError,
   });
 
-    if (authState.status === "loading") return <div>Loading case details...</div>;
+    if (authState.status === "loading") return <div>در حال دریافت جزئیات پرونده...</div>;
   if (!isOperatorOrAdmin) return <div className="text-red-500">Unauthorized</div>;
-  if (isLoading) return <div>Loading case details...</div>;
-  if (isError || !verificationData) return <div className="text-red-500">Error loading case details.</div>;
+  if (isLoading) return <div>در حال دریافت جزئیات پرونده...</div>;
+  if (isError || !verificationData) return <div className="text-red-500">خطا در دریافت جزئیات پرونده.</div>;
 
   return (
     <div className="container mx-auto p-4 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Case Verification Details</CardTitle>
+          <CardTitle>جزئیات بررسی پرونده</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <strong>Status: </strong>
+            <strong>وضعیت: </strong>
             <Badge variant="outline">{verificationData.status.replace("_", " ")}</Badge>
           </div>
           <div>
-            <strong>Version: </strong> {verificationData.version}
+            <strong>نسخه: </strong> {verificationData.version}
           </div>
 
           {actionError && <div className="text-red-600 bg-red-100 p-2 rounded">{actionError}</div>}
@@ -248,7 +248,7 @@ export default function VerificationCaseDetailPage() {
                 </Button>
                 <div className="flex items-center gap-2">
                   <Input
-                    placeholder="Rejection Reason"
+                    placeholder="دلیل رد"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                   />
@@ -265,7 +265,7 @@ export default function VerificationCaseDetailPage() {
             {(verificationData.status === "basic_verified" || verificationData.status === "verified") && (
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="Suspension Reason"
+                  placeholder="دلیل تعلیق"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                 />
@@ -289,14 +289,17 @@ export default function VerificationCaseDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Documents Checklist</CardTitle>
+          <CardTitle>لیست مدارک</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-4">
-{documentsIsError ? <p className="text-red-500">Error loading documents.</p> : documentsData && documentsData.length > 0 ? documentsData.map((doc: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{documentsIsError ? <p className="text-red-500">خطا در دریافت مدارک.</p> : documentsData && documentsData.length > 0 ? documentsData.map((doc: NonNullable<typeof documentsData>[0]) => (
               <li key={doc.id} className="flex items-center justify-between border p-2 rounded">
-                <div>
+                <div className="flex items-center gap-2">
                   <strong>{doc.type}</strong> - {doc.verification_status}
+                  <Button variant="outline" onClick={() => window.open(`/api/documents/${doc.id}/download/`, "_blank")}>
+                    دانلود
+                  </Button>
                 </div>
                 {verificationData.status === "under_review" && doc.verification_status !== "replaced" && (
                   <div className="flex gap-2">
@@ -318,18 +321,18 @@ export default function VerificationCaseDetailPage() {
                 )}
                 {doc.verification_status === "replaced" && <Badge variant="outline">Replaced</Badge>}
               </li>
-            )) : <p>No documents found.</p>}
+            )) : <p>مدرکی یافت نشد.</p>}
           </ul>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Internal Notes</CardTitle>
+          <CardTitle>یادداشت‌های داخلی</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <ul className="space-y-2">
-{(verificationData as any)?.notes?.map((note: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{verificationData?.notes?.map((note: any) => (
               <li key={note.id} className="border p-2 rounded bg-gray-50">
                 <p className="text-sm text-gray-500">{note.actor_email} - {new Date(note.created_at).toLocaleString()}</p>
                 <p>{note.note}</p>
@@ -338,7 +341,7 @@ export default function VerificationCaseDetailPage() {
           </ul>
           <div className="flex gap-2">
             <Input
-              placeholder="Add internal note..."
+              placeholder="افزودن یادداشت داخلی..."
               value={internalNote}
               onChange={(e) => setInternalNote(e.target.value)}
             />
@@ -351,11 +354,11 @@ export default function VerificationCaseDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Decision History</CardTitle>
+          <CardTitle>تاریخچه تصمیمات</CardTitle>
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
-{(verificationData as any)?.decisions?.map((decision: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{verificationData?.decisions?.map((decision: any) => (
               <li key={decision.id} className="border p-2 rounded">
                 <p className="text-sm text-gray-500">{decision.actor_email} - {new Date(decision.created_at).toLocaleString()}</p>
                 <p>{decision.previous_status} ➔ {decision.new_status}</p>

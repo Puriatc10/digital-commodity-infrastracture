@@ -133,7 +133,7 @@ describe("M9 Session Cache Isolation", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByText("Loading case details...")).toBeInTheDocument();
+      expect(screen.getByText("در حال دریافت جزئیات پرونده...")).toBeInTheDocument();
     });
 
     vi.mocked(client.GET).mockImplementation(async (url: string) => {
@@ -194,7 +194,7 @@ describe("M9 Session Cache Isolation", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByText("Error loading case details.")).toBeInTheDocument();
+      expect(screen.getByText("خطا در دریافت جزئیات پرونده.")).toBeInTheDocument();
     });
   });
 });

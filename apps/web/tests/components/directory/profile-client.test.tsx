@@ -23,9 +23,11 @@ describe("ProfileClient Component", () => {
 
   const renderComponent = (id = "test-id") =>
     render(
-      <QueryClientProvider client={queryClient}>
-        <ProfileClient id={id} />
-      </QueryClientProvider>
+      <Providers>
+        <AuthProvider>
+          <ProfileClient id={id} />
+        </AuthProvider>
+      </Providers>
     );
 
   it("renders loading state initially", () => {
@@ -43,7 +45,7 @@ describe("ProfileClient Component", () => {
       website: "https://example.com",
       capabilities: ["buyer", "supplier"],
       commodities: ["bitumen"],
-      verification_status: "verified",
+      verification_status: "تایید شده",
       activity_summary: {},
     };
 

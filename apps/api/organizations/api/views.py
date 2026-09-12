@@ -1,4 +1,5 @@
-from .serializers import DirectoryOrganizationSerializer, OrganizationProfileSerializer
+from django.db.models import Q
+from .serializers import DirectoryOrganizationSerializer, OrganizationProfileSerializer, CommodityAssociationSerializer
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
@@ -45,6 +46,7 @@ class OrganizationViewSet(mixins.RetrieveModelMixin,
             memberships__is_active=True
         ).distinct()
 
+    @extend_schema(request=CommodityAssociationSerializer, responses={201: None})
     @action(detail=True, methods=['post'], permission_classes=[CanManageOrganizationCommodities])
     def add_commodity(self, request, pk=None):
         organization = self.get_object()
@@ -60,6 +62,7 @@ class OrganizationViewSet(mixins.RetrieveModelMixin,
         OrganizationCommodity.objects.get_or_create(organization=organization, commodity=commodity)
         return Response({"detail": "Commodity added successfully."}, status=status.HTTP_201_CREATED)
 
+    @extend_schema(request=CommodityAssociationSerializer, responses={204: None})
     @action(detail=True, methods=['delete'], permission_classes=[CanManageOrganizationCommodities])
     def remove_commodity(self, request, pk=None):
         organization = self.get_object()
@@ -76,6 +79,17 @@ class OrganizationViewSet(mixins.RetrieveModelMixin,
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(name="search", type=OpenApiTypes.STR, required=False),
+            OpenApiParameter(name="capability", type=OpenApiTypes.STR, many=True, explode=True, required=False),
+            OpenApiParameter(name="country", type=OpenApiTypes.STR, required=False),
+            OpenApiParameter(name="commodity", type=OpenApiTypes.STR, many=True, explode=True, required=False),
+            OpenApiParameter(name="verification", type=OpenApiTypes.STR, many=True, explode=True, required=False),
+        ]
+    )
+)
 class DirectoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = DirectoryOrganizationSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -85,7 +99,7 @@ class DirectoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if not user or not user.is_authenticated or not user.is_active:
             return Organization.objects.none()
 
-        qs = Organization.objects.filter(is_active=True).distinct()
+        qs = Organization.objects.select_related('verification').prefetch_related('capabilities', 'commodities__commodity').filter(is_active=True).distinct()
 
         search = self.request.query_params.get("search")
         if search:
@@ -105,7 +119,10 @@ class DirectoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
         verifications = self.request.query_params.getlist("verification")
         if verifications:
-            qs = qs.filter(verification__status__in=verifications)
+            if "unverified" in verifications:
+                qs = qs.filter(Q(verification__status__in=verifications) | Q(verification__isnull=True))
+            else:
+                qs = qs.filter(verification__status__in=verifications)
 
         return qs.order_by("name")
 

@@ -6,7 +6,7 @@ from rest_framework.parsers import MultiPartParser
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.http import HttpResponse
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, OpenApiResponse
 from organizations.models import Organization, OrganizationMembership
 from identity.models import SystemRoleAssignment
 from documents.models import VerificationDocument
@@ -30,7 +30,7 @@ def is_owner_or_manager(user, organization):
 class DocumentUploadView(APIView):
     parser_classes = [MultiPartParser]
 
-    @extend_schema(request=UploadDocumentSerializer, responses={201: VerificationDocumentSerializer})
+    @extend_schema(request={"multipart/form-data": UploadDocumentSerializer}, responses={201: VerificationDocumentSerializer})
     def post(self, request):
         serializer = UploadDocumentSerializer(data=request.data)
         if not serializer.is_valid():
@@ -151,7 +151,7 @@ class DocumentUploadView(APIView):
         return Response(VerificationDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
 
 class DocumentDownloadView(APIView):
-    @extend_schema(responses={200: OpenApiTypes.BINARY})
+    @extend_schema(responses={200: OpenApiTypes.BINARY, 403: OpenApiResponse(description="Not authorized"), 404: OpenApiResponse(description="File not found")})
     def get(self, request, pk):
         doc = get_object_or_404(VerificationDocument, id=pk)
 
@@ -178,6 +178,10 @@ class DocumentListView(generics.ListAPIView):
     def get_queryset(self):
         org_id = self.request.query_params.get("organization")
         if not org_id:
+            return VerificationDocument.objects.none()
+        try:
+            uuid.UUID(org_id)
+        except ValueError:
             return VerificationDocument.objects.none()
 
         organization = get_object_or_404(Organization, id=org_id)
