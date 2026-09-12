@@ -1,10 +1,13 @@
 from rest_framework import views, status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+from .serializers import OrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer, ChecklistReviewSerializer, VerificationQueueSerializer
+from .models import OrganizationVerification, VerificationStatus
 from django.shortcuts import get_object_or_404
 from organizations.models import Organization
-from .serializers import OrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer, ChecklistReviewSerializer
+
 from .services import VerificationService, VerificationDomainException
 from .permissions import CanViewVerification, CanSubmitVerification, CanPerformVerificationReview
 
@@ -142,10 +145,7 @@ class VerificationChecklistView(BaseVerificationActionView):
                 return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-from drf_spectacular.utils import OpenApiParameter
-from drf_spectacular.types import OpenApiTypes
-from .serializers import VerificationQueueSerializer
-from .models import OrganizationVerification, VerificationStatus
+
 
 class VerificationQueueListView(generics.ListAPIView):
     serializer_class = VerificationQueueSerializer

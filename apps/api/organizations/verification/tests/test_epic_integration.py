@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from organizations.models import Organization, OrganizationMembership
 from identity.models import SystemRoleAssignment
 from documents.models import VerificationDocument, DocumentType
-from organizations.verification.models import OrganizationVerification, VerificationStatus
+from organizations.verification.models import VerificationStatus
 from organizations.verification.services import VerificationService
 
 User = get_user_model()
