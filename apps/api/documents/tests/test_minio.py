@@ -36,7 +36,7 @@ class MinioIntegrationTests(APITestCase):
     def test_real_minio_upload_and_download(self):
         self.client.force_login(self.user)
 
-        content = b"fake-pdf-content-for-real-minio"
+        content = b"%PDF-fake-pdf-content-for-real-minio"
         file_obj = BytesIO(content)
         file_obj.name = "real.pdf"
         file_obj.content_type = "application/pdf"

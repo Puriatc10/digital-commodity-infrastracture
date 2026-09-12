@@ -582,6 +582,18 @@ export interface components {
         HealthResponse: {
             status: string;
         };
+        InternalOrganizationVerificationDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["VerificationStatusEnum"];
+            readonly version: number;
+            /** Format: date-time */
+            readonly updated_at: string;
+            readonly decisions: components["schemas"]["VerificationDecision"][];
+            readonly notes: {
+                [key: string]: unknown;
+            }[];
+        };
         Login: {
             /** Format: email */
             email: string;
@@ -630,10 +642,6 @@ export interface components {
             readonly version: number;
             /** Format: date-time */
             readonly updated_at: string;
-            readonly decisions: components["schemas"]["VerificationDecision"][];
-            readonly notes: {
-                [key: string]: unknown;
-            }[];
         };
         /**
          * @description * `accepted` - accepted
@@ -725,7 +733,6 @@ export interface components {
             organization: string;
             type: components["schemas"]["TypeEnum"];
             file_name: string;
-            readonly object_key: string;
             readonly mime_type: string;
             readonly size_bytes: number;
             readonly uploaded_by: number | null;
@@ -1235,7 +1242,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. invalid transition) */
@@ -1274,7 +1281,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. invalid transition) */
@@ -1313,7 +1320,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. missing document, invalid transition) */
@@ -1377,7 +1384,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. invalid transition) */
@@ -1416,7 +1423,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. invalid transition) */
@@ -1455,7 +1462,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. invalid transition) */
@@ -1494,7 +1501,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. invalid transition) */
@@ -1533,7 +1540,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. invalid transition) */

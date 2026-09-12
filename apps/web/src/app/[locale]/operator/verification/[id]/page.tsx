@@ -8,11 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth-context";
+
 
 export default function VerificationCaseDetailPage() {
   const params = useParams();
   const organizationId = params.id as string;
   const queryClient = useQueryClient();
+  const { state: authState } = useAuth();
+
+  const isOperatorOrAdmin = authState.status === "authenticated" && authState.systemRoles.some(r => r === "operator" || r === "admin");
   const [reason, setReason] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [actionError, setActionError] = useState("");
@@ -35,7 +40,7 @@ export default function VerificationCaseDetailPage() {
     },
   });
 
-  const { data: documentsData, refetch: refetchDocs } = useQuery({
+  const { data: documentsData, refetch: refetchDocs, isError: documentsIsError } = useQuery({
     queryKey: ["verificationDocuments", organizationId],
     queryFn: async () => {
       const response = await client.GET("/api/documents/", {
@@ -205,6 +210,8 @@ export default function VerificationCaseDetailPage() {
     onError: handleMutationError,
   });
 
+    if (authState.status === "loading") return <div>Loading case details...</div>;
+  if (!isOperatorOrAdmin) return <div className="text-red-500">Unauthorized</div>;
   if (isLoading) return <div>Loading case details...</div>;
   if (isError || !verificationData) return <div className="text-red-500">Error loading case details.</div>;
 
@@ -286,7 +293,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent>
           <ul className="space-y-4">
-{documentsData && documentsData.length > 0 ? documentsData.map((doc: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{documentsIsError ? <p className="text-red-500">Error loading documents.</p> : documentsData && documentsData.length > 0 ? documentsData.map((doc: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
               <li key={doc.id} className="flex items-center justify-between border p-2 rounded">
                 <div>
                   <strong>{doc.type}</strong> - {doc.verification_status}
@@ -322,7 +329,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <ul className="space-y-2">
-{verificationData.notes?.map((note: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{(verificationData as any)?.notes?.map((note: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
               <li key={note.id} className="border p-2 rounded bg-gray-50">
                 <p className="text-sm text-gray-500">{note.actor_email} - {new Date(note.created_at).toLocaleString()}</p>
                 <p>{note.note}</p>
@@ -348,7 +355,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
-{verificationData.decisions?.map((decision: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{(verificationData as any)?.decisions?.map((decision: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
               <li key={decision.id} className="border p-2 rounded">
                 <p className="text-sm text-gray-500">{decision.actor_email} - {new Date(decision.created_at).toLocaleString()}</p>
                 <p>{decision.previous_status} ➔ {decision.new_status}</p>

@@ -93,7 +93,7 @@ class VerificationPermissionTests(APITestCase):
         self.client.force_authenticate(user=self.owner)
         response = self.client.get(detail_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsNone(response.data['notes']) # Owner cannot see internal notes
+        self.assertNotIn('notes', response.data) # Owner cannot see internal notes
 
         self.client.force_authenticate(user=self.operator)
         response = self.client.get(detail_url)

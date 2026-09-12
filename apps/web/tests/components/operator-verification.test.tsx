@@ -4,6 +4,20 @@ import { cleanup } from "@testing-library/react";
 import VerificationQueuePage from "../../src/app/[locale]/operator/verification/page";
 import VerificationCaseDetailPage from "../../src/app/[locale]/operator/verification/[id]/page";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+import { AuthProvider } from "../../src/lib/auth-context";
+
+const Wrapper = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = createTestQueryClient();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        {children}
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
+
 import { apiClient as client } from "../../src/lib/api/client";
 
 vi.mock("../../src/lib/api/client", () => ({
@@ -33,7 +47,14 @@ describe("Verification Operator UI", () => {
   });
 
   it("renders the verification queue with pending cases", async () => {
-    vi.mocked(client.GET).mockResolvedValue({
+    vi.mocked(client.GET).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") {
+        return {
+          response: { ok: true, status: 200 },
+          data: { id: 1, system_roles: ["operator"], organizations: [] }
+        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+      }
+      return {
       data: {
         results: [
           {
@@ -46,12 +67,11 @@ describe("Verification Operator UI", () => {
         ],
       },
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    } as any;
+    });
 
     render(
-      <QueryClientProvider client={createTestQueryClient()}>
-        <VerificationQueuePage />
-      </QueryClientProvider>
+      (() => { const WrapperInst = Wrapper; return <WrapperInst><VerificationQueuePage /></WrapperInst>; })()
     );
 
     expect(screen.getByText("Loading queue...")).toBeInTheDocument();
@@ -68,6 +88,12 @@ describe("Verification Operator UI", () => {
 
   it("handles case detail rendering and Start Review action", async () => {
     vi.mocked(client.GET).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") {
+        return {
+          response: { ok: true, status: 200 },
+          data: { id: 1, system_roles: ["operator"], organizations: [] }
+        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+      }
       if (url.includes("/verification/")) {
         return {
           data: {
@@ -77,8 +103,7 @@ describe("Verification Operator UI", () => {
             decisions: [],
             notes: [],
           },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any;
+        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
       }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return { data: { results: [] } } as any; // documents
@@ -87,10 +112,9 @@ describe("Verification Operator UI", () => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(client.POST).mockResolvedValue({ data: {} } as any);
 
+
     render(
-      <QueryClientProvider client={createTestQueryClient()}>
-        <VerificationCaseDetailPage />
-      </QueryClientProvider>
+      (() => { const WrapperInst = Wrapper; return <WrapperInst><VerificationCaseDetailPage /></WrapperInst>; })()
     );
 
     await waitFor(() => {
@@ -112,6 +136,12 @@ describe("Verification Operator UI", () => {
 
   it("requires a reason for rejection and handles 409 stale-state response", async () => {
     vi.mocked(client.GET).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") {
+        return {
+          response: { ok: true, status: 200 },
+          data: { id: 1, system_roles: ["operator"], organizations: [] }
+        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+      }
       if (url.includes("/verification/")) {
         return {
           data: {
@@ -121,8 +151,7 @@ describe("Verification Operator UI", () => {
             decisions: [],
             notes: [],
           },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any;
+        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
       }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return { data: { results: [] } } as any; // documents
@@ -135,9 +164,7 @@ describe("Verification Operator UI", () => {
     } as any);
 
     render(
-      <QueryClientProvider client={createTestQueryClient()}>
-        <VerificationCaseDetailPage />
-      </QueryClientProvider>
+      (() => { const WrapperInst = Wrapper; return <WrapperInst><VerificationCaseDetailPage /></WrapperInst>; })()
     );
 
     await waitFor(() => {
@@ -156,21 +183,27 @@ describe("Verification Operator UI", () => {
     await waitFor(() => {
       expect(screen.getByText(/Stale object error/)).toBeInTheDocument();
       // Should have triggered a refetch on error to handle stale state
-      expect(client.GET).toHaveBeenCalledTimes(4); // initial 2 + refetch 2
+      expect(client.GET).toHaveBeenCalledTimes(5); // initial 2 + refetch 2
     });
   });
 
   it("handles auth failure by properly rejecting rendering", async () => {
     // If the operator has an invalid session, GET will fail.
-    vi.mocked(client.GET).mockResolvedValue({
+    vi.mocked(client.GET).mockImplementation(async (url: string) => {
+      if (url === "/api/auth/me") {
+        return {
+          response: { ok: true, status: 200 },
+          data: { id: 1, system_roles: ["operator"], organizations: [] }
+        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+      }
+      return {
       error: { detail: "Authentication failed" },
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    } as any;
+    });
 
     render(
-      <QueryClientProvider client={createTestQueryClient()}>
-        <VerificationQueuePage />
-      </QueryClientProvider>
+      (() => { const WrapperInst = Wrapper; return <WrapperInst><VerificationQueuePage /></WrapperInst>; })()
     );
 
     await waitFor(() => {
