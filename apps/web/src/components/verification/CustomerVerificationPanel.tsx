@@ -24,7 +24,7 @@ export function CustomerVerificationPanel({ orgId }: { orgId: string }) {
       const res = await client.GET("/api/organizations/{org_id}/verification/", {
         params: { path: { org_id: orgId } },
       });
-      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "Failed to load verification status");
+      if ((res as { error?: { detail?: string } }).error) throw new Error(((res as { error?: { detail?: string } }).error)?.detail || "Failed to load verification status");
       return res.data;
     },
     enabled: !!user,
@@ -36,7 +36,7 @@ export function CustomerVerificationPanel({ orgId }: { orgId: string }) {
       const res = await client.GET("/api/documents/", {
         params: { query: { organization: orgId } as { organization: string } },
       });
-      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "Failed to load documents");
+      if ((res as { error?: { detail?: string } }).error) throw new Error(((res as { error?: { detail?: string } }).error)?.detail || "Failed to load documents");
       return res.data;
     },
     enabled: !!user,

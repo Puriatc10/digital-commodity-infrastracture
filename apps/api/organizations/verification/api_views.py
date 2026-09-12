@@ -1,8 +1,7 @@
 from rest_framework import views, status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter, inline_serializer
-from rest_framework import serializers
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from .serializers import OrganizationVerificationDetailSerializer, InternalOrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer, VerificationNoteCreateSerializer, ChecklistReviewSerializer, VerificationQueueSerializer, VerificationSubmitSerializer, VerificationRejectSerializer, VerificationSuspendSerializer, VerificationErrorDetailSerializer
 from .models import OrganizationVerification, VerificationStatus

@@ -83,7 +83,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در شروع بررسی. وضعیت تغییر کرده است.");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "خطا در شروع بررسی. وضعیت تغییر کرده است.");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -100,7 +100,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در تایید پایه");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "خطا در تایید پایه");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -117,7 +117,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در تایید کامل");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "خطا در تایید کامل");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -134,7 +134,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در رد");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "خطا در رد");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -151,7 +151,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در تعلیق");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "خطا در تعلیق");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -168,7 +168,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در بازگشایی");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "خطا در بازگشایی");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -182,11 +182,11 @@ export default function VerificationCaseDetailPage() {
         {
           params: { path: { org_id: organizationId } },
 
-          body: { note: internalNote },
+          body: { note: internalNote } as unknown as never,
         }
       );
 
-      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در ثبت یادداشت");
+      if ((res as unknown as { error?: { detail?: string } }).error) throw new Error(((res as unknown as { error?: { detail?: string } }).error)?.detail || "خطا در ثبت یادداشت");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -203,7 +203,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در بررسی چک‌لیست");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "خطا در بررسی چک‌لیست");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -293,7 +293,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent>
           <ul className="space-y-4">
-{documentsIsError ? <p className="text-red-500">خطا در دریافت مدارک.</p> : documentsData && documentsData.length > 0 ? documentsData.map((doc: NonNullable<typeof documentsData>[0]) => (
+{documentsIsError ? <p className="text-red-500">خطا در دریافت مدارک.</p> : documentsData && documentsData.length > 0 ? (documentsData as { id: string, type: string, file_name: string, is_current: boolean, verification_status: string }[]).map((doc) => (
               <li key={doc.id} className="flex items-center justify-between border p-2 rounded">
                 <div className="flex items-center gap-2">
                   <strong>{doc.type}</strong> - {doc.verification_status}
@@ -332,7 +332,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <ul className="space-y-2">
-{verificationData?.notes?.map((note: { id: string, actor_email: string, note: string, created_at: string }) => (
+{(verificationData as { notes?: { id: string, actor_email: string, note: string, created_at: string }[] })?.notes?.map((note) => (
               <li key={note.id} className="border p-2 rounded bg-gray-50">
                 <p className="text-sm text-gray-500">{note.actor_email} - {new Date(note.created_at).toLocaleString()}</p>
                 <p>{note.note}</p>
@@ -358,7 +358,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
-{verificationData?.decisions?.map((decision: { id: string, actor_email: string, previous_status: string, new_status: string, reason?: string, created_at: string }) => (
+{(verificationData as { decisions?: { id: string, actor_email: string, previous_status: string, new_status: string, reason?: string, created_at: string }[] })?.decisions?.map((decision) => (
               <li key={decision.id} className="border p-2 rounded">
                 <p className="text-sm text-gray-500">{decision.actor_email} - {new Date(decision.created_at).toLocaleString()}</p>
                 <p>{decision.previous_status} ➔ {decision.new_status}</p>

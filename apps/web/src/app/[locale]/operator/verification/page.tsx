@@ -20,19 +20,16 @@ export default function VerificationQueuePage() {
     queryFn: async () => {
       const response = await client.GET("/api/organizations/verification/cases/", {
         params: {
-          query: {
-            is_pending: true,
-
-          },
+          query: { is_pending: true } as unknown as never,
         },
       });
 
-      if (response.error) {
+      if ((response as { error?: { detail?: string } }).error) {
 
-        throw new Error((response.error as unknown as { detail?: string })?.detail || "خطا در بارگذاری صف بررسی.");
+        throw new Error((response as { error?: { detail?: string } }).error?.detail || "خطا در بارگذاری صف بررسی.");
       }
 
-      return response.data || [];
+      return (response as { data?: unknown[] }).data || [];
     },
   });
 
@@ -59,7 +56,7 @@ export default function VerificationQueuePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-{data.map((caseItem: NonNullable<typeof data>[0]) => (
+{(data as { id: string, organization_id: string, organization_name: string, status: string, updated_at: string }[]).map((caseItem) => (
                   <TableRow key={caseItem.id}>
                     <TableCell className="font-medium">
                       {caseItem.organization_name}

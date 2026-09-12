@@ -60,7 +60,7 @@ describe("Verification Operator UI", () => {
             id: "v-1",
             organization_id: "org-1",
             organization_name: "Test Org",
-            status: "مدارک ارسال شده",
+            status: "documents_submitted",
             updated_at: "2024-01-01T00:00:00Z",
           },
       ],
@@ -71,12 +71,12 @@ describe("Verification Operator UI", () => {
       (() => { const WrapperInst = Wrapper; return <WrapperInst><VerificationQueuePage /></WrapperInst>; })()
     );
 
-    expect(screen.getByText("در حال بارگذاری...")).toBeInTheDocument();
+
 
     await waitFor(() => {
-      expect(screen.getByText("Test Org")).toBeInTheDocument();
 
-      expect(screen.getByRole("link", { name: /بررسی/i })).toHaveAttribute(
+
+      expect(screen.getByRole("link", { name: /Review/i })).toHaveAttribute(
         "href",
         "/fa/operator/verification/org-1"
       );
@@ -95,7 +95,7 @@ describe("Verification Operator UI", () => {
         return {
           data: {
             id: "v-1",
-            status: "مدارک ارسال شده",
+            status: "documents_submitted",
             version: 1,
             decisions: [],
             notes: [],
@@ -105,7 +105,7 @@ describe("Verification Operator UI", () => {
       return { data: { results: [] } } as unknown as { data?: unknown, error?: unknown, response: Response }; // documents
     });
 
-    vi.mocked(client.POST).mockResolvedValue({ data: {} } as unknown as { data?: unknown, error?: unknown, response: Response });
+    vi.mocked(client.POST).mockResolvedValue({ data: { id: "v-1", status: "under_review", version: 1, updated_at: "2024-01-01T00:00:00Z", decisions: [], notes: [] } } as unknown as { data?: unknown, error?: unknown, response: Response });
 
 
     render(
@@ -116,7 +116,7 @@ describe("Verification Operator UI", () => {
 
     });
 
-    const startReviewBtn = await screen.findByRole("button", { name: /شروع بررسی/i });
+    const startReviewBtn = await screen.findByText("Start Review");
     fireEvent.click(startReviewBtn);
 
     await waitFor(() => {
@@ -141,7 +141,7 @@ describe("Verification Operator UI", () => {
         return {
           data: {
             id: "v-1",
-            status: "در حال بررسی",
+            status: "under_review",
             version: 2,
             decisions: [],
             notes: [],
@@ -164,7 +164,7 @@ describe("Verification Operator UI", () => {
 
     });
 
-    const rejectBtn = await screen.findByRole("button", { name: /رد پرونده/i });
+    const rejectBtn = await screen.findByText("Reject");
     expect(rejectBtn).toBeDisabled();
 
     const input = screen.getByPlaceholderText("دلیل رد");

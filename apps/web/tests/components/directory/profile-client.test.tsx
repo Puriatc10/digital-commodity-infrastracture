@@ -16,7 +16,8 @@ vi.mock("@/lib/api/client", () => ({
 describe("ProfileClient Component", () => {
 
   beforeEach(() => {
-    new QueryClient({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const unusedClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
     vi.clearAllMocks();
@@ -46,7 +47,7 @@ describe("ProfileClient Component", () => {
       website: "https://example.com",
       capabilities: ["buyer", "supplier"],
       commodities: ["bitumen"],
-      verification_status: "تایید شده",
+      verification_status: "verified",
       activity_summary: {},
     };
 
