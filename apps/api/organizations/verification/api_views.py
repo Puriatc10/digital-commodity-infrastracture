@@ -52,11 +52,33 @@ class BaseVerificationActionView(views.APIView):
                 return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-class VerificationSubmitView(BaseVerificationActionView):
+class VerificationSubmitView(views.APIView):
     permission_classes = [IsAuthenticated, CanSubmitVerification]
+    serializer_class = VerificationActionSerializer # Needed for openapi guess
 
-    def perform_action(self, org, actor, data):
-        return VerificationService.submit(org.id, actor, data.get('expected_version'))
+    # For submit, it could be the very first time so expected_version isn't strictly required
+    @extend_schema(
+        request=VerificationActionSerializer,
+        responses={
+            200: OrganizationVerificationDetailSerializer,
+            400: OpenApiResponse(description="Domain error (e.g. invalid transition)"),
+            409: OpenApiResponse(description="Conflict (stale version)")
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        org_id = self.kwargs['org_id']
+        org = get_object_or_404(Organization, id=org_id)
+        self.check_object_permissions(self.request, org)
+        expected_version = request.data.get('expected_version')
+
+        try:
+            verification = VerificationService.submit(org.id, request.user, expected_version)
+            response_serializer = OrganizationVerificationDetailSerializer(verification, context={'request': request})
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+        except VerificationDomainException as e:
+            if "Stale object" in str(e):
+                return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class VerificationStartReviewView(BaseVerificationActionView):
     permission_classes = [IsAuthenticated, CanPerformVerificationReview]

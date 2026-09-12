@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from organizations.models import Organization
 from documents.models import VerificationDocument, DocumentType
-from organizations.verification.models import VerificationStatus
+from organizations.verification.models import VerificationStatus, OrganizationVerification
 from organizations.verification.services import VerificationService, VerificationDomainException
 
 User = get_user_model()
@@ -55,7 +55,7 @@ class VerificationDomainTests(TestCase):
         self.assertEqual(verification.version, 2)
 
         # 2. Start Review
-        verification = VerificationService.start_review(self.org.id, self.actor)
+        verification = VerificationService.start_review(self.org.id, self.actor, expected_version=2)
         self.assertEqual(verification.status, VerificationStatus.UNDER_REVIEW)
         self.assertEqual(verification.version, 3)
 
@@ -66,21 +66,22 @@ class VerificationDomainTests(TestCase):
         self.doc_auth.verification_status = "accepted"
         self.doc_auth.save()
         # 3. Basic Verified
-        verification = VerificationService.basic_approval(self.org.id, self.actor)
+        verification = VerificationService.basic_approval(self.org.id, self.actor, expected_version=3)
         self.assertEqual(verification.status, VerificationStatus.BASIC_VERIFIED)
         self.assertEqual(verification.version, 4)
 
         # 4. Under Review again (Upgrade)
         # Note: This is an unlisted specific transition, reopening from Basic Verified to Under Review
-        verification = VerificationService.reopen(self.org.id, self.actor)
+        verification = VerificationService.reopen(self.org.id, self.actor, expected_version=4)
         self.assertEqual(verification.status, VerificationStatus.UNDER_REVIEW)
+        self.assertEqual(verification.version, 5)
 
         self.doc_trade.verification_status = "accepted"
         self.doc_trade.save()
         self.doc_bank.verification_status = "accepted"
         self.doc_bank.save()
         # 5. Verified
-        verification = VerificationService.full_approval(self.org.id, self.actor)
+        verification = VerificationService.full_approval(self.org.id, self.actor, expected_version=5)
         self.assertEqual(verification.status, VerificationStatus.VERIFIED)
 
         # Ensure history matches
@@ -92,17 +93,17 @@ class VerificationDomainTests(TestCase):
 
     def test_rejection_requires_reason(self):
         VerificationService.submit(self.org.id, self.actor)
-        VerificationService.start_review(self.org.id, self.actor)
+        VerificationService.start_review(self.org.id, self.actor, expected_version=2)
 
         with self.assertRaisesMessage(VerificationDomainException, "requires a reason"):
-            VerificationService.reject(self.org.id, self.actor, reason="")
+            VerificationService.reject(self.org.id, self.actor, reason="", expected_version=3)
 
-        verification = VerificationService.reject(self.org.id, self.actor, reason="Missing tax ID")
+        verification = VerificationService.reject(self.org.id, self.actor, reason="Missing tax ID", expected_version=3)
         self.assertEqual(verification.status, VerificationStatus.UNVERIFIED)
 
     def test_suspension_requires_reason(self):
         VerificationService.submit(self.org.id, self.actor)
-        VerificationService.start_review(self.org.id, self.actor)
+        VerificationService.start_review(self.org.id, self.actor, expected_version=2)
         self.doc_reg.verification_status = "accepted"
         self.doc_reg.save()
         self.doc_tax.verification_status = "accepted"
@@ -113,27 +114,31 @@ class VerificationDomainTests(TestCase):
         self.doc_trade.save()
         self.doc_bank.verification_status = "accepted"
         self.doc_bank.save()
-        VerificationService.full_approval(self.org.id, self.actor)
+        VerificationService.full_approval(self.org.id, self.actor, expected_version=3)
 
         with self.assertRaisesMessage(VerificationDomainException, "requires a reason"):
-            VerificationService.suspend(self.org.id, self.actor, reason="")
+            VerificationService.suspend(self.org.id, self.actor, reason="", expected_version=4)
 
-        verification = VerificationService.suspend(self.org.id, self.actor, reason="Suspicious activity")
+        verification = VerificationService.suspend(self.org.id, self.actor, reason="Suspicious activity", expected_version=4)
         self.assertEqual(verification.status, VerificationStatus.SUSPENDED)
 
     def test_reset_evidence_replacement(self):
         VerificationService.submit(self.org.id, self.actor)
-        VerificationService.start_review(self.org.id, self.actor)
+        VerificationService.start_review(self.org.id, self.actor, expected_version=2)
         self.doc_reg.verification_status = "accepted"
         self.doc_reg.save()
         self.doc_tax.verification_status = "accepted"
         self.doc_tax.save()
         self.doc_auth.verification_status = "accepted"
         self.doc_auth.save()
-        VerificationService.basic_approval(self.org.id, self.actor)
+        VerificationService.basic_approval(self.org.id, self.actor, expected_version=3)
 
-        verification = VerificationService.reset_due_to_evidence_replacement(self.org.id, self.actor)
+        verification = VerificationService.reset_due_to_evidence_replacement(self.org.id, self.actor, expected_version=4)
         self.assertEqual(verification.status, VerificationStatus.DOCUMENTS_SUBMITTED)
+
+        # Verify M12 Action field is populated
+        decision = verification.decisions.first()
+        self.assertEqual(decision.action, "evidence_replacement_invalidation")
 
     def test_invalid_transition(self):
         # Attempt to suspend an unverified org
@@ -151,3 +156,28 @@ class VerificationDomainTests(TestCase):
              pass
 
         self.assertEqual(verification.decisions.count(), 0)
+
+    def test_missing_version_raises_error(self):
+        # M1 verification expected_version enforcement
+        VerificationService.submit(self.org.id, self.actor)
+
+        with self.assertRaisesMessage(VerificationDomainException, "Expected version is required for mutation"):
+            VerificationService.start_review(self.org.id, self.actor, expected_version=None)
+
+    def test_null_version_raises_error(self):
+        # M1 verification expected_version enforcement
+        VerificationService.submit(self.org.id, self.actor)
+
+        with self.assertRaisesMessage(VerificationDomainException, "Expected version is required for mutation"):
+            VerificationService.start_review(self.org.id, self.actor, expected_version=None)
+
+    def test_decision_history_has_action_identity(self):
+        # M12 Verification decisions must have explicit action identity
+        VerificationService.submit(self.org.id, self.actor)
+        VerificationService.start_review(self.org.id, self.actor, expected_version=2)
+
+        verification = OrganizationVerification.objects.get(organization_id=self.org.id)
+        decisions = verification.decisions.order_by("created_at")
+
+        self.assertEqual(decisions[0].action, "submit")
+        self.assertEqual(decisions[1].action, "start_review")

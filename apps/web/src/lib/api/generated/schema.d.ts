@@ -480,11 +480,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `submit` - Submit
+         *     * `start_review` - Start Review
+         *     * `approve_basic` - Approve Basic
+         *     * `approve_full` - Approve Full
+         *     * `reject` - Reject
+         *     * `suspend` - Suspend
+         *     * `reopen` - Reopen
+         *     * `evidence_replacement_invalidation` - Evidence Replacement Invalidation
+         * @enum {string}
+         */
+        ActionEnum: "submit" | "start_review" | "approve_basic" | "approve_full" | "reject" | "suspend" | "reopen" | "evidence_replacement_invalidation";
         ChecklistReview: {
             /** Format: uuid */
             document_id: string;
             outcome: components["schemas"]["OutcomeEnum"];
-            expected_version?: number | null;
+            expected_version: number;
         };
         CommodityAttributeDefinition: {
             /** Format: uuid */
@@ -575,6 +587,8 @@ export interface components {
             email: string;
             password: string;
         };
+        /** @enum {unknown} */
+        NullEnum: null;
         Organization: {
             /** Format: uuid */
             readonly id: string;
@@ -690,13 +704,14 @@ export interface components {
         };
         VerificationAction: {
             reason?: string;
-            expected_version?: number | null;
+            expected_version: number;
         };
         VerificationDecision: {
             /** Format: uuid */
             readonly id: string;
             /** Format: email */
             readonly actor_email: string;
+            readonly action: (components["schemas"]["ActionEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly previous_status: components["schemas"]["VerificationStatusEnum"];
             readonly new_status: components["schemas"]["VerificationStatusEnum"];
             readonly reason: string;
@@ -716,6 +731,8 @@ export interface components {
             readonly uploaded_by: number | null;
             readonly verification_status: string;
             readonly verification_version: number | null;
+            /** @default true */
+            readonly is_current: boolean;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -1207,7 +1224,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1246,7 +1263,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1349,7 +1366,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1388,7 +1405,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1427,7 +1444,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1466,7 +1483,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };
@@ -1505,7 +1522,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["VerificationAction"];
             };

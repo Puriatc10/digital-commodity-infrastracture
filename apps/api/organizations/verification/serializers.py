@@ -6,7 +6,7 @@ class VerificationDecisionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VerificationDecision
-        fields = ['id', 'actor_email', 'previous_status', 'new_status', 'reason', 'created_at']
+        fields = ['id', 'actor_email', 'action', 'previous_status', 'new_status', 'reason', 'created_at']
         read_only_fields = fields
 
 class VerificationNoteSerializer(serializers.ModelSerializer):
@@ -42,12 +42,12 @@ class OrganizationVerificationDetailSerializer(serializers.ModelSerializer):
 
 class VerificationActionSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True)
-    expected_version = serializers.IntegerField(required=False, allow_null=True)
+    expected_version = serializers.IntegerField(required=True, allow_null=False)
 
 class ChecklistReviewSerializer(serializers.Serializer):
     document_id = serializers.UUIDField()
     outcome = serializers.ChoiceField(choices=["accepted", "rejected"])
-    expected_version = serializers.IntegerField(required=False, allow_null=True)
+    expected_version = serializers.IntegerField(required=True, allow_null=False)
 
 class VerificationQueueSerializer(serializers.ModelSerializer):
     organization_id = serializers.UUIDField(source='organization.id', read_only=True)

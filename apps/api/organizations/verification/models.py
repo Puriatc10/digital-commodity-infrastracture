@@ -33,10 +33,21 @@ class OrganizationVerification(models.Model):
     def __str__(self):
         return f"{self.organization.name} - {self.get_status_display()}"
 
+class VerificationAction(models.TextChoices):
+    SUBMIT = "submit", "Submit"
+    START_REVIEW = "start_review", "Start Review"
+    APPROVE_BASIC = "approve_basic", "Approve Basic"
+    APPROVE_FULL = "approve_full", "Approve Full"
+    REJECT = "reject", "Reject"
+    SUSPEND = "suspend", "Suspend"
+    REOPEN = "reopen", "Reopen"
+    EVIDENCE_REPLACEMENT_INVALIDATION = "evidence_replacement_invalidation", "Evidence Replacement Invalidation"
+
 class VerificationDecision(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     verification = models.ForeignKey(OrganizationVerification, on_delete=models.CASCADE, related_name="decisions")
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="verification_decisions")
+    action = models.CharField(max_length=50, choices=VerificationAction.choices, null=True, blank=True)
     previous_status = models.CharField(max_length=50, choices=VerificationStatus.choices)
     new_status = models.CharField(max_length=50, choices=VerificationStatus.choices)
     reason = models.TextField(blank=True)
@@ -53,6 +64,12 @@ class VerificationDecision(models.Model):
                 condition=models.Q(new_status__in=[c[0] for c in VerificationStatus.choices]),
                 name="check_valid_new_status"
             ),
+            models.CheckConstraint(
+                # Null action is permitted ONLY for legacy migration records. New records must supply a valid action.
+                # However, since this check is database wide, we can just allow null OR a valid choice.
+                condition=models.Q(action__isnull=True) | models.Q(action__in=[c[0] for c in VerificationAction.choices]),
+                name="check_valid_decision_action"
+            )
         ]
 
     def __str__(self):
@@ -70,3 +87,26 @@ class VerificationNote(models.Model):
 
     def __str__(self):
         return f"Note for {self.verification.organization.name} at {self.created_at}"
+
+class VerificationChecklistReview(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    verification = models.ForeignKey(OrganizationVerification, on_delete=models.CASCADE, related_name="checklist_reviews")
+    document = models.ForeignKey("documents.VerificationDocument", on_delete=models.CASCADE, related_name="reviews")
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="checklist_reviews")
+    outcome = models.CharField(
+        max_length=50,
+        choices=[("pending", "Pending"), ("accepted", "Accepted"), ("rejected", "Rejected")]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(outcome__in=["pending", "accepted", "rejected"]),
+                name="check_valid_review_outcome"
+            )
+        ]
+
+    def __str__(self):
+        return f"Review {self.outcome} by {self.reviewer} for {self.document.file_name}"

@@ -15,7 +15,7 @@ class VerificationChecklistDomainTests(TestCase):
         self.org2 = Organization.objects.create(name="Other Org", country="IR")
 
         self.verification = VerificationService.submit(self.org.id, self.actor)
-        VerificationService.start_review(self.org.id, self.actor)
+        VerificationService.start_review(self.org.id, self.actor, expected_version=2)
 
         self.doc_reg = VerificationDocument.objects.create(
             organization=self.org, type=DocumentType.COMPANY_REGISTRATION,
@@ -39,47 +39,47 @@ class VerificationChecklistDomainTests(TestCase):
         )
 
     def test_successful_basic_approval(self):
-        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_tax.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_auth.id, self.actor, "accepted")
+        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted", expected_version=3)
+        VerificationService.review_checklist_item(self.org.id, self.doc_tax.id, self.actor, "accepted", expected_version=4)
+        VerificationService.review_checklist_item(self.org.id, self.doc_auth.id, self.actor, "accepted", expected_version=5)
 
-        ver = VerificationService.basic_approval(self.org.id, self.actor)
+        ver = VerificationService.basic_approval(self.org.id, self.actor, expected_version=6)
         self.assertEqual(ver.status, VerificationStatus.BASIC_VERIFIED)
 
     def test_missing_required_evidence_basic(self):
-        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_tax.id, self.actor, "accepted")
+        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted", expected_version=3)
+        VerificationService.review_checklist_item(self.org.id, self.doc_tax.id, self.actor, "accepted", expected_version=4)
         # Missing auth rep
         with self.assertRaises(VerificationDomainException):
-            VerificationService.basic_approval(self.org.id, self.actor)
+            VerificationService.basic_approval(self.org.id, self.actor, expected_version=5)
 
     def test_rejected_evidence_basic(self):
-        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_tax.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_auth.id, self.actor, "rejected")
+        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted", expected_version=3)
+        VerificationService.review_checklist_item(self.org.id, self.doc_tax.id, self.actor, "accepted", expected_version=4)
+        VerificationService.review_checklist_item(self.org.id, self.doc_auth.id, self.actor, "rejected", expected_version=5)
 
         with self.assertRaises(VerificationDomainException):
-            VerificationService.basic_approval(self.org.id, self.actor)
+            VerificationService.basic_approval(self.org.id, self.actor, expected_version=6)
 
     def test_successful_full_approval(self):
-        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_tax.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_auth.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_trade.id, self.actor, "accepted")
-        VerificationService.review_checklist_item(self.org.id, self.doc_bank.id, self.actor, "accepted")
+        VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted", expected_version=3)
+        VerificationService.review_checklist_item(self.org.id, self.doc_tax.id, self.actor, "accepted", expected_version=4)
+        VerificationService.review_checklist_item(self.org.id, self.doc_auth.id, self.actor, "accepted", expected_version=5)
+        VerificationService.review_checklist_item(self.org.id, self.doc_trade.id, self.actor, "accepted", expected_version=6)
+        VerificationService.review_checklist_item(self.org.id, self.doc_bank.id, self.actor, "accepted", expected_version=7)
 
-        ver = VerificationService.full_approval(self.org.id, self.actor)
+        ver = VerificationService.full_approval(self.org.id, self.actor, expected_version=8)
         self.assertEqual(ver.status, VerificationStatus.VERIFIED)
 
     def test_superseded_evidence_blocks_review(self):
-        self.doc_reg.verification_status = "replaced"
+        self.doc_reg.is_current = False
         self.doc_reg.save()
 
         with self.assertRaises(VerificationDomainException):
-            VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted")
+            VerificationService.review_checklist_item(self.org.id, self.doc_reg.id, self.actor, "accepted", expected_version=3)
 
         with self.assertRaises(VerificationDomainException):
-            VerificationService.basic_approval(self.org.id, self.actor)
+            VerificationService.basic_approval(self.org.id, self.actor, expected_version=3)
 
     def test_foreign_organization_document(self):
         other_doc = VerificationDocument.objects.create(
@@ -88,11 +88,11 @@ class VerificationChecklistDomainTests(TestCase):
         )
         # Attempt to review a document under wrong org
         with self.assertRaises(VerificationDomainException):
-            VerificationService.review_checklist_item(self.org.id, other_doc.id, self.actor, "accepted")
+            VerificationService.review_checklist_item(self.org.id, other_doc.id, self.actor, "accepted", expected_version=3)
 
     def test_forged_document_id(self):
         with self.assertRaises(VerificationDomainException):
-            VerificationService.review_checklist_item(self.org.id, uuid.uuid4(), self.actor, "accepted")
+            VerificationService.review_checklist_item(self.org.id, uuid.uuid4(), self.actor, "accepted", expected_version=3)
 
     def test_stale_review_action(self):
         with self.assertRaises(VerificationDomainException):

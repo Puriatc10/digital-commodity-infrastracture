@@ -64,47 +64,70 @@ class DocumentUploadView(APIView):
         except Exception:
             return Response({"detail": "Storage failure."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        from django.db import IntegrityError
+        from documents.models import DocumentType
         try:
             with transaction.atomic():
-                # Replace existing document of same type if exists
-                VerificationDocument.objects.filter(
+                doc_type = serializer.validated_data["type"]
+
+                # Check if replacing an existing current document
+                replaced_count = VerificationDocument.objects.filter(
                     organization=organization,
-                    type=serializer.validated_data["type"]
-                ).update(verification_status="replaced")
+                    type=doc_type,
+                    is_current=True
+                ).update(
+                    is_current=False,
+                    verification_status="replaced" # Legacy sync
+                )
 
                 doc = VerificationDocument.objects.create(
                     organization=organization,
-                    type=serializer.validated_data["type"],
+                    type=doc_type,
                     file_name=file_obj.name,
                     object_key=object_key,
                     mime_type=file_obj.content_type,
                     size_bytes=file_obj.size,
                     uploaded_by=request.user,
+                    is_current=True,
                     verification_status="pending"
                 )
 
-                # Explicitly handle Trust Invalidation path if Org is Verified / Basic Verified
-                # Skip invalidation if the document is Certifications
-                if serializer.validated_data["type"] != "certifications":
-                    try:
-                        verification = organization.verification
-                        if verification.status in [VerificationStatus.VERIFIED, VerificationStatus.BASIC_VERIFIED]:
-                            # Reset to Documents Submitted
-                            old_status = verification.status
-                            verification.status = VerificationStatus.DOCUMENTS_SUBMITTED
-                            verification.version += 1
-                            verification.save()
+                # M6: Precise invalidation policy on replacement of currently required trust evidence
+                try:
+                    # Lock verification to avoid trust/evidence race condition
+                    verification = OrganizationVerification.objects.select_for_update().get(organization_id=organization.id)
+                    should_downgrade = False
 
-                            VerificationDecision.objects.create(
-                                verification=verification,
-                                actor=request.user,
-                                previous_status=old_status,
-                                new_status=VerificationStatus.DOCUMENTS_SUBMITTED,
-                                reason="System triggered: Evidence replaced."
-                            )
-                    except OrganizationVerification.DoesNotExist:
-                        pass
+                    # Only replacement of *required* evidence downgrades trust.
+                    # First uploads of optional/missing categories do not downgrade trust.
+                    if replaced_count > 0:
+                        if verification.status == VerificationStatus.BASIC_VERIFIED:
+                            if doc_type in [DocumentType.COMPANY_REGISTRATION, DocumentType.TAX_ID, DocumentType.AUTHORIZED_REPRESENTATIVE]:
+                                should_downgrade = True
+                        elif verification.status == VerificationStatus.VERIFIED:
+                            if doc_type in [DocumentType.COMPANY_REGISTRATION, DocumentType.TAX_ID, DocumentType.AUTHORIZED_REPRESENTATIVE, DocumentType.TRADE_LICENSE, DocumentType.BANK_DETAILS]:
+                                should_downgrade = True
 
+                    if should_downgrade:
+                        old_status = verification.status
+                        verification.status = VerificationStatus.DOCUMENTS_SUBMITTED
+                        verification.version += 1
+                        verification.save()
+
+                        VerificationDecision.objects.create(
+                            verification=verification,
+                            actor=request.user,
+                            action="evidence_replacement_invalidation",
+                            previous_status=old_status,
+                            new_status=VerificationStatus.DOCUMENTS_SUBMITTED,
+                            reason="System triggered: Required evidence replaced."
+                        )
+                except OrganizationVerification.DoesNotExist:
+                    pass
+
+        except IntegrityError:
+            # Re-upload race condition on UniqueConstraint(organization, type, is_current=True)
+            return Response({"detail": "Concurrent upload detected for this document category."}, status=status.HTTP_409_CONFLICT)
         except Exception:
             # If DB fails, object is orphaned in MinIO.
             # Realistically we should delete it or have a cleanup cron,
