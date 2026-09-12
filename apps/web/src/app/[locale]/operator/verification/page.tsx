@@ -29,7 +29,7 @@ export default function VerificationQueuePage() {
 
       if (response.error) {
 
-        throw new Error((response.error as any)?.detail || "خطا در بارگذاری صف بررسی.");
+        throw new Error((response.error as unknown as { detail?: string })?.detail || "خطا در بارگذاری صف بررسی.");
       }
 
       return response.data || [];

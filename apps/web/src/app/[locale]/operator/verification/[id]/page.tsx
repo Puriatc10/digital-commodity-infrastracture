@@ -32,9 +32,9 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if ((response as any).error) {
+      if ((response as unknown as { error?: { detail?: string }, data?: { [key: string]: unknown } }).error) {
 
-        throw new Error((response.error as any)?.detail || "Failed to load case detail");
+        throw new Error((response.error as unknown as { detail?: string })?.detail || "Failed to load case detail");
       }
       return response.data;
     },
@@ -47,12 +47,12 @@ export default function VerificationCaseDetailPage() {
         params: { query: { organization: organizationId } },
       });
 
-      if ((response as any).error) {
+      if ((response as unknown as { error?: { detail?: string }, data?: { [key: string]: unknown } }).error) {
 
-        throw new Error((response.error as any)?.detail || "Failed to load documents");
+        throw new Error((response.error as unknown as { detail?: string })?.detail || "Failed to load documents");
       }
 
-      return ((response.data as any)?.results || response.data) || [];
+      return ((response.data as unknown as { results?: unknown[] })?.results || response.data) || [];
     },
   });
 
@@ -66,7 +66,7 @@ export default function VerificationCaseDetailPage() {
 
 
 
-  const handleMutationError = (error: any) => {
+  const handleMutationError = (error: Error) => {
     setActionError(error.message || "Action failed");
     // Force refetch on error to catch stale state
     refetch();
@@ -83,7 +83,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as any)?.detail || "خطا در شروع بررسی. وضعیت تغییر کرده است.");
+      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در شروع بررسی. وضعیت تغییر کرده است.");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -100,7 +100,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as any)?.detail || "خطا در تایید پایه");
+      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در تایید پایه");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -117,7 +117,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as any)?.detail || "خطا در تایید کامل");
+      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در تایید کامل");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -134,7 +134,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as any)?.detail || "خطا در رد");
+      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در رد");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -151,7 +151,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as any)?.detail || "خطا در تعلیق");
+      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در تعلیق");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -168,7 +168,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as any)?.detail || "خطا در بازگشایی");
+      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در بازگشایی");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -186,7 +186,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as any)?.detail || "خطا در ثبت یادداشت");
+      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در ثبت یادداشت");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -203,7 +203,7 @@ export default function VerificationCaseDetailPage() {
         }
       );
 
-      if (res.error) throw new Error((res.error as any)?.detail || "خطا در بررسی چک‌لیست");
+      if (res.error) throw new Error((res.error as unknown as { detail?: string })?.detail || "خطا در بررسی چک‌لیست");
       return res.data;
     },
     onSuccess: handleMutationSuccess,
@@ -332,7 +332,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <ul className="space-y-2">
-{verificationData?.notes?.map((note: any) => (
+{verificationData?.notes?.map((note: { id: string, actor_email: string, note: string, created_at: string }) => (
               <li key={note.id} className="border p-2 rounded bg-gray-50">
                 <p className="text-sm text-gray-500">{note.actor_email} - {new Date(note.created_at).toLocaleString()}</p>
                 <p>{note.note}</p>
@@ -358,7 +358,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
-{verificationData?.decisions?.map((decision: any) => (
+{verificationData?.decisions?.map((decision: { id: string, actor_email: string, previous_status: string, new_status: string, reason?: string, created_at: string }) => (
               <li key={decision.id} className="border p-2 rounded">
                 <p className="text-sm text-gray-500">{decision.actor_email} - {new Date(decision.created_at).toLocaleString()}</p>
                 <p>{decision.previous_status} ➔ {decision.new_status}</p>

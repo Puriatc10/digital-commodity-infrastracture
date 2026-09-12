@@ -52,7 +52,7 @@ describe("Verification Operator UI", () => {
         return {
           response: { ok: true, status: 200 },
           data: { id: 1, system_roles: ["operator"], organizations: [] }
-        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        } as unknown as { data?: unknown, error?: unknown, response: Response };
       }
       return {
       data: [
@@ -64,7 +64,7 @@ describe("Verification Operator UI", () => {
             updated_at: "2024-01-01T00:00:00Z",
           },
       ],
-    } as any;
+    } as unknown as { data?: unknown, error?: unknown, response: Response };
     });
 
     render(
@@ -89,7 +89,7 @@ describe("Verification Operator UI", () => {
         return {
           response: { ok: true, status: 200 },
           data: { id: 1, system_roles: ["operator"], organizations: [] }
-        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        } as unknown as { data?: unknown, error?: unknown, response: Response };
       }
       if (url.includes("/verification/")) {
         return {
@@ -100,14 +100,12 @@ describe("Verification Operator UI", () => {
             decisions: [],
             notes: [],
           },
-        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        } as unknown as { data?: unknown, error?: unknown, response: Response };
       }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return { data: { results: [] } } as any; // documents
+      return { data: { results: [] } } as unknown as { data?: unknown, error?: unknown, response: Response }; // documents
     });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(client.POST).mockResolvedValue({ data: {} } as any);
+    vi.mocked(client.POST).mockResolvedValue({ data: {} } as unknown as { data?: unknown, error?: unknown, response: Response });
 
 
     render(
@@ -137,7 +135,7 @@ describe("Verification Operator UI", () => {
         return {
           response: { ok: true, status: 200 },
           data: { id: 1, system_roles: ["operator"], organizations: [] }
-        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        } as unknown as { data?: unknown, error?: unknown, response: Response };
       }
       if (url.includes("/verification/")) {
         return {
@@ -148,17 +146,15 @@ describe("Verification Operator UI", () => {
             decisions: [],
             notes: [],
           },
-        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        } as unknown as { data?: unknown, error?: unknown, response: Response };
       }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return { data: { results: [] } } as any; // documents
+      return { data: { results: [] } } as unknown as { data?: unknown, error?: unknown, response: Response }; // documents
     });
 
     // Mock 409 conflict
     vi.mocked(client.POST).mockResolvedValue({
       error: { detail: "Stale object error: another transaction modified this verification" },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    } as unknown as { data?: unknown, error?: unknown, response: Response });
 
     render(
       (() => { const WrapperInst = Wrapper; return <WrapperInst><VerificationCaseDetailPage /></WrapperInst>; })()
@@ -191,12 +187,11 @@ describe("Verification Operator UI", () => {
         return {
           response: { ok: true, status: 200 },
           data: { id: 1, system_roles: ["operator"], organizations: [] }
-        } as any /* eslint-disable-line @typescript-eslint/no-explicit-any */;
+        } as unknown as { data?: unknown, error?: unknown, response: Response };
       }
       return {
       error: { detail: "Authentication failed" },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    } as unknown as { data?: unknown, error?: unknown, response: Response };
     });
 
     render(

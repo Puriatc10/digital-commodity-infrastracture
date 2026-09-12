@@ -24,7 +24,7 @@ export function CustomerVerificationPanel({ orgId }: { orgId: string }) {
       const res = await client.GET("/api/organizations/{org_id}/verification/", {
         params: { path: { org_id: orgId } },
       });
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to load verification status");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "Failed to load verification status");
       return res.data;
     },
     enabled: !!user,
@@ -34,9 +34,9 @@ export function CustomerVerificationPanel({ orgId }: { orgId: string }) {
     queryKey: ["documents", orgId],
     queryFn: async () => {
       const res = await client.GET("/api/documents/", {
-        params: { query: { organization: orgId } as any },
+        params: { query: { organization: orgId } as { organization: string } },
       });
-      if (res.error) throw new Error((res.error as any)?.detail || "Failed to load documents");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "Failed to load documents");
       return res.data;
     },
     enabled: !!user,
@@ -73,7 +73,7 @@ export function CustomerVerificationPanel({ orgId }: { orgId: string }) {
       queryClient.invalidateQueries({ queryKey: ["documents", orgId] });
       queryClient.invalidateQueries({ queryKey: ["verification", orgId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       setUploadError(err.message);
     }
   });
@@ -84,13 +84,13 @@ export function CustomerVerificationPanel({ orgId }: { orgId: string }) {
         params: { path: { org_id: orgId } },
         body: { expected_version: verificationData?.version ?? 0 },
       });
-      if (res.error) throw new Error((res.error as any)?.detail || "Submit failed");
+      if (res.error) throw new Error((res.error as { detail?: string })?.detail || "Submit failed");
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["verification", orgId] });
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       setUploadError(err.message);
     }
   });
@@ -143,7 +143,7 @@ export function CustomerVerificationPanel({ orgId }: { orgId: string }) {
         <div className="mt-4">
           <h3 className="font-semibold text-sm mb-2">مدارک فعلی شما</h3>
           <ul className="space-y-2">
-            {documentsData && documentsData.length > 0 ? documentsData.map((doc: any) => (
+            {documentsData && documentsData.length > 0 ? documentsData.map((doc: { id: string, type: string, file_name: string, is_current: boolean, verification_status: string }) => (
               <li key={doc.id} className="border p-2 rounded flex justify-between items-center bg-white">
                 <div>
                   <span className="text-sm font-medium block">{doc.type}</span>
