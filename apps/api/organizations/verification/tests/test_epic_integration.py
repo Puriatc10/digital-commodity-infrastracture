@@ -85,9 +85,9 @@ class VerificationEpicIntegrationTests(TransactionTestCase):
         current_version = res.data['version']
 
         # 5. Documents submitted externally (simulating document upload)
-        doc_reg = VerificationDocument.objects.create(organization=self.org, type=DocumentType.COMPANY_REGISTRATION, object_key="k1", size_bytes=10, uploaded_by=self.owner)
-        doc_tax = VerificationDocument.objects.create(organization=self.org, type=DocumentType.TAX_ID, object_key="k2", size_bytes=10, uploaded_by=self.owner)
-        doc_auth = VerificationDocument.objects.create(organization=self.org, type=DocumentType.AUTHORIZED_REPRESENTATIVE, object_key="k3", size_bytes=10, uploaded_by=self.owner)
+        doc_reg = VerificationDocument.objects.create(organization=self.org, type=DocumentType.COMPANY_REGISTRATION, object_key="k1", size_bytes=10, uploaded_by=self.owner, is_current=True)
+        doc_tax = VerificationDocument.objects.create(organization=self.org, type=DocumentType.TAX_ID, object_key="k2", size_bytes=10, uploaded_by=self.owner, is_current=True)
+        doc_auth = VerificationDocument.objects.create(organization=self.org, type=DocumentType.AUTHORIZED_REPRESENTATIVE, object_key="k3", size_bytes=10, uploaded_by=self.owner, is_current=True)
 
         # 6. Op reviews checklist
         checklist_url = reverse('verification:checklist-review', kwargs={'org_id': self.org.id})
