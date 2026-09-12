@@ -141,3 +141,32 @@ class VerificationChecklistView(BaseVerificationActionView):
             if "Stale object" in str(e):
                 return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+from drf_spectacular.utils import OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+from .serializers import VerificationQueueSerializer
+from .models import OrganizationVerification, VerificationStatus
+
+class VerificationQueueListView(generics.ListAPIView):
+    serializer_class = VerificationQueueSerializer
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+    is_list_view = True
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="is_pending", type=OpenApiTypes.BOOL, description="Filter for pending cases (Documents Submitted, Under Review)", required=False),
+            OpenApiParameter(name="status", type=OpenApiTypes.STR, description="Filter by exact status", required=False),
+        ]
+    )
+    def get_queryset(self):
+        qs = OrganizationVerification.objects.all().select_related('organization')
+
+        is_pending = self.request.query_params.get('is_pending')
+        if is_pending and is_pending.lower() == 'true':
+            qs = qs.filter(status__in=[VerificationStatus.DOCUMENTS_SUBMITTED, VerificationStatus.UNDER_REVIEW])
+
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+
+        return qs.order_by('updated_at')

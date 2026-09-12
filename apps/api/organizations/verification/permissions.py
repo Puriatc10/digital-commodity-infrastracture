@@ -28,6 +28,10 @@ class CanSubmitVerification(permissions.BasePermission):
         ).exists()
 
 class CanPerformVerificationReview(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not getattr(view, 'detail', True) or getattr(view, 'is_list_view', False):
+             return request.user and request.user.is_authenticated and request.user.system_roles.filter(role__in=['operator', 'admin']).exists()
+        return True
     def has_object_permission(self, request, view, obj):
         # Review mutations cannot be performed on inactive organizations
         if not obj.is_active:
