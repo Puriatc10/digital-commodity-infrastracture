@@ -47,7 +47,7 @@ class DocumentUploadTests(APITestCase):
     def test_upload_success(self):
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "test.pdf"
 
         data = {
@@ -70,7 +70,7 @@ class DocumentUploadTests(APITestCase):
     def test_upload_unauthorized_foreign_org(self):
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "test.pdf"
 
         data = {
@@ -88,7 +88,7 @@ class DocumentUploadTests(APITestCase):
     def test_upload_invalid_type(self):
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "test.txt"
         file_obj.content_type = "text/plain" # We simulate it here, DRF might infer
 
@@ -140,7 +140,7 @@ class DocumentUploadTests(APITestCase):
 
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new.pdf"
 
         data = {
@@ -167,7 +167,7 @@ class DocumentUploadTests(APITestCase):
     def test_upload_storage_failure(self):
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "test.pdf"
 
         data = {
@@ -188,7 +188,7 @@ class DocumentUploadTests(APITestCase):
         self.client.force_login(self.user)
 
         # 1. Trade License First Upload -> No downgrade
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new_trade_license.pdf"
         with mock.patch('documents.api.views.upload_document'):
             response = self.client.post(self.url, {"type": DocumentType.TRADE_LICENSE, "organization": str(self.org.id), "file": file_obj}, format="multipart")
@@ -197,7 +197,7 @@ class DocumentUploadTests(APITestCase):
         self.assertEqual(self.verification.status, VerificationStatus.BASIC_VERIFIED)
 
         # 2. Trade License Replacement -> No downgrade (Not required for Basic)
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new_trade_license_2.pdf"
         with mock.patch('documents.api.views.upload_document'):
             response = self.client.post(self.url, {"type": DocumentType.TRADE_LICENSE, "organization": str(self.org.id), "file": file_obj}, format="multipart")
@@ -207,7 +207,7 @@ class DocumentUploadTests(APITestCase):
 
         # 3. Bank Details Replacement -> No downgrade
         VerificationDocument.objects.create(organization=self.org, type=DocumentType.BANK_DETAILS, file_name="old_bd.pdf", object_key="bd1", mime_type="application/pdf", size_bytes=100, is_current=True, verification_status="accepted")
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new_bank.pdf"
         with mock.patch('documents.api.views.upload_document'):
             response = self.client.post(self.url, {"type": DocumentType.BANK_DETAILS, "organization": str(self.org.id), "file": file_obj}, format="multipart")
@@ -217,7 +217,7 @@ class DocumentUploadTests(APITestCase):
 
         # 4. Registration Replacement -> Downgrade
         VerificationDocument.objects.create(organization=self.org, type=DocumentType.COMPANY_REGISTRATION, file_name="old_reg.pdf", object_key="fake-reg-old", mime_type="application/pdf", size_bytes=100, is_current=True, verification_status="accepted")
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new_reg.pdf"
         with mock.patch('documents.api.views.upload_document'):
             response = self.client.post(self.url, {"type": DocumentType.COMPANY_REGISTRATION, "organization": str(self.org.id), "file": file_obj}, format="multipart")
@@ -233,7 +233,7 @@ class DocumentUploadTests(APITestCase):
 
         # 1. Certifications Replacement -> No downgrade
         VerificationDocument.objects.create(organization=self.org, type=DocumentType.CERTIFICATIONS, file_name="old_cert.pdf", object_key="cert1", mime_type="application/pdf", size_bytes=100, is_current=True, verification_status="accepted")
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new_cert.pdf"
         with mock.patch('documents.api.views.upload_document'):
             response = self.client.post(self.url, {"type": DocumentType.CERTIFICATIONS, "organization": str(self.org.id), "file": file_obj}, format="multipart")
@@ -243,7 +243,7 @@ class DocumentUploadTests(APITestCase):
 
         # 2. Trade License Replacement -> Downgrade
         VerificationDocument.objects.create(organization=self.org, type=DocumentType.TRADE_LICENSE, file_name="old_tl.pdf", object_key="fake-tl-old", mime_type="application/pdf", size_bytes=100, is_current=True, verification_status="accepted")
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new_tl.pdf"
         with mock.patch('documents.api.views.upload_document'):
             response = self.client.post(self.url, {"type": DocumentType.TRADE_LICENSE, "organization": str(self.org.id), "file": file_obj}, format="multipart")
@@ -275,7 +275,7 @@ class DocumentUploadTests(APITestCase):
         )
 
         self.client.force_login(self.user)
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new_cert.pdf"
         data = {
             "type": DocumentType.CERTIFICATIONS,
@@ -313,7 +313,7 @@ class DocumentUploadTests(APITestCase):
 
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "new.pdf"
 
         data = {
@@ -337,7 +337,7 @@ class DocumentUploadTests(APITestCase):
 
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "test.pdf"
 
         data = {
@@ -361,7 +361,7 @@ class DocumentUploadTests(APITestCase):
 
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "test.pdf"
 
         data = {
@@ -384,7 +384,7 @@ class DocumentUploadTests(APITestCase):
 
         self.client.force_login(self.user)
 
-        file_obj = BytesIO(b"fake-pdf-content")
+        file_obj = BytesIO(b"%PDF-fake-pdf-content")
         file_obj.name = "test.pdf"
 
         data = {

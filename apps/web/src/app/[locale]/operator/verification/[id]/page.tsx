@@ -329,7 +329,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <ul className="space-y-2">
-{verificationData.notes?.map((note: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{(verificationData as any)?.notes?.map((note: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
               <li key={note.id} className="border p-2 rounded bg-gray-50">
                 <p className="text-sm text-gray-500">{note.actor_email} - {new Date(note.created_at).toLocaleString()}</p>
                 <p>{note.note}</p>
@@ -355,7 +355,7 @@ export default function VerificationCaseDetailPage() {
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
-{verificationData.decisions?.map((decision: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
+{(verificationData as any)?.decisions?.map((decision: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) => (
               <li key={decision.id} className="border p-2 rounded">
                 <p className="text-sm text-gray-500">{decision.actor_email} - {new Date(decision.created_at).toLocaleString()}</p>
                 <p>{decision.previous_status} ➔ {decision.new_status}</p>
