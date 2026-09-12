@@ -48,3 +48,12 @@ class ChecklistReviewSerializer(serializers.Serializer):
     document_id = serializers.UUIDField()
     outcome = serializers.ChoiceField(choices=["accepted", "rejected"])
     expected_version = serializers.IntegerField(required=False, allow_null=True)
+
+class VerificationQueueSerializer(serializers.ModelSerializer):
+    organization_id = serializers.UUIDField(source='organization.id', read_only=True)
+    organization_name = serializers.CharField(source='organization.name', read_only=True)
+
+    class Meta:
+        model = OrganizationVerification
+        fields = ['id', 'organization_id', 'organization_name', 'status', 'version', 'updated_at']
+        read_only_fields = fields

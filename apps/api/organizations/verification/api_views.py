@@ -1,10 +1,13 @@
 from rest_framework import views, status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
+from .serializers import OrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer, ChecklistReviewSerializer, VerificationQueueSerializer
+from .models import OrganizationVerification, VerificationStatus
 from django.shortcuts import get_object_or_404
 from organizations.models import Organization
-from .serializers import OrganizationVerificationDetailSerializer, VerificationActionSerializer, VerificationNoteSerializer, ChecklistReviewSerializer
+
 from .services import VerificationService, VerificationDomainException
 from .permissions import CanViewVerification, CanSubmitVerification, CanPerformVerificationReview
 
@@ -141,3 +144,29 @@ class VerificationChecklistView(BaseVerificationActionView):
             if "Stale object" in str(e):
                 return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class VerificationQueueListView(generics.ListAPIView):
+    serializer_class = VerificationQueueSerializer
+    permission_classes = [IsAuthenticated, CanPerformVerificationReview]
+    is_list_view = True
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="is_pending", type=OpenApiTypes.BOOL, description="Filter for pending cases (Documents Submitted, Under Review)", required=False),
+            OpenApiParameter(name="status", type=OpenApiTypes.STR, description="Filter by exact status", required=False),
+        ]
+    )
+    def get_queryset(self):
+        qs = OrganizationVerification.objects.all().select_related('organization')
+
+        is_pending = self.request.query_params.get('is_pending')
+        if is_pending and is_pending.lower() == 'true':
+            qs = qs.filter(status__in=[VerificationStatus.DOCUMENTS_SUBMITTED, VerificationStatus.UNDER_REVIEW])
+
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+
+        return qs.order_by('updated_at')
