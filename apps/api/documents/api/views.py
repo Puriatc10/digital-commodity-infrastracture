@@ -11,7 +11,7 @@ from organizations.models import Organization, OrganizationMembership
 from identity.models import SystemRoleAssignment
 from documents.models import VerificationDocument
 from documents.api.serializers import VerificationDocumentSerializer, UploadDocumentSerializer
-from documents.storage import upload_document, get_document_bytes
+from documents.storage import upload_document, get_document_bytes, delete_document
 from organizations.verification.models import OrganizationVerification, VerificationStatus, VerificationDecision
 
 def has_operator_or_admin_role(user):
@@ -47,14 +47,24 @@ class DocumentUploadView(APIView):
 
         file_obj = serializer.validated_data["file"]
 
-        # Validation: PDF/JPEG/PNG only
-        allowed_types = ["application/pdf", "image/jpeg", "image/png"]
-        if file_obj.content_type not in allowed_types:
-            return Response({"detail": "Unsupported file type. Only PDF, JPEG, and PNG are allowed."}, status=status.HTTP_400_BAD_REQUEST)
-
         # Validation: 10 MB limit
         if file_obj.size > 10 * 1024 * 1024:
             return Response({"detail": "File size exceeds the 10 MB limit."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # File signature validation
+        header = file_obj.read(16)
+        file_obj.seek(0)
+
+        is_valid_signature = False
+        if file_obj.content_type == "application/pdf":
+            is_valid_signature = header.startswith(b'%PDF-')
+        elif file_obj.content_type == "image/jpeg":
+            is_valid_signature = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\xFF\xD8\xFF')
+        elif file_obj.content_type == "image/png":
+            is_valid_signature = header.startswith(b'\x89PNG\r\n\x1a\n')
+
+        if not is_valid_signature:
+            return Response({"detail": "File signature does not match declared MIME type."}, status=status.HTTP_400_BAD_REQUEST)
 
         object_key = f"{organization.id}/{uuid.uuid4()}-{file_obj.name}"
 
@@ -127,11 +137,15 @@ class DocumentUploadView(APIView):
 
         except IntegrityError:
             # Re-upload race condition on UniqueConstraint(organization, type, is_current=True)
+            # Must also compensate orphaned object in this failure case.
+            delete_document(object_key)
             return Response({"detail": "Concurrent upload detected for this document category."}, status=status.HTTP_409_CONFLICT)
         except Exception:
-            # If DB fails, object is orphaned in MinIO.
-            # Realistically we should delete it or have a cleanup cron,
-            # but we prioritize returning 500 without corrupting DB state.
+            # Compensate by deleting the orphaned object from MinIO.
+            try:
+                delete_document(object_key)
+            except Exception:
+                pass
             return Response({"detail": "Database failure."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(VerificationDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
