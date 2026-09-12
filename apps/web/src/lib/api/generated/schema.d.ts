@@ -480,6 +480,18 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `submit` - Submit
+         *     * `start_review` - Start Review
+         *     * `approve_basic` - Approve Basic
+         *     * `approve_full` - Approve Full
+         *     * `reject` - Reject
+         *     * `suspend` - Suspend
+         *     * `reopen` - Reopen
+         *     * `evidence_replacement_invalidation` - Evidence Replacement Invalidation
+         * @enum {string}
+         */
+        ActionEnum: "submit" | "start_review" | "approve_basic" | "approve_full" | "reject" | "suspend" | "reopen" | "evidence_replacement_invalidation";
         ChecklistReview: {
             /** Format: uuid */
             document_id: string;
@@ -575,6 +587,8 @@ export interface components {
             email: string;
             password: string;
         };
+        /** @enum {unknown} */
+        NullEnum: null;
         Organization: {
             /** Format: uuid */
             readonly id: string;
@@ -697,7 +711,7 @@ export interface components {
             readonly id: string;
             /** Format: email */
             readonly actor_email: string;
-            readonly action: string | null;
+            readonly action: (components["schemas"]["ActionEnum"] | components["schemas"]["NullEnum"]) | null;
             readonly previous_status: components["schemas"]["VerificationStatusEnum"];
             readonly new_status: components["schemas"]["VerificationStatusEnum"];
             readonly reason: string;
