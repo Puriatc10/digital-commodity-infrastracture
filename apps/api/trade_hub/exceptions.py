@@ -38,3 +38,39 @@ class PublicationValidationError(RFQDomainError):
         super().__init__(message)
         self.message = message
         self.errors = errors or []
+
+
+class InvitationError(RFQDomainError):
+    """Base domain exception for RFQ invitation operations."""
+
+    pass
+
+
+class InvitationNotFoundError(InvitationError, ObjectDoesNotExist):
+    """Raised when an invitation cannot be found or is hidden."""
+
+    pass
+
+
+class DuplicateInvitationError(InvitationError):
+    """Raised when the target organization is already invited to this RFQ."""
+
+    pass
+
+
+class InviteeIneligibleError(InvitationError):
+    """Raised when the target organization is ineligible (e.g. buyer-only, self-invite, inactive)."""
+
+    pass
+
+
+class InvalidInvitationStatusError(InvitationError):
+    """Raised when an invalid state transition or action on an invitation is attempted."""
+
+    pass
+
+
+class InvitationPermissionDeniedError(InvitationError):
+    """Raised when the actor lacks authorization to manage or act on the invitation."""
+
+    pass

@@ -64,11 +64,24 @@ class RFQVisibilityService:
     def get_invitation_q(cls, organization: Organization) -> models.Q:
         """
         T0506 integration boundary hook.
-        Returns a Q object matching RFQs where the organization is an invited participant.
+        Returns a Q object matching RFQs where the organization is an invited participant
+        with an active invitation status (invited, viewed, responded).
+        Declined and expired invitations do not grant visibility.
         """
         if callable(cls._invitation_resolver):
             return cls._invitation_resolver(organization)
-        return models.Q(pk__in=[])
+
+        from trade_hub.models.invitation import RFQInvitation, RFQInvitationStatus
+
+        active_rfq_ids = RFQInvitation.objects.filter(
+            organization=organization,
+            status__in=[
+                RFQInvitationStatus.INVITED,
+                RFQInvitationStatus.VIEWED,
+                RFQInvitationStatus.RESPONDED,
+            ],
+        ).values_list("rfq_id", flat=True)
+        return models.Q(id__in=active_rfq_ids)
 
     @staticmethod
     def has_global_visibility(user: Any) -> bool:
@@ -235,7 +248,9 @@ class RFQVisibilityService:
         ensuring 404-like hidden resource semantics and preventing existence/timing leaks.
         """
         rfq_id = _extract_rfq_id(rfq_or_id)
-        qs = cls.get_visible_rfqs(user, organization=organization, base_queryset=base_queryset)
+        qs = cls.get_visible_rfqs(
+            user, organization=organization, base_queryset=base_queryset
+        )
         try:
             return qs.get(pk=rfq_id)
         except RFQ.DoesNotExist as exc:
@@ -314,4 +329,6 @@ get_visible_rfqs = RFQVisibilityService.get_visible_rfqs
 get_visible_rfq = RFQVisibilityService.get_visible_rfq
 is_rfq_visible = RFQVisibilityService.is_rfq_visible
 has_global_visibility = RFQVisibilityService.has_global_visibility
-resolve_authoritative_organization = RFQVisibilityService.resolve_authoritative_organization
+resolve_authoritative_organization = (
+    RFQVisibilityService.resolve_authoritative_organization
+)

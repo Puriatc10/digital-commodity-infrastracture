@@ -1,3 +1,12 @@
+from trade_hub.services.invitation_service import (
+    RFQInvitationService,
+    create_invitation,
+    decline_invitation,
+    get_invitation_detail,
+    get_own_invitation,
+    list_rfq_invitations,
+    mark_invitation_viewed,
+)
 from trade_hub.services.rfq_lifecycle import (
     RFQLifecycleService,
     cancel_rfq,
@@ -28,4 +37,11 @@ __all__ = [
     "get_visible_rfq_for_request",
     "has_global_visibility",
     "resolve_authoritative_organization",
+    "RFQInvitationService",
+    "create_invitation",
+    "mark_invitation_viewed",
+    "decline_invitation",
+    "list_rfq_invitations",
+    "get_own_invitation",
+    "get_invitation_detail",
 ]
