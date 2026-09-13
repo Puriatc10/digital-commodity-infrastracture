@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "organizations.verification",
     "commodities",
     "documents",
+    "trade_hub",
 ]
 
 # drf-spectacular renders the Swagger UI from its packaged template.
