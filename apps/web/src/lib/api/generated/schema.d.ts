@@ -498,6 +498,9 @@ export interface components {
             outcome: components["schemas"]["OutcomeEnum"];
             expected_version: number;
         };
+        CommodityAssociation: {
+            commodity_code: string;
+        };
         CommodityAttributeDefinition: {
             /** Format: uuid */
             readonly id: string;
@@ -590,9 +593,7 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
             readonly decisions: components["schemas"]["VerificationDecision"][];
-            readonly notes: {
-                [key: string]: unknown;
-            }[];
+            readonly notes: components["schemas"]["VerificationNote"][];
         };
         Login: {
             /** Format: email */
@@ -711,7 +712,6 @@ export interface components {
             maxLength?: number;
         };
         VerificationAction: {
-            reason?: string;
             expected_version: number;
         };
         VerificationDecision: {
@@ -745,6 +745,9 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        VerificationErrorDetail: {
+            detail: string;
+        };
         VerificationNote: {
             /** Format: uuid */
             readonly id: string;
@@ -753,6 +756,9 @@ export interface components {
             note: string;
             /** Format: date-time */
             readonly created_at: string;
+        };
+        VerificationNoteCreate: {
+            note: string;
         };
         VerificationQueue: {
             /** Format: uuid */
@@ -765,6 +771,10 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        VerificationReject: {
+            reason: string;
+            expected_version: number;
+        };
         /**
          * @description * `unverified` - Unverified
          *     * `documents_submitted` - Documents Submitted
@@ -775,6 +785,13 @@ export interface components {
          * @enum {string}
          */
         VerificationStatusEnum: "unverified" | "documents_submitted" | "under_review" | "basic_verified" | "verified" | "suspended";
+        VerificationSubmit: {
+            expected_version?: number | null;
+        };
+        VerificationSuspend: {
+            reason: string;
+            expected_version: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -1138,6 +1155,20 @@ export interface operations {
                     "application/json": string;
                 };
             };
+            /** @description Not authorized */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description File not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     documents_upload_create: {
@@ -1245,19 +1276,23 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
             /** @description Conflict (stale version) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
         };
     };
@@ -1284,19 +1319,23 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
             /** @description Conflict (stale version) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
         };
     };
@@ -1323,19 +1362,23 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. missing document, invalid transition) */
+            /** @description Domain error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
             /** @description Conflict (stale version) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
         };
     };
@@ -1350,7 +1393,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationNote"];
+                "application/json": components["schemas"]["VerificationNoteCreate"];
             };
         };
         responses: {
@@ -1375,7 +1418,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationReject"];
             };
         };
         responses: {
@@ -1387,19 +1430,23 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
             /** @description Conflict (stale version) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
         };
     };
@@ -1426,19 +1473,23 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
             /** @description Conflict (stale version) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
         };
     };
@@ -1465,19 +1516,23 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
             /** @description Conflict (stale version) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
         };
     };
@@ -1490,9 +1545,9 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationSubmit"];
             };
         };
         responses: {
@@ -1504,19 +1559,23 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
             /** @description Conflict (stale version) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
         };
     };
@@ -1531,7 +1590,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationSuspend"];
             };
         };
         responses: {
@@ -1543,19 +1602,23 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
             /** @description Conflict (stale version) */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["VerificationErrorDetail"];
+                };
             };
         };
     };
@@ -1645,17 +1708,16 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Organization"];
+                "application/json": components["schemas"]["CommodityAssociation"];
             };
         };
         responses: {
-            200: {
+            /** @description No response body */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Organization"];
-                };
+                content?: never;
             };
         };
     };
@@ -1682,7 +1744,13 @@ export interface operations {
     };
     organizations_directory_list: {
         parameters: {
-            query?: never;
+            query?: {
+                capability?: string[];
+                commodity?: string[];
+                country?: string;
+                search?: string;
+                verification?: string[];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1723,7 +1791,12 @@ export interface operations {
     };
     organizations_verification_cases_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter for pending cases (Documents Submitted, Under Review) */
+                is_pending?: boolean;
+                /** @description Filter by exact status */
+                status?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

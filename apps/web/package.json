@@ -18,7 +18,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
     "test:components": "vitest run",
-    "api:generate": "cd ../api && POSTGRES_DB=test POSTGRES_USER=test POSTGRES_PASSWORD=test POSTGRES_HOST=localhost DJANGO_SECRET_KEY=test DJANGO_DEBUG=True uv run python manage.py spectacular --validate --fail-on-warn --file schema.yaml && cd ../web && npx openapi-typescript ../api/schema.yaml -o src/lib/api/generated/schema.d.ts"
+    "api:generate": "cd ../api && POSTGRES_DB=test POSTGRES_USER=test POSTGRES_PASSWORD=test POSTGRES_HOST=localhost DJANGO_SECRET_KEY=test DJANGO_DEBUG=True python manage.py spectacular --validate --fail-on-warn --file schema.yaml && cd ../web && npx openapi-typescript ../api/schema.yaml -o src/lib/api/generated/schema.d.ts"
   },
   "dependencies": {
     "@fontsource/vazirmatn": "5.3.0",
