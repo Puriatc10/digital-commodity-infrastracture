@@ -112,8 +112,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const org = state.availableOrganizations.find((o) => o.organization.id === organizationId);
     if (!org) return;
     saveOrganizationPreference(organizationId);
+    queryClient.clear();
     setState({ ...state, currentOrganization: org });
-  }, [state]);
+  }, [state, queryClient]);
 
   return <AuthContext.Provider value={{ state, setOrganization, refresh: loadUser }}>{children}</AuthContext.Provider>;
 }

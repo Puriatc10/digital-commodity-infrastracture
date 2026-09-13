@@ -1,5 +1,8 @@
+import uuid
+
 from django.core.exceptions import ValidationError
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from django.db.models import Q
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import permissions, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -81,13 +84,100 @@ class SupplyListingListCreateView(APIView):
             "Scoped strictly server-side according to the caller's active organization, "
             "capabilities, and commodity associations."
         ),
+        parameters=[
+            OpenApiParameter(
+                name="search",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Search query across origin, destination, organization name, notes, quality notes, or commodity name/code.",
+            ),
+            OpenApiParameter(
+                name="commodity",
+                type=uuid.UUID,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by commodity definition UUID.",
+            ),
+            OpenApiParameter(
+                name="status",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by supply listing status.",
+            ),
+            OpenApiParameter(
+                name="origin",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by origin location or port.",
+            ),
+            OpenApiParameter(
+                name="destination",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by destination country or port.",
+            ),
+        ],
         responses={
             200: SupplyListingPublicResponseSerializer(many=True),
             401: OpenApiResponse(description="Unauthenticated"),
         },
     )
     def get(self, request):
-        listings = get_visible_supply_listings_for_request(request)
+        listings = (
+            get_visible_supply_listings_for_request(request)
+            .select_related(
+                "organization",
+                "commodity",
+                "schema_version",
+                "organization__verification",
+            )
+            .prefetch_related(
+                "organization__capabilities",
+                "organization__commodities__commodity",
+            )
+        )
+
+        search = request.query_params.get("search", "").strip()
+        if search:
+            listings = listings.filter(
+                Q(origin__icontains=search)
+                | Q(destination__icontains=search)
+                | Q(organization__name__icontains=search)
+                | Q(commodity__code__icontains=search)
+                | Q(commodity__name_fa__icontains=search)
+                | Q(commodity__name_en__icontains=search)
+                | Q(notes__icontains=search)
+                | Q(quality_notes__icontains=search)
+            )
+
+        commodity = request.query_params.get("commodity") or request.query_params.get(
+            "commodity_id"
+        )
+        if commodity:
+            try:
+                commodity_uuid = uuid.UUID(str(commodity).strip())
+                listings = listings.filter(commodity_id=commodity_uuid)
+            except (ValueError, AttributeError):
+                listings = listings.none()
+
+        status_param = request.query_params.get("status", "").strip()
+        if status_param:
+            listings = listings.filter(status=status_param)
+
+        origin = request.query_params.get("origin", "").strip()
+        if origin:
+            listings = listings.filter(origin__icontains=origin)
+
+        destination = request.query_params.get("destination", "").strip()
+        if destination:
+            listings = listings.filter(destination__icontains=destination)
+
+        listings = listings.distinct()
+
         paginator = SupplyListingPagination()
         page = paginator.paginate_queryset(listings, request, view=self)
 
