@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from identity.models import User
 from organizations.models import Organization, OrganizationMembership, OrganizationCapability
+from organizations.api.permissions import get_active_membership, has_organization_role
 
 class OrganizationAuthorizationTests(TestCase):
     def setUp(self):
@@ -223,3 +224,71 @@ class OrganizationCommodityAuthorizationTests(TestCase):
         response = self.client.delete(self.url_remove, {"commodity_code": "bitumen"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(OrganizationCommodity.objects.filter(organization=self.org, commodity=self.commodity).exists())
+
+
+class OrganizationPermissionHelperTests(TestCase):
+    def setUp(self):
+        self.org = Organization.objects.create(name="Active Org", is_active=True)
+        self.inactive_org = Organization.objects.create(name="Inactive Org", is_active=False)
+        self.user = User.objects.create_user(email="user@test.com", password="password")
+        self.inactive_user = User.objects.create_user(email="inactive_user@test.com", password="password", is_active=False)
+        self.membership = OrganizationMembership.objects.create(
+            user=self.user,
+            organization=self.org,
+            role=OrganizationMembership.OrganizationRole.OWNER,
+            is_active=True,
+        )
+
+    def test_get_active_membership_valid(self):
+        mem = get_active_membership(self.user, self.org)
+        self.assertEqual(mem, self.membership)
+
+    def test_get_active_membership_unauthenticated_or_none(self):
+        self.assertIsNone(get_active_membership(None, self.org))
+
+    def test_get_active_membership_inactive_user(self):
+        OrganizationMembership.objects.create(
+            user=self.inactive_user,
+            organization=self.org,
+            role=OrganizationMembership.OrganizationRole.MEMBER,
+            is_active=True,
+        )
+        self.assertIsNone(get_active_membership(self.inactive_user, self.org))
+
+    def test_get_active_membership_inactive_organization(self):
+        OrganizationMembership.objects.create(
+            user=self.user,
+            organization=self.inactive_org,
+            role=OrganizationMembership.OrganizationRole.MEMBER,
+            is_active=True,
+        )
+        self.assertIsNone(get_active_membership(self.user, self.inactive_org))
+
+    def test_get_active_membership_inactive_membership(self):
+        user2 = User.objects.create_user(email="user2@test.com", password="password")
+        OrganizationMembership.objects.create(
+            user=user2,
+            organization=self.org,
+            role=OrganizationMembership.OrganizationRole.MEMBER,
+            is_active=False,
+        )
+        self.assertIsNone(get_active_membership(user2, self.org))
+
+    def test_has_organization_role_string_match(self):
+        self.assertTrue(has_organization_role(self.user, self.org, OrganizationMembership.OrganizationRole.OWNER))
+        self.assertFalse(has_organization_role(self.user, self.org, OrganizationMembership.OrganizationRole.VIEWER))
+
+    def test_has_organization_role_list_match(self):
+        self.assertTrue(has_organization_role(self.user, self.org, [
+            OrganizationMembership.OrganizationRole.MANAGER,
+            OrganizationMembership.OrganizationRole.OWNER,
+        ]))
+        self.assertFalse(has_organization_role(self.user, self.org, [
+            OrganizationMembership.OrganizationRole.MANAGER,
+            OrganizationMembership.OrganizationRole.VIEWER,
+        ]))
+
+    def test_has_organization_role_no_membership(self):
+        user2 = User.objects.create_user(email="user2@test.com", password="password")
+        self.assertFalse(has_organization_role(user2, self.org, OrganizationMembership.OrganizationRole.OWNER))
+
