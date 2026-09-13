@@ -1001,7 +1001,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
-                              {inv.organization.capabilities.map((cap) => (
+                              {(inv.organization.capabilities || []).map((cap) => (
                                 <Badge key={cap} variant="secondary" className="text-xs">
                                   {t.participants.roles[cap as keyof typeof t.participants.roles] || cap}
                                 </Badge>

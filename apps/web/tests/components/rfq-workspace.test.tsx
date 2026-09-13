@@ -49,6 +49,7 @@ const mockSupplierOrg = {
   name: "Supplier Corp IR",
   registration_identifier: "REG-SUPP-1",
   country: "IR",
+  capabilities: ["supplier"],
 };
 
 const mockBrokerOrg = {
@@ -56,6 +57,7 @@ const mockBrokerOrg = {
   name: "Broker Corp IR",
   registration_identifier: "REG-BROKER-1",
   country: "IR",
+  capabilities: ["broker"],
 };
 
 const mockPublishedRfq = {
@@ -287,8 +289,9 @@ describe("T0507 - RFQ Workspace Component Suite", () => {
 
     // Header assertions
     await waitFor(() => {
-      expect(screen.getByText(/Bitumen/)).toBeInTheDocument();
-      expect(screen.getByText(/bitumen/i)).toBeInTheDocument();
+      const heading = screen.getByRole("heading", { level: 1 });
+      expect(heading).toBeInTheDocument();
+      expect(heading).toHaveTextContent(/bitumen/i);
       expect(screen.getByText(t.statuses.published)).toBeInTheDocument();
       expect(screen.getByText(t.visibilities.public)).toBeInTheDocument();
       expect(screen.getByText(new RegExp(t.versionLabel))).toBeInTheDocument();
@@ -311,7 +314,7 @@ describe("T0507 - RFQ Workspace Component Suite", () => {
     );
 
     // Direction RTL
-    const container = screen.getByText(/Bitumen/).closest("[dir]");
+    const container = screen.getByRole("heading", { level: 1 }).closest("[dir]");
     expect(container).toHaveAttribute("dir", "rtl");
   });
 
