@@ -21,10 +21,12 @@ export function ShellNavigation({
     state.systemRoles.some((r) => r === "operator" || r === "admin");
 
   const homeHref = `/${locale}`;
+  const tradeHubHref = `/${locale}/trade-hub`;
   const directoryHref = `/${locale}/directory`;
   const queueHref = `/${locale}/operator/verification`;
 
   const isHomeActive = pathname === homeHref;
+  const isTradeHubActive = pathname.startsWith(tradeHubHref);
   const isDirectoryActive = pathname.startsWith(directoryHref);
   const isQueueActive = pathname.startsWith(queueHref);
 
@@ -42,6 +44,15 @@ export function ShellNavigation({
       >
         {isHomeActive && <span aria-hidden="true" className="size-2 rounded-sm bg-primary" />}
         {messages.home}
+      </Link>
+
+      <Link
+        href={tradeHubHref}
+        aria-current={isTradeHubActive ? "page" : undefined}
+        className={getLinkClasses(isTradeHubActive)}
+      >
+        {isTradeHubActive && <span aria-hidden="true" className="size-2 rounded-sm bg-primary" />}
+        {messages.tradeHub}
       </Link>
 
       <Link

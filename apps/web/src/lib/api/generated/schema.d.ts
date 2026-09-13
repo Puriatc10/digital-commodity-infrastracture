@@ -3245,7 +3245,18 @@ export interface operations {
     };
     trade_hub_rfqs_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter by commodity definition UUID. */
+                commodity?: string;
+                /** @description Filter by destination country or port. */
+                destination?: string;
+                /** @description Filter by origin country or port. */
+                origin?: string;
+                /** @description Search query across origin, destination, organization name, notes, or commodity name/code. */
+                search?: string;
+                /** @description Filter by RFQ status. */
+                status?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3954,7 +3965,18 @@ export interface operations {
     };
     trade_hub_supply_listings_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter by commodity definition UUID. */
+                commodity?: string;
+                /** @description Filter by destination country or port. */
+                destination?: string;
+                /** @description Filter by origin location or port. */
+                origin?: string;
+                /** @description Search query across origin, destination, organization name, notes, quality notes, or commodity name/code. */
+                search?: string;
+                /** @description Filter by supply listing status. */
+                status?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
