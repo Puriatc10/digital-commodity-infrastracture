@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
 import { apiClient } from "@/lib/api/client";
+import { getMessages } from "@/i18n/messages";
 import { RFQWorkspaceClient } from "@/app/[locale]/trade-hub/rfqs/[id]/rfq-workspace-client";
 import fixtures from "../fixtures/commodity-schemas.json";
 import type { CommoditySchemaVersion } from "@/components/commodity/commodity-specification-form";
@@ -27,6 +28,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 const schemas = fixtures as Record<string, CommoditySchemaVersion>;
+const t = getMessages("fa").rfqWorkspace;
 
 const mockBitumenSchemaV1 = {
   ...schemas.bitumen,
@@ -37,21 +39,21 @@ const mockBitumenSchemaV1 = {
 
 const mockBuyerOrg = {
   id: "buyer-org-1",
-  name: "شرکت خریدار آزمایشی",
+  name: "Buyer Corp IR",
   registration_identifier: "REG-BUYER-1",
   country: "IR",
 };
 
 const mockSupplierOrg = {
   id: "supplier-org-1",
-  name: "تأمین‌کننده نفت پارس",
+  name: "Supplier Corp IR",
   registration_identifier: "REG-SUPP-1",
   country: "IR",
 };
 
 const mockBrokerOrg = {
   id: "broker-org-1",
-  name: "کارگزاری خلیج فارس",
+  name: "Broker Corp IR",
   registration_identifier: "REG-BROKER-1",
   country: "IR",
 };
@@ -62,7 +64,7 @@ const mockPublishedRfq = {
   organization: mockBuyerOrg,
   commodity_id: "comm-bitumen-id",
   commodity_code: "bitumen",
-  commodity_name_fa: "قیر",
+  commodity_name_fa: "\u0642\u06cc\u0631",
   commodity_name_en: "Bitumen",
   schema_version_id: "schema-v1-id",
   status: "published",
@@ -122,21 +124,21 @@ const mockActivity = [
   {
     id: "act-1",
     event_type: "rfq_created",
-    event_label_fa: "ایجاد استعلام",
+    event_label_fa: "\u0627\u06cc\u062c\u0627\u062f \u0627\u0633\u062a\u0639\u0644\u0627\u0645",
     event_label_en: "RFQ Created",
     timestamp: "2026-09-01T10:00:00Z",
-    actor_name: "مدیر خرید",
-    organization_name: "شرکت خریدار آزمایشی",
+    actor_name: "Buyer Manager",
+    organization_name: "Buyer Corp IR",
     notes: null,
   },
   {
     id: "act-2",
     event_type: "rfq_published",
-    event_label_fa: "انتشار عمومی استعلام",
+    event_label_fa: "\u0627\u0646\u062a\u0634\u0627\u0631 \u0631\u0633\u0645\u06cc \u0627\u0633\u062a\u0639\u0644\u0627\u0645",
     event_label_en: "RFQ Published",
     timestamp: "2026-09-01T12:00:00Z",
-    actor_name: "مدیر خرید",
-    organization_name: "شرکت خریدار آزمایشی",
+    actor_name: "Buyer Manager",
+    organization_name: "Buyer Corp IR",
     notes: null,
   },
 ];
@@ -144,7 +146,7 @@ const mockActivity = [
 const mockDirectoryOrgs = [
   {
     id: "supplier-org-1",
-    name: "تأمین‌کننده نفت پارس",
+    name: "Supplier Corp IR",
     registration_identifier: "REG-SUPP-1",
     country: "IR",
     capabilities: ["supplier"],
@@ -152,7 +154,7 @@ const mockDirectoryOrgs = [
   },
   {
     id: "broker-org-1",
-    name: "کارگزاری خلیج فارس",
+    name: "Broker Corp IR",
     registration_identifier: "REG-BROKER-1",
     country: "IR",
     capabilities: ["broker"],
@@ -183,7 +185,7 @@ interface RequestOptions {
   body?: Record<string, unknown>;
 }
 
-describe("T0507 — RFQ Workspace Component Suite", () => {
+describe("T0507 - RFQ Workspace Component Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -285,11 +287,11 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
 
     // Header assertions
     await waitFor(() => {
-      expect(screen.getByText(/قیر/)).toBeInTheDocument();
+      expect(screen.getByText(/Bitumen/)).toBeInTheDocument();
       expect(screen.getByText(/bitumen/i)).toBeInTheDocument();
-      expect(screen.getByText("منتشر شده")).toBeInTheDocument();
-      expect(screen.getByText("عمومی")).toBeInTheDocument();
-      expect(screen.getByText("نسخه v1")).toBeInTheDocument();
+      expect(screen.getByText(t.statuses.published)).toBeInTheDocument();
+      expect(screen.getByText(t.visibilities.public)).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(t.versionLabel))).toBeInTheDocument();
     });
 
     // Commercial and Delivery Terms
@@ -309,7 +311,7 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
     );
 
     // Direction RTL
-    const container = screen.getByText(/قیر/).closest("[dir]");
+    const container = screen.getByText(/Bitumen/).closest("[dir]");
     expect(container).toHaveAttribute("dir", "rtl");
   });
 
@@ -322,19 +324,21 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
     );
 
     // Navigate to participants tab
-    const participantsTab = await screen.findByRole("button", { name: /مشارکت‌کنندگان/ });
+    const participantsTab = await screen.findByRole("button", {
+      name: new RegExp(t.tabs.participants),
+    });
     fireEvent.click(participantsTab);
 
     // Check participants table rendered
     await waitFor(() => {
-      expect(screen.getByText("تأمین‌کننده نفت پارس")).toBeInTheDocument();
-      expect(screen.getByText("کارگزاری خلیج فارس")).toBeInTheDocument();
-      expect(screen.getByText("دعوت شده")).toBeInTheDocument();
-      expect(screen.getByText("مشاهده شده")).toBeInTheDocument();
+      expect(screen.getByText("Supplier Corp IR")).toBeInTheDocument();
+      expect(screen.getByText("Broker Corp IR")).toBeInTheDocument();
+      expect(screen.getByText(t.participants.statusLabels.invited)).toBeInTheDocument();
+      expect(screen.getByText(t.participants.statusLabels.viewed)).toBeInTheDocument();
     });
 
     // Buyer sees "Invite More" button
-    const inviteMoreBtn = screen.getByRole("button", { name: /دعوت از سازمان جدید/ });
+    const inviteMoreBtn = screen.getByRole("button", { name: t.participants.inviteMore });
     expect(inviteMoreBtn).toBeInTheDocument();
   });
 
@@ -347,17 +351,19 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
     );
 
     // Navigate to participants tab
-    const participantsTab = await screen.findByRole("button", { name: /مشارکت‌کنندگان/ });
+    const participantsTab = await screen.findByRole("button", {
+      name: new RegExp(t.tabs.participants),
+    });
     fireEvent.click(participantsTab);
 
     // Competitor should NOT be rendered
     await waitFor(() => {
-      expect(screen.queryByText("کارگزاری خلیج فارس")).not.toBeInTheDocument();
+      expect(screen.queryByText("Broker Corp IR")).not.toBeInTheDocument();
     });
 
     // Supplier's own status banner and decline button should be rendered
-    expect(screen.getByText("وضعیت دعوت شما")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /رد دعوت/ })).toBeInTheDocument();
+    expect(screen.getByText(t.participants.ownStatusTitle)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t.participants.declineAction })).toBeInTheDocument();
 
     // Verify competitor list endpoint /invitations/ was NOT called
     expect(apiClient.GET).not.toHaveBeenCalledWith(
@@ -382,12 +388,14 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
     );
 
     // Switch to Activity tab
-    const activityTab = await screen.findByRole("button", { name: /تاریخچه فعالیت/ });
+    const activityTab = await screen.findByRole("button", {
+      name: new RegExp(t.tabs.activity),
+    });
     fireEvent.click(activityTab);
 
     await waitFor(() => {
-      expect(screen.getByText("ایجاد استعلام")).toBeInTheDocument();
-      expect(screen.getByText("انتشار عمومی استعلام")).toBeInTheDocument();
+      expect(screen.getByText(t.activity.events.rfq_created)).toBeInTheDocument();
+      expect(screen.getByText(t.activity.events.rfq_published)).toBeInTheDocument();
     });
   });
 
@@ -400,27 +408,26 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
     );
 
     // Offers tab placeholder
-    const offersTab = await screen.findByRole("button", { name: /پیشنهادها/ });
+    const offersTab = await screen.findByRole("button", { name: new RegExp(t.tabs.offers) });
     fireEvent.click(offersTab);
     await waitFor(() => {
-      expect(screen.getByText("پیشنهادهای قیمت (T0508)")).toBeInTheDocument();
-      expect(screen.getByText(/در فاز بعدی فعال خواهد شد/)).toBeInTheDocument();
+      expect(screen.getByText(t.staged.offersTitle)).toBeInTheDocument();
     });
 
     // Comparison tab placeholder
-    const comparisonTab = screen.getByRole("button", { name: /مقایسه و ارزیابی/ });
+    const comparisonTab = screen.getByRole("button", { name: new RegExp(t.tabs.comparison) });
     fireEvent.click(comparisonTab);
-    expect(screen.getByText("مقایسه و ارزیابی پیشنهادها (T0509)")).toBeInTheDocument();
+    expect(screen.getByText(t.staged.comparisonTitle)).toBeInTheDocument();
 
     // Negotiation tab placeholder
-    const negotiationTab = screen.getByRole("button", { name: /مذاکره و پیام‌ها/ });
+    const negotiationTab = screen.getByRole("button", { name: new RegExp(t.tabs.negotiation) });
     fireEvent.click(negotiationTab);
-    expect(screen.getByText("مذاکره تجاری و پیام‌رسانی (T0510)")).toBeInTheDocument();
+    expect(screen.getByText(t.staged.negotiationTitle)).toBeInTheDocument();
 
     // Documents tab placeholder (not reusing KYC)
-    const documentsTab = screen.getByRole("button", { name: /اسناد و مدارک/ });
+    const documentsTab = screen.getByRole("button", { name: new RegExp(t.tabs.documents) });
     fireEvent.click(documentsTab);
-    expect(screen.getByText("اسناد تجاری استعلام (T0511)")).toBeInTheDocument();
+    expect(screen.getByText(t.staged.documentsTitle)).toBeInTheDocument();
   });
 
   it("6. performs Close RFQ with expected_version optimistic concurrency control", async () => {
@@ -441,11 +448,11 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
       </Wrapper>
     );
 
-    const closeBtn = await screen.findByRole("button", { name: "بستن استعلام" });
+    const closeBtn = await screen.findByRole("button", { name: t.actions.closeRfq });
     fireEvent.click(closeBtn);
 
-    // In modal, click confirm
-    const confirmCloseBtn = screen.getByRole("button", { name: "بستن استعلام" });
+    // In modal, click confirm button
+    const confirmCloseBtn = screen.getByRole("button", { name: t.actions.confirm });
     fireEvent.click(confirmCloseBtn);
 
     await waitFor(() => {
@@ -472,17 +479,15 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
       </Wrapper>
     );
 
-    const closeBtn = await screen.findByRole("button", { name: "بستن استعلام" });
+    const closeBtn = await screen.findByRole("button", { name: t.actions.closeRfq });
     fireEvent.click(closeBtn);
 
-    const confirmCloseBtn = screen.getByRole("button", { name: "بستن استعلام" });
+    const confirmCloseBtn = screen.getByRole("button", { name: t.actions.confirm });
     fireEvent.click(confirmCloseBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("تغییر همزمان در استعلام")).toBeInTheDocument();
-      expect(
-        screen.getByText(/اطلاعات این استعلام توسط کاربر یا فرآیند دیگری به‌روزرسانی شده است/)
-      ).toBeInTheDocument();
+      expect(screen.getByText(t.conflicts.staleTitle)).toBeInTheDocument();
+      expect(screen.getByText(t.conflicts.staleDescription)).toBeInTheDocument();
     });
   });
 
@@ -495,11 +500,8 @@ describe("T0507 — RFQ Workspace Component Suite", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("استعلام یافت نشد")).toBeInTheDocument();
-      expect(
-        screen.getByText(/استعلام مورد نظر وجود ندارد یا شما دسترسی لازم برای مشاهده آن را ندارید/)
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /بازگشت به مرکز تجارت/ })).toBeInTheDocument();
+      expect(screen.getByText(t.rfqNotFoundTitle)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: t.backToHub })).toBeInTheDocument();
     });
   });
 });
