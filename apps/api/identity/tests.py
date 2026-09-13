@@ -59,6 +59,22 @@ class AuthTests(APITestCase):
         response = self.client.post(self.login_url, self.user_data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_login_missing_email(self):
+        response = self.client.post(self.login_url, {"password": "password123"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+
+    def test_login_missing_password(self):
+        response = self.client.post(self.login_url, {"email": self.user_data["email"]}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
+
+    def test_login_missing_both_fields(self):
+        response = self.client.post(self.login_url, {}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+        self.assertIn("password", response.data)
+
     def test_me_authenticated(self):
         self.client.login(email=self.user_data["email"], password=self.user_data["password"])
 
