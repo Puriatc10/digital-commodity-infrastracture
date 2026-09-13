@@ -21,7 +21,11 @@ from trade_hub.exceptions import (
     StaleVersionError,
 )
 from trade_hub.models import RFQ, RFQStatus, RFQVisibility
-from trade_hub.services.rfq_lifecycle import publish_rfq as lifecycle_publish_rfq
+from trade_hub.services.rfq_lifecycle import (
+    cancel_rfq as lifecycle_cancel_rfq,
+    close_rfq as lifecycle_close_rfq,
+    publish_rfq as lifecycle_publish_rfq,
+)
 from trade_hub.services.visibility_service import (
     has_global_visibility,
     resolve_authoritative_organization,
@@ -512,7 +516,232 @@ class RFQService:
             actor=user,
         )
 
+    @staticmethod
+    @transaction.atomic
+    def close(
+        rfq_or_id: Any,
+        *,
+        expected_version: Any,
+        user: Any,
+        organization_hint: Any = None,
+    ) -> RFQ:
+        """
+        Close a Published RFQ.
+        Authorizes actor (Buyer Owner/Manager or Platform Operator), then delegates to lifecycle_close_rfq.
+        """
+        rfq_id = _extract_rfq_id(rfq_or_id)
+        rfq = _lock_rfq(rfq_id)
+
+        if not can_manage_rfq_builder(user, rfq, organization_hint):
+            raise RFQPermissionDeniedError("User lacks permission to close this RFQ.")
+
+        return lifecycle_close_rfq(
+            rfq.id,
+            expected_version=expected_version,
+            actor=user,
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def cancel(
+        rfq_or_id: Any,
+        *,
+        expected_version: Any,
+        reason: str = "",
+        user: Any,
+        organization_hint: Any = None,
+    ) -> RFQ:
+        """
+        Cancel a Draft or Published RFQ.
+        Authorizes actor (Buyer Owner/Manager or Platform Operator), then delegates to lifecycle_cancel_rfq.
+        """
+        rfq_id = _extract_rfq_id(rfq_or_id)
+        rfq = _lock_rfq(rfq_id)
+
+        if not can_manage_rfq_builder(user, rfq, organization_hint):
+            raise RFQPermissionDeniedError("User lacks permission to cancel this RFQ.")
+
+        return lifecycle_cancel_rfq(
+            rfq.id,
+            expected_version=expected_version,
+            reason=reason,
+            actor=user,
+        )
+
+    @staticmethod
+    def get_activity(
+        rfq_or_id: Any,
+        *,
+        user: Any,
+        organization_hint: Any = None,
+    ) -> list[dict]:
+        """
+        Retrieve authoritative, safe read-only chronological activity facts for an RFQ.
+        Reconstructed strictly from persisted facts on RFQ and RFQInvitation models.
+        Strictly prevents competitor event leakage.
+        """
+        from trade_hub.models.invitation import RFQInvitation
+        from trade_hub.services.visibility_service import RFQVisibilityService
+
+        rfq_id = _extract_rfq_id(rfq_or_id)
+        # Scopes RFQ before retrieval; raises RFQNotFoundError (404) if hidden
+        rfq = RFQVisibilityService.get_visible_rfq(
+            rfq_id, user=user, organization=organization_hint
+        )
+
+        current_org = resolve_authoritative_organization(user, organization_hint)
+        operator_flag = is_operator_or_admin(user)
+        is_owner = bool(current_org and rfq.organization_id == current_org.pk) or operator_flag
+
+        events: list[dict] = []
+
+        # 1. RFQ Created (Owner / Operator only)
+        if is_owner:
+            events.append({
+                "id": f"rfq-created-{rfq.id}",
+                "event_type": "rfq_created",
+                "timestamp": rfq.created_at,
+                "actor_type": "operator" if rfq.created_by_operator else "buyer",
+                "organization_id": rfq.organization_id,
+                "organization_name": rfq.organization.name,
+                "details": {"version": 1},
+            })
+
+        # 2. RFQ Published
+        if rfq.published_at:
+            events.append({
+                "id": f"rfq-published-{rfq.id}",
+                "event_type": "rfq_published",
+                "timestamp": rfq.published_at,
+                "actor_type": "operator" if rfq.created_by_operator else "buyer",
+                "organization_id": rfq.organization_id,
+                "organization_name": rfq.organization.name,
+                "details": None,
+            })
+
+        # 3. RFQ Invitations
+        if is_owner:
+            invitations = RFQInvitation.objects.filter(rfq=rfq).select_related("organization")
+            for inv in invitations:
+                events.append({
+                    "id": f"invitation-created-{inv.id}",
+                    "event_type": "participant_invited",
+                    "timestamp": inv.created_at,
+                    "actor_type": "operator" if inv.invited_by_operator else "buyer",
+                    "organization_id": inv.organization_id,
+                    "organization_name": inv.organization.name,
+                    "details": None,
+                })
+                if inv.viewed_at:
+                    events.append({
+                        "id": f"invitation-viewed-{inv.id}",
+                        "event_type": "participant_viewed",
+                        "timestamp": inv.viewed_at,
+                        "actor_type": "supplier",
+                        "organization_id": inv.organization_id,
+                        "organization_name": inv.organization.name,
+                        "details": None,
+                    })
+                if inv.declined_at:
+                    events.append({
+                        "id": f"invitation-declined-{inv.id}",
+                        "event_type": "participant_declined",
+                        "timestamp": inv.declined_at,
+                        "actor_type": "supplier",
+                        "organization_id": inv.organization_id,
+                        "organization_name": inv.organization.name,
+                        "details": {"reason": inv.decline_reason} if inv.decline_reason else None,
+                    })
+                if inv.responded_at:
+                    events.append({
+                        "id": f"invitation-responded-{inv.id}",
+                        "event_type": "participant_responded",
+                        "timestamp": inv.responded_at,
+                        "actor_type": "supplier",
+                        "organization_id": inv.organization_id,
+                        "organization_name": inv.organization.name,
+                        "details": None,
+                    })
+        elif current_org:
+            own_invitations = RFQInvitation.objects.filter(
+                rfq=rfq, organization=current_org
+            ).select_related("organization")
+            for inv in own_invitations:
+                events.append({
+                    "id": f"invitation-created-{inv.id}",
+                    "event_type": "participant_invited",
+                    "timestamp": inv.created_at,
+                    "actor_type": "operator" if inv.invited_by_operator else "buyer",
+                    "organization_id": inv.organization_id,
+                    "organization_name": inv.organization.name,
+                    "details": None,
+                })
+                if inv.viewed_at:
+                    events.append({
+                        "id": f"invitation-viewed-{inv.id}",
+                        "event_type": "participant_viewed",
+                        "timestamp": inv.viewed_at,
+                        "actor_type": "supplier",
+                        "organization_id": inv.organization_id,
+                        "organization_name": inv.organization.name,
+                        "details": None,
+                    })
+                if inv.declined_at:
+                    events.append({
+                        "id": f"invitation-declined-{inv.id}",
+                        "event_type": "participant_declined",
+                        "timestamp": inv.declined_at,
+                        "actor_type": "supplier",
+                        "organization_id": inv.organization_id,
+                        "organization_name": inv.organization.name,
+                        "details": {"reason": inv.decline_reason} if inv.decline_reason else None,
+                    })
+                if inv.responded_at:
+                    events.append({
+                        "id": f"invitation-responded-{inv.id}",
+                        "event_type": "participant_responded",
+                        "timestamp": inv.responded_at,
+                        "actor_type": "supplier",
+                        "organization_id": inv.organization_id,
+                        "organization_name": inv.organization.name,
+                        "details": None,
+                    })
+
+        # 4. RFQ Closed
+        if rfq.closed_at:
+            events.append({
+                "id": f"rfq-closed-{rfq.id}",
+                "event_type": "rfq_closed",
+                "timestamp": rfq.closed_at,
+                "actor_type": "operator" if rfq.created_by_operator else "buyer",
+                "organization_id": rfq.organization_id,
+                "organization_name": rfq.organization.name,
+                "details": None,
+            })
+
+        # 5. RFQ Cancelled
+        if rfq.cancelled_at:
+            cancel_details = None
+            if is_owner and rfq.cancellation_reason:
+                cancel_details = {"reason": rfq.cancellation_reason}
+            events.append({
+                "id": f"rfq-cancelled-{rfq.id}",
+                "event_type": "rfq_cancelled",
+                "timestamp": rfq.cancelled_at,
+                "actor_type": "operator" if rfq.created_by_operator else "buyer",
+                "organization_id": rfq.organization_id,
+                "organization_name": rfq.organization.name,
+                "details": cancel_details,
+            })
+
+        # Sort chronologically descending
+        events.sort(key=lambda x: x["timestamp"], reverse=True)
+        return events
+
 
 create_draft_rfq = RFQService.create_draft
 update_draft_rfq = RFQService.update_draft
 publish_draft_rfq = RFQService.publish_draft
+close_rfq = RFQService.close
+cancel_rfq = RFQService.cancel
+get_rfq_activity = RFQService.get_activity
