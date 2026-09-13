@@ -8,9 +8,30 @@ from trade_hub.api.views_invitation import (
     RFQInvitationViewActionView,
 )
 
+from trade_hub.api.views_rfq import (
+    RFQDetailView,
+    RFQListCreateView,
+    RFQPublishActionView,
+)
+
 app_name = "trade_hub"
 
 urlpatterns = [
+    path(
+        "rfqs/",
+        RFQListCreateView.as_view(),
+        name="rfq-list-create",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/",
+        RFQDetailView.as_view(),
+        name="rfq-detail",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/publish/",
+        RFQPublishActionView.as_view(),
+        name="rfq-publish",
+    ),
     path(
         "rfqs/<uuid:rfq_id>/invitations/",
         RFQInvitationListCreateView.as_view(),
