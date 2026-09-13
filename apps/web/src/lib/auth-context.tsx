@@ -1,6 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { apiClient } from "@/lib/api/client";
 import type { components } from "@/lib/api/generated/schema";
 import { readOrganizationPreference, saveOrganizationPreference, selectOrganization } from "./organization-preference";
@@ -23,10 +25,13 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>({ status: "loading" });
   const requestVersion = useRef(0);
   const previousUser = useRef<number | null>(null);
 
+
+  const prevRolesRef = useRef<string[]>([]);
   const loadUser = useCallback(async () => {
     const version = ++requestVersion.current;
     try {
@@ -35,21 +40,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.status === 401 || response.status === 403) {
         previousUser.current = null;
         saveOrganizationPreference(null);
-        setState({ status: "unauthenticated" });
+        setState((prevState) => {
+           if (prevState.status !== "unauthenticated" && prevState.status !== "loading") {
+               queryClient.clear();
+               const channel = new BroadcastChannel("auth_channel");
+               channel.postMessage("auth_changed");
+               channel.close();
+           }
+           return { status: "unauthenticated" };
+        });
         return;
       }
       if (!response.ok || !data) throw new Error("Session request failed");
 
       const changedUser = previousUser.current !== null && previousUser.current !== data.id;
+
+      const currRoles = data.system_roles || [];
+      const changedRoles = previousUser.current !== null && JSON.stringify([...prevRolesRef.current].sort()) !== JSON.stringify([...currRoles].sort());
+
+      if (changedUser || changedRoles) {
+         queryClient.clear();
+         const channel = new BroadcastChannel("auth_channel");
+         channel.postMessage("auth_changed");
+         channel.close();
+      }
+
       const currentOrganization = selectOrganization(data.organizations, changedUser ? null : readOrganizationPreference());
       saveOrganizationPreference(currentOrganization?.organization.id ?? null);
       previousUser.current = data.id;
+      prevRolesRef.current = currRoles;
+
       setState({ status: "authenticated", user: data, systemRoles: data.system_roles, availableOrganizations: data.organizations, currentOrganization });
     } catch (err) {
       if (version !== requestVersion.current) return;
       setState({ status: "error", error: err instanceof Error ? err : new Error("Session request failed") });
     }
-  }, []);
+  }, [queryClient]);
+
 
   useEffect(() => {
     // Refresh on return to the page and periodically so expired sessions lose UX privileges.
@@ -67,6 +94,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [loadUser]);
 
+
+  useEffect(() => {
+    const channel = new BroadcastChannel("auth_channel");
+    channel.onmessage = (event) => {
+      if (event.data === "auth_changed") {
+        queryClient.clear();
+        void loadUser();
+      }
+    };
+    return () => {
+      channel.close();
+    };
+  }, [loadUser, queryClient]);
   const setOrganization = useCallback((organizationId: string) => {
     if (state.status !== "authenticated") return;
     const org = state.availableOrganizations.find((o) => o.organization.id === organizationId);
@@ -83,3 +123,8 @@ export function useAuth() {
   if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
+
+export function useOptionalAuth() {
+  return useContext(AuthContext);
+}
+

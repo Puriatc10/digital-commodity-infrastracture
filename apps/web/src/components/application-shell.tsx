@@ -1,10 +1,10 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import type { EnabledLocale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
 import { getMessages } from "@/i18n/messages";
 import { AuthStatusBar } from "./auth-status-bar";
 import { DemoPersonaSwitcher } from "./demo-persona-switcher";
+import { ShellNavigation } from "./shell-navigation";
 
 
 export function ApplicationShell({
@@ -33,12 +33,7 @@ export function ApplicationShell({
             <p className="mt-1 text-xs text-muted-foreground">{messages.subtitle}</p>
           </div>
         </div>
-        <nav aria-label={messages.navigation} className="px-4 pb-4 lg:py-4">
-          <Link href={`/${locale}`} aria-current="page" className="flex min-h-11 items-center gap-3 rounded-md border border-primary/15 bg-accent px-4 py-3 text-sm font-medium text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-            <span aria-hidden="true" className="size-2 rounded-sm bg-primary" />
-            {messages.home}
-          </Link>
-        </nav>
+        <ShellNavigation locale={locale} messages={messages} />
         <p className="mt-auto hidden px-6 py-6 text-xs text-muted-foreground lg:block">{messages.footer}</p>
       </aside>
       <div className="min-w-0">

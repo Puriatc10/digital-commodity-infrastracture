@@ -21,7 +21,9 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "identity",
     "organizations",
+    "organizations.verification",
     "commodities",
+    "documents",
 ]
 
 # drf-spectacular renders the Swagger UI from its packaged template.
@@ -72,6 +74,9 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Backend OpenAPI for the commodity procurement platform",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "VerificationStatusEnum": "organizations.verification.models.VerificationStatus"
+    },
 }
 
 LANGUAGE_CODE = "fa-ir"
@@ -81,3 +86,10 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "identity.User"
+
+# MinIO / Object Storage Settings
+MINIO_ENDPOINT = env.str("MINIO_ENDPOINT", default="127.0.0.1:9000")
+MINIO_ACCESS_KEY = env.str("MINIO_ACCESS_KEY", default="minioadmin")
+MINIO_SECRET_KEY = env.str("MINIO_SECRET_KEY", default="minioadmin")
+MINIO_USE_SSL = env.bool("MINIO_USE_SSL", default=False)
+MINIO_BUCKET_NAME = env.str("MINIO_BUCKET_NAME", default="verification-documents")

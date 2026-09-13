@@ -23,6 +23,8 @@ const fa = {
     subtitle: "محیط کاری کسب‌وکارها",
     navigation: "راهبری محیط",
     home: "نمای کلی محیط",
+    directory: "فهرست سازمان‌ها",
+    verificationQueue: "صف احراز هویت",
     preview: "نسخه نمایشی",
     locale: "فارسی",
     skipToContent: "رفتن به محتوای اصلی",

@@ -454,7 +454,7 @@ Permission matrix review شود.
 
 The [approved Epic 3 Design Contract](../product/epic-03-dynamic-commodity-design-contract.md) is the authoritative detailed implementation contract. Read it in full before any Epic 3 task; the scope and acceptance criteria below do not replace its invariants or §76 review checks.
 
-Current authorization is the final Epic 3 Review Gate for implemented T0301–T0308. The owner permits local fixes for demonstrated Epic 3 defects and regression tests, with no commit, push, merge, new branch, or Epic 4 work. The original documentation synchronization authorization has been superseded by this review request. Use the existing Epic branch and owner Git restrictions in AGENTS.md. Review evidence and merge conditions are recorded in [Epic 3 Review Gate](epic-03-review-gate.md).
+T0301–T0308 are implemented; historical review evidence and merge conditions are recorded in [Epic 3 Review Gate](epic-03-review-gate.md). That review's authorization paragraph is superseded by the current Epic 4 scope in AGENTS.md and the [Epic 4 execution plan](epic-04-execution-plan.md). Preserve the reviewed Epic 3 foundations.
 
 Epic 3 builds relational definitions and reusable validation/rendering. Future business records use commodity_id + schema_version_id + specifications JSONB and retain their creation-time schema version. Epic 3 creates no specification-bearing business table.
 
@@ -554,6 +554,8 @@ Apply the complete [Design Contract §76](../product/epic-03-dynamic-commodity-d
 # 8. Epic 4 — Organizations, Network & Verification
 
 **Priority:** P1
+
+Epic 4 is authorized on `codex/epic-04-organizations-network-verification`. The [execution plan](epic-04-execution-plan.md), especially §4's owner-approved policies, governs detailed verification, permissions, directory, evidence and storage behavior. Task IDs/names below remain unchanged. Execution follows common Wave Base SHAs, isolated Jules sibling branches, PRs to the Epic branch, post-sibling synchronization and canonical CI, and complete wave barriers. This Epic-specific protocol supersedes generic sequential/per-task branch examples elsewhere in this roadmap. Wave 1 is T0403 alone. The current synchronization request is documentation-only and starts none of T0401–T0406; see AGENTS.md for Git restrictions.
 
 ---
 

@@ -14,10 +14,11 @@ dependencies = [
   "django-environ==0.14.0",
   "drf-spectacular==0.30.0",
   "jsonschema>=4.26.0",
+  "minio>=7.2.20",
 ]
 
 [tool.setuptools.packages.find]
-include = ["config*", "identity*", "organizations*", "commodities*"]
+include = ["config*", "identity*", "organizations*", "commodities*", "documents*"]
 
 [project.optional-dependencies]
 dev = ["ruff==0.16.6"]
