@@ -555,6 +555,7 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
   });
 
   it("11. Preview & Explicit Activation: activates draft via explicit endpoint and expected_version", async () => {
+    const user = userEvent.setup();
     const existingDraft = {
       id: "listing-preview-123",
       version: 1,
@@ -600,17 +601,19 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
     });
 
     // Jump to Step 4 (Preview & Activate)
-    fireEvent.click(screen.getByText("پیش‌نمایش و فعال‌سازی"));
+    const step4Btn = screen.getByRole("button", { name: /پیش‌نمایش و فعال‌سازی/ });
+    await user.click(step4Btn);
 
     await waitFor(() => {
-      expect(screen.getByText("پیش‌نمایش و فعال‌سازی آگهی")).toBeInTheDocument();
+      expect(screen.getByText("پیش‌نمایش آگهی عرضه کالا")).toBeInTheDocument();
       expect(screen.getByText("420.00 USD")).toBeInTheDocument();
       expect(screen.getByText("Bandar Abbas")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /فعال‌سازی آگهی/ })).toBeInTheDocument();
     });
 
     // Click Activate Listing
-    fireEvent.click(screen.getByRole("button", { name: /فعال‌سازی آگهی/ }));
+    const activateBtn = screen.getByRole("button", { name: /فعال‌سازی آگهی/ });
+    await user.click(activateBtn);
 
     await waitFor(() => {
       expect(apiClient.POST).toHaveBeenCalledWith(
