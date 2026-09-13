@@ -1,55 +1,259 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient as client } from "@/lib/api/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { VerificationBadge } from "@/components/verification-badge";
+import { useOptionalAuth } from "@/lib/auth-context";
+import {
+  Loader2,
+  Upload,
+  FileText,
+  CheckCircle2,
+  AlertTriangle,
+  Send,
+} from "lucide-react";
+import type { components } from "@/lib/api/generated/schema";
 
+type VerificationDoc = components["schemas"]["VerificationDocument"];
 
+const REQUIRED_EVIDENCE_TYPES = [
+  { key: "company_registration", label: "ثبت تجاری / روزنامه رسمی" },
+  { key: "tax_id", label: "گواهی مالیاتی و کد اقتصادی" },
+  { key: "bank_details", label: "معرفی‌نامه بانکی" },
+  { key: "authorized_representative", label: "احراز هویت مدیران" },
+] as const;
 
-function getVerificationBadge(status: string) {
-  switch (status) {
-    case "verified":
-      return <Badge variant="default" className="bg-green-600 hover:bg-green-700">تایید شده</Badge>;
-    case "basic_verified":
-      return <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">تاییدیه پایه</Badge>;
-    case "under_review":
-      return <Badge variant="outline">در حال بررسی</Badge>;
-    case "suspended":
-      return <Badge variant="destructive">معلق</Badge>;
-    default:
-      return <Badge variant="outline">تایید نشده</Badge>;
-  }
-}
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_MIME_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+];
+const ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
 
 function getCapabilityBadge(cap: string) {
   switch (cap) {
     case "buyer":
-      return <Badge variant="outline" key={cap}>خریدار</Badge>;
+      return (
+        <Badge variant="outline" key={cap}>
+          خریدار
+        </Badge>
+      );
     case "supplier":
-      return <Badge variant="outline" key={cap}>تامین‌کننده</Badge>;
+      return (
+        <Badge variant="outline" key={cap}>
+          تامین‌کننده
+        </Badge>
+      );
     case "broker":
-      return <Badge variant="outline" key={cap}>کارگزار</Badge>;
+      return (
+        <Badge variant="outline" key={cap}>
+          کارگزار
+        </Badge>
+      );
     default:
-      return <Badge variant="outline" key={cap}>{cap}</Badge>;
+      return (
+        <Badge variant="outline" key={cap}>
+          {cap}
+        </Badge>
+      );
   }
 }
 
 export function ProfileClient({ id }: { id: string }) {
-  const { data: profile, isLoading, isError } = useQuery({
+  const queryClient = useQueryClient();
+  const authContext = useOptionalAuth();
+  const authState = authContext?.state;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedType, setSelectedType] = useState<string>("company_registration");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+
+  // Check if current user is an Owner or Manager of this organization
+  const isOwnerOrManager =
+    authState &&
+    authState.status === "authenticated" &&
+    authState.availableOrganizations.some(
+      (ctx) =>
+        ctx.organization.id === id &&
+        (ctx.role === "owner" || ctx.role === "manager")
+    );
+
+  // 1. Fetch organization profile
+  const {
+    data: profile,
+    isLoading: isProfileLoading,
+    isError: isProfileError,
+  } = useQuery({
     queryKey: ["organizations", "profiles", id],
     queryFn: async () => {
-      const { data, error, response } = await client.GET("/api/organizations/profiles/{id}/", {
-        params: { path: { id } },
-      });
-      if (error || !response.ok) throw error || new Error("Profile not found");
+      const { data, error, response } = await client.GET(
+        "/api/organizations/profiles/{id}/",
+        {
+          params: { path: { id } },
+        }
+      );
+      if (error || !response.ok || !data) throw error || new Error("Profile not found");
       return data;
     },
     retry: false,
   });
 
-  if (isLoading) {
+  // 2. Fetch customer documents (only enabled if owner or manager)
+  const {
+    data: documents,
+    isLoading: isDocsLoading,
+    refetch: refetchDocs,
+  } = useQuery<VerificationDoc[]>({
+    queryKey: ["organizationDocuments", id],
+    queryFn: async () => {
+      const res = await client.GET("/api/documents/", {
+        params: { query: { organization: id } },
+      });
+      if (res.error || (res.response && !res.response.ok)) {
+        throw new Error("Failed to load documents");
+      }
+      const raw = res.data;
+      if (Array.isArray(raw)) {
+        return raw as VerificationDoc[];
+      }
+      if (raw && typeof raw === "object" && "results" in raw && Array.isArray((raw as { results?: unknown }).results)) {
+        return (raw as { results: VerificationDoc[] }).results;
+      }
+      return [] as VerificationDoc[];
+    },
+    enabled: isOwnerOrManager,
+  });
+
+  // Upload mutation
+  const uploadMutation = useMutation({
+    mutationFn: async ({ file, type }: { file: File; type: string }) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", type);
+      formData.append("organization", id);
+
+      const res = await fetch("/api/documents/upload/", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        let errorMsg = "خطا در بارگذاری مدرک.";
+        try {
+          const json = await res.json();
+          errorMsg = json.detail || json.file?.[0] || json.type?.[0] || errorMsg;
+        } catch {
+          // ignore
+        }
+        throw new Error(errorMsg);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setUploadSuccess("مدرک با موفقیت بارگذاری شد.");
+      setUploadError(null);
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      void refetchDocs();
+      void queryClient.invalidateQueries({ queryKey: ["organizations", "profiles", id] });
+    },
+    onError: (err) => {
+      setUploadError(err instanceof Error ? err.message : "خطا در بارگذاری مدرک");
+      setUploadSuccess(null);
+    },
+  });
+
+  // Submit for verification mutation
+  const submitVerificationMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error, response } = await client.POST(
+        "/api/organizations/{org_id}/verification/submit/",
+        {
+          params: { path: { org_id: id } },
+          body: {},
+        }
+      );
+      if (error || !response.ok) {
+        const detail =
+          typeof error === "object" && error && "detail" in error
+            ? String((error as Record<string, unknown>).detail)
+            : "خطا در ارسال درخواست بررسی.";
+        throw new Error(detail);
+      }
+      return data;
+    },
+    onSuccess: () => {
+      setSubmitSuccess("درخواست احراز هویت با موفقیت ثبت شد و در صف بررسی اپراتور قرار گرفت.");
+      setSubmitError(null);
+      void queryClient.invalidateQueries({ queryKey: ["organizations", "profiles", id] });
+      void refetchDocs();
+    },
+    onError: (err) => {
+      setSubmitError(err instanceof Error ? err.message : "خطا در ارسال درخواست احراز هویت");
+      setSubmitSuccess(null);
+    },
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    setUploadSuccess(null);
+    const file = e.target.files?.[0];
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+
+    // Client-side format validation
+    const fileExt = "." + file.name.split(".").pop()?.toLowerCase();
+    const isExtensionValid = ALLOWED_EXTENSIONS.includes(fileExt);
+    const isMimeValid = ALLOWED_MIME_TYPES.includes(file.type);
+
+    if (!isExtensionValid && !isMimeValid) {
+      setUploadError("فرمت فایل نامعتبر است. تنها فایل‌های PDF، JPG و PNG مجاز هستند.");
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    // Client-side size validation
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setUploadError("حجم فایل نباید بیشتر از ۱۰ مگابایت باشد.");
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const handleUploadSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFile) {
+      setUploadError("لطفاً یک فایل را برای بارگذاری انتخاب کنید.");
+      return;
+    }
+    uploadMutation.mutate({ file: selectedFile, type: selectedType });
+  };
+
+  if (isProfileLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -57,7 +261,7 @@ export function ProfileClient({ id }: { id: string }) {
     );
   }
 
-  if (isError || !profile) {
+  if (isProfileError || !profile) {
     return (
       <Card className="p-8 text-center text-destructive">
         شرکت یافت نشد یا دسترسی مجاز نیست.
@@ -67,14 +271,15 @@ export function ProfileClient({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Basic Organization Info */}
       <Card>
         <CardHeader>
-          <CardTitle>اطلاعات شرکت</CardTitle>
+          <CardTitle>اطلاعات سازمان</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">نام شرکت</p>
-            <p className="text-base">{profile.name}</p>
+            <p className="text-sm font-medium text-muted-foreground">نام سازمان</p>
+            <p className="text-base font-semibold">{profile.name}</p>
           </div>
           <div>
             <p className="text-sm font-medium text-muted-foreground">کشور</p>
@@ -84,7 +289,12 @@ export function ProfileClient({ id }: { id: string }) {
             <p className="text-sm font-medium text-muted-foreground">وب‌سایت</p>
             <p className="text-base">
               {profile.website ? (
-                <a href={profile.website} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                <a
+                  href={profile.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary hover:underline"
+                >
                   {profile.website}
                 </a>
               ) : (
@@ -95,17 +305,50 @@ export function ProfileClient({ id }: { id: string }) {
         </CardContent>
       </Card>
 
+      {/* Verification Status */}
       <Card>
         <CardHeader>
-          <CardTitle>وضعیت تاییدیه</CardTitle>
+          <CardTitle>وضعیت احراز هویت</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div>
-            {getVerificationBadge(profile.verification_status)}
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">وضعیت جاری:</span>
+            <VerificationBadge status={profile.verification_status} />
           </div>
+
+          {/* Customer Submit for Verification (Owner/Manager and Unverified) */}
+          {isOwnerOrManager && profile.verification_status === "unverified" && (
+            <div className="pt-3 border-t">
+              {submitError && (
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>{submitError}</span>
+                </div>
+              )}
+              {submitSuccess && (
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-xs text-green-700">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>{submitSuccess}</span>
+                </div>
+              )}
+              <Button
+                onClick={() => submitVerificationMutation.mutate()}
+                disabled={submitVerificationMutation.isPending}
+                className="bg-primary text-primary-foreground flex items-center gap-2"
+              >
+                {submitVerificationMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                ارسال مدارک جهت بررسی و احراز هویت
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Roles & Commodities */}
       <Card>
         <CardHeader>
           <CardTitle>نقش‌ها و کالاها</CardTitle>
@@ -116,22 +359,160 @@ export function ProfileClient({ id }: { id: string }) {
             <div className="flex gap-2 flex-wrap">
               {profile.capabilities.length > 0
                 ? profile.capabilities.map((cap) => getCapabilityBadge(cap))
-                : "-"
-              }
+                : "-"}
             </div>
           </div>
           <div>
             <p className="text-sm font-medium text-muted-foreground mb-2">کالاها</p>
             <div className="flex gap-2 flex-wrap">
               {profile.commodities.length > 0
-                ? profile.commodities.map((comm) => <Badge variant="secondary" key={comm}>{comm}</Badge>)
-                : "-"
-              }
+                ? profile.commodities.map((comm) => (
+                    <Badge variant="secondary" key={comm}>
+                      {comm}
+                    </Badge>
+                  ))
+                : "-"}
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Customer Evidence Management (Owner/Manager only) */}
+      {isOwnerOrManager && (
+        <Card>
+          <CardHeader>
+            <CardTitle>مدارک و مستندات هویتی سازمان</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Status of Required Evidence Types */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">وضعیت مدارک الزامی:</h4>
+              {isDocsLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {REQUIRED_EVIDENCE_TYPES.map((req) => {
+                    const currentDoc = documents?.find(
+                      (d) => d.type === req.key && d.is_current
+                    );
+                    return (
+                      <div
+                        key={req.key}
+                        className="rounded-lg border border-border p-3.5 flex flex-col justify-between gap-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{req.label}</span>
+                          {currentDoc ? (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded ${
+                                currentDoc.verification_status === "accepted"
+                                  ? "bg-green-100 text-green-700"
+                                  : currentDoc.verification_status === "rejected"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              {currentDoc.verification_status === "accepted"
+                                ? "تایید شده"
+                                : currentDoc.verification_status === "rejected"
+                                ? "رد شده"
+                                : "در انتظار بررسی"}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                              بارگذاری نشده
+                            </span>
+                          )}
+                        </div>
+                        {currentDoc && (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <FileText className="h-3.5 w-3.5" />
+                            <span className="truncate">{currentDoc.file_name}</span>
+                            <span>({(currentDoc.size_bytes / 1024).toFixed(0)} کیلوبایت)</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Upload/Replace Form */}
+            <div className="pt-4 border-t space-y-4">
+              <h4 className="text-sm font-semibold">بارگذاری یا جایگزینی مدرک:</h4>
+
+              {uploadError && (
+                <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>{uploadError}</span>
+                </div>
+              )}
+
+              {uploadSuccess && (
+                <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-xs text-green-700">
+                  <CheckCircle2 className="h-4 w-4 shrink-0" />
+                  <span>{uploadSuccess}</span>
+                </div>
+              )}
+
+              <form
+                onSubmit={handleUploadSubmit}
+                className="flex flex-col gap-4 sm:flex-row sm:items-end"
+              >
+                <div className="w-full sm:w-64 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">نوع مدرک</label>
+                  <Select
+                    value={selectedType}
+                    onValueChange={(val) => setSelectedType(val)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="انتخاب نوع مدرک" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REQUIRED_EVIDENCE_TYPES.map((t) => (
+                        <SelectItem key={t.key} value={t.key}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex-1 space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    انتخاب فایل (PDF، JPG یا PNG - حداکثر ۱۰ مگابایت)
+                  </label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="block w-full text-xs text-muted-foreground file:me-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={!selectedFile || uploadMutation.isPending}
+                  className="w-full sm:w-auto flex items-center gap-2"
+                >
+                  {uploadMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  بارگذاری مدرک
+                </Button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Activity Summary */}
       <Card>
         <CardHeader>
           <CardTitle>خلاصه فعالیت</CardTitle>

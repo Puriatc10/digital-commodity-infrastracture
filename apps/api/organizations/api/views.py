@@ -1,4 +1,11 @@
-from .serializers import DirectoryOrganizationSerializer, OrganizationProfileSerializer
+from django.db import models
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, OpenApiResponse
+from .serializers import (
+    DirectoryOrganizationSerializer,
+    OrganizationProfileSerializer,
+    OrganizationSerializer,
+    OrganizationCommodityActionSerializer
+)
 from rest_framework import permissions
 from rest_framework import status
 from rest_framework.decorators import action
@@ -8,7 +15,6 @@ from commodities.models import CommodityDefinition
 from organizations.models import OrganizationCommodity
 from rest_framework import viewsets, mixins
 from organizations.models import Organization
-from organizations.api.serializers import OrganizationSerializer
 from organizations.api.permissions import IsOrganizationMemberOrAdmin, get_active_system_roles
 from identity.models import SystemRoleAssignment
 
@@ -32,26 +38,33 @@ class OrganizationViewSet(mixins.RetrieveModelMixin,
 
         if is_operator_or_admin:
             # Operators and Admins can see all organizations.
-            # (Note: is_active org filtering is not strictly enforced here for them
-            # if they need to see inactive ones, but the system role access grants system-wide view).
             return Organization.objects.all()
 
         # Regular users only see organizations where they have an active membership
-        # and the organization itself is active (though we could allow them to see inactive orgs if they are members,
-        # but requirements suggest active memberships are required).
+        # and the organization itself is active.
         return Organization.objects.filter(
             is_active=True,
             memberships__user=user,
             memberships__is_active=True
         ).distinct()
 
+    @extend_schema(
+        request=OrganizationCommodityActionSerializer,
+        responses={
+            201: OpenApiResponse(description="Commodity added successfully."),
+            400: OpenApiResponse(description="Invalid request or commodity_code missing."),
+            403: OpenApiResponse(description="Not authorized to manage commodities for this organization."),
+            404: OpenApiResponse(description="Commodity not found."),
+        }
+    )
     @action(detail=True, methods=['post'], permission_classes=[CanManageOrganizationCommodities])
     def add_commodity(self, request, pk=None):
         organization = self.get_object()
-        commodity_code = request.data.get("commodity_code")
-        if not commodity_code:
-            return Response({"detail": "commodity_code is required."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = OrganizationCommodityActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        commodity_code = serializer.validated_data["commodity_code"]
         try:
             commodity = CommodityDefinition.objects.get(code=commodity_code)
         except CommodityDefinition.DoesNotExist:
@@ -60,13 +73,23 @@ class OrganizationViewSet(mixins.RetrieveModelMixin,
         OrganizationCommodity.objects.get_or_create(organization=organization, commodity=commodity)
         return Response({"detail": "Commodity added successfully."}, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        request=OrganizationCommodityActionSerializer,
+        responses={
+            204: OpenApiResponse(description="Commodity removed successfully."),
+            400: OpenApiResponse(description="Invalid request or commodity_code missing."),
+            403: OpenApiResponse(description="Not authorized to manage commodities for this organization."),
+            404: OpenApiResponse(description="Commodity not found."),
+        }
+    )
     @action(detail=True, methods=['delete'], permission_classes=[CanManageOrganizationCommodities])
     def remove_commodity(self, request, pk=None):
         organization = self.get_object()
-        commodity_code = request.data.get("commodity_code")
-        if not commodity_code:
-            return Response({"detail": "commodity_code is required."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = OrganizationCommodityActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        commodity_code = serializer.validated_data["commodity_code"]
         try:
             commodity = CommodityDefinition.objects.get(code=commodity_code)
         except CommodityDefinition.DoesNotExist:
@@ -85,7 +108,12 @@ class DirectoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if not user or not user.is_authenticated or not user.is_active:
             return Organization.objects.none()
 
-        qs = Organization.objects.filter(is_active=True).distinct()
+        qs = (
+            Organization.objects.filter(is_active=True)
+            .select_related("verification")
+            .prefetch_related("capabilities", "commodities__commodity")
+            .distinct()
+        )
 
         search = self.request.query_params.get("search")
         if search:
@@ -105,9 +133,27 @@ class DirectoryViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
         verifications = self.request.query_params.getlist("verification")
         if verifications:
-            qs = qs.filter(verification__status__in=verifications)
+            if "unverified" in verifications:
+                qs = qs.filter(
+                    models.Q(verification__status__in=verifications) | models.Q(verification__isnull=True)
+                )
+            else:
+                qs = qs.filter(verification__status__in=verifications)
 
-        return qs.order_by("name")
+        return qs.order_by("name", "id")
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="search", type=OpenApiTypes.STR, required=False, description="Search by organization name"),
+            OpenApiParameter(name="capability", type=OpenApiTypes.STR, many=True, required=False, description="Filter by business capability (buyer, supplier, broker)"),
+            OpenApiParameter(name="country", type=OpenApiTypes.STR, required=False, description="Filter by country ISO code"),
+            OpenApiParameter(name="commodity", type=OpenApiTypes.STR, many=True, required=False, description="Filter by commodity code"),
+            OpenApiParameter(name="verification", type=OpenApiTypes.STR, many=True, required=False, description="Filter by verification status"),
+        ],
+        responses={200: DirectoryOrganizationSerializer(many=True)}
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
 class ProfileViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
@@ -121,4 +167,19 @@ class ProfileViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
 
         # Profiles can only be viewed if the organization is active
         # All authenticated users can view profiles of active organizations
-        return Organization.objects.filter(is_active=True).distinct()
+        return (
+            Organization.objects.filter(is_active=True)
+            .select_related("verification")
+            .prefetch_related("capabilities", "commodities__commodity")
+            .distinct()
+        )
+
+    @extend_schema(
+        responses={
+            200: OrganizationProfileSerializer,
+            404: OpenApiResponse(description="Organization profile not found or inactive")
+        }
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+

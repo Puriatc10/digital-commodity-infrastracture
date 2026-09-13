@@ -31,19 +31,27 @@ class OrganizationVerificationDetailSerializer(serializers.ModelSerializer):
 
 class InternalOrganizationVerificationDetailSerializer(serializers.ModelSerializer):
     decisions = VerificationDecisionSerializer(many=True, read_only=True)
-    notes = serializers.SerializerMethodField()
+    notes = VerificationNoteSerializer(many=True, read_only=True)
 
     class Meta:
         model = OrganizationVerification
         fields = ['id', 'status', 'version', 'updated_at', 'decisions', 'notes']
         read_only_fields = fields
 
-    def get_notes(self, obj) -> list[dict]:
-        return VerificationNoteSerializer(obj.notes.all(), many=True).data
+class VerificationNoteCreateSerializer(serializers.Serializer):
+    note = serializers.CharField(required=True, allow_blank=False)
 
-class VerificationActionSerializer(serializers.Serializer):
-    reason = serializers.CharField(required=False, allow_blank=True)
+class VerificationSubmitSerializer(serializers.Serializer):
+    expected_version = serializers.IntegerField(required=False, allow_null=True)
+
+class VerificationVersionActionSerializer(serializers.Serializer):
     expected_version = serializers.IntegerField(required=True, allow_null=False)
+
+class VerificationReasonActionSerializer(serializers.Serializer):
+    reason = serializers.CharField(required=True, allow_blank=False)
+    expected_version = serializers.IntegerField(required=True, allow_null=False)
+
+VerificationActionSerializer = VerificationReasonActionSerializer
 
 class ChecklistReviewSerializer(serializers.Serializer):
     document_id = serializers.UUIDField()

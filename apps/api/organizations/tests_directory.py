@@ -97,6 +97,34 @@ class DirectoryTests(TestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['name'], "Beta Org")
 
+    def test_verification_filter_absent_row(self):
+        # Organization without an OrganizationVerification row must be returned when filtering for 'unverified'
+        org_no_row = Organization.objects.create(name="Delta Org", country="IR", is_active=True)
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get('/api/organizations/directory/?verification=unverified')
+        names = [item['name'] for item in response.data]
+        self.assertIn("Beta Org", names)
+        self.assertIn("Delta Org", names)
+        # Check projection reports 'unverified' status
+        delta_item = next(item for item in response.data if item['name'] == "Delta Org")
+        self.assertEqual(delta_item['id'], str(org_no_row.id))
+        self.assertEqual(delta_item['verification_status'], "unverified")
+
+    def test_directory_query_count_constant(self):
+        self.client.force_authenticate(user=self.user)
+        # Create 5 additional organizations with capabilities and commodities
+        for i in range(5):
+            org = Organization.objects.create(name=f"Extra Org {i}", country="IR", is_active=True)
+            OrganizationCapability.objects.create(organization=org, capability=OrganizationCapability.CapabilityType.BUYER)
+            OrganizationCommodity.objects.create(organization=org, commodity=self.commodity)
+
+        # Total organizations is now 7 active organizations
+        # Queries should be O(1): 1 main org query with select_related, 1 prefetch capabilities, 1 prefetch commodities (+auth/session)
+        with self.assertNumQueries(4):
+            response = self.client.get('/api/organizations/directory/')
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(len(response.data), 7)
+
     def test_multi_capability_deduplication(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.get('/api/organizations/directory/?capability=buyer&capability=supplier')

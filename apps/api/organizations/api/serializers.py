@@ -37,15 +37,15 @@ class DirectoryOrganizationSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_capabilities(self, obj):
-        return list(obj.capabilities.values_list("capability", flat=True))
+        return [c.capability for c in obj.capabilities.all()]
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_commodities(self, obj):
-        return list(obj.commodities.values_list("commodity__code", flat=True))
+        return [c.commodity.code for c in obj.commodities.all()]
 
     @extend_schema_field(serializers.CharField())
     def get_verification_status(self, obj):
-        if hasattr(obj, "verification"):
+        if hasattr(obj, "verification") and obj.verification:
             return obj.verification.status
         return "unverified"
 
@@ -72,15 +72,15 @@ class OrganizationProfileSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_capabilities(self, obj):
-        return list(obj.capabilities.values_list("capability", flat=True))
+        return [c.capability for c in obj.capabilities.all()]
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_commodities(self, obj):
-        return list(obj.commodities.values_list("commodity__code", flat=True))
+        return [c.commodity.code for c in obj.commodities.all()]
 
     @extend_schema_field(serializers.CharField())
     def get_verification_status(self, obj):
-        if hasattr(obj, "verification"):
+        if hasattr(obj, "verification") and obj.verification:
             return obj.verification.status
         return "unverified"
 
@@ -88,3 +88,8 @@ class OrganizationProfileSerializer(serializers.ModelSerializer):
     def get_activity_summary(self, obj):
         # Always return empty/unavailable state as there is no real transaction data yet.
         return {}
+
+
+class OrganizationCommodityActionSerializer(serializers.Serializer):
+    commodity_code = serializers.CharField(help_text="Canonical commodity code (e.g. bitumen, base_oil)")
+

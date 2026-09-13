@@ -24,35 +24,39 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { FormEvent } from "react";
-import { components } from "@/lib/api/generated/schema";
+import Link from "next/link";
+import { VerificationBadge } from "@/components/verification-badge";
+import type { components } from "@/lib/api/generated/schema";
 
 type Organization = components["schemas"]["DirectoryOrganization"];
-
-function getVerificationBadge(status: string) {
-  switch (status) {
-    case "verified":
-      return <Badge variant="default" className="bg-green-600 hover:bg-green-700">تایید شده</Badge>;
-    case "basic_verified":
-      return <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">تاییدیه پایه</Badge>;
-    case "under_review":
-      return <Badge variant="outline">در حال بررسی</Badge>;
-    case "suspended":
-      return <Badge variant="destructive">معلق</Badge>;
-    default:
-      return <Badge variant="outline">تایید نشده</Badge>;
-  }
-}
+type CommodityItem = components["schemas"]["CommodityDefinition"];
 
 function getCapabilityBadge(cap: string) {
   switch (cap) {
     case "buyer":
-      return <Badge variant="outline" key={cap}>خریدار</Badge>;
+      return (
+        <Badge variant="outline" key={cap}>
+          خریدار
+        </Badge>
+      );
     case "supplier":
-      return <Badge variant="outline" key={cap}>تامین‌کننده</Badge>;
+      return (
+        <Badge variant="outline" key={cap}>
+          تامین‌کننده
+        </Badge>
+      );
     case "broker":
-      return <Badge variant="outline" key={cap}>کارگزار</Badge>;
+      return (
+        <Badge variant="outline" key={cap}>
+          کارگزار
+        </Badge>
+      );
     default:
-      return <Badge variant="outline" key={cap}>{cap}</Badge>;
+      return (
+        <Badge variant="outline" key={cap}>
+          {cap}
+        </Badge>
+      );
   }
 }
 
@@ -60,6 +64,7 @@ export function DirectoryClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const locale = pathname.split("/")[1] || "fa";
 
   const search = searchParams.get("search") || "";
   const capability = searchParams.get("capability") || "";
@@ -67,22 +72,42 @@ export function DirectoryClient() {
   const commodity = searchParams.get("commodity") || "";
   const verification = searchParams.get("verification") || "";
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["organizations", "directory", { search, capability, country, commodity, verification }],
+  // Fetch available commodities for the filter dropdown
+  const { data: commodities } = useQuery<CommodityItem[]>({
+    queryKey: ["commodities"],
     queryFn: async () => {
-      const { data, error } = await client.GET("/api/organizations/directory/", {
-        params: {
-          query: {
-            search: search || undefined,
-            capability: capability ? [capability] : undefined,
-            country: country || undefined,
-            commodity: commodity ? [commodity] : undefined,
-            verification: verification ? [verification] : undefined,
-          } as unknown as undefined,
-        },
-      });
-      if (error) throw error;
-      return data;
+      const { data, error, response } = await client.GET("/api/commodities/");
+      if (error || !response.ok || !data) return [];
+      return data as CommodityItem[];
+    },
+  });
+
+  // Fetch directory organizations with filters
+  const { data, isLoading, isError } = useQuery<Organization[]>({
+    queryKey: [
+      "organizations",
+      "directory",
+      { search, capability, country, commodity, verification },
+    ],
+    queryFn: async () => {
+      const { data, error, response } = await client.GET(
+        "/api/organizations/directory/",
+        {
+          params: {
+            query: {
+              search: search || undefined,
+              capability: capability ? [capability] : undefined,
+              country: country || undefined,
+              commodity: commodity ? [commodity] : undefined,
+              verification: verification ? [verification] : undefined,
+            },
+          },
+        }
+      );
+      if (error || !response.ok || !data) {
+        throw error || new Error("Failed to load directory");
+      }
+      return data as Organization[];
     },
   });
 
@@ -106,24 +131,48 @@ export function DirectoryClient() {
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-4 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div className="flex-1 space-y-1">
-            <label htmlFor="search" className="text-sm font-medium">جستجو</label>
+        <form
+          onSubmit={handleSearchSubmit}
+          className="flex flex-col gap-4 sm:flex-row sm:items-end flex-wrap"
+        >
+          {/* Search by Name */}
+          <div className="flex-1 min-w-[200px] space-y-1">
+            <label htmlFor="search" className="text-sm font-medium">
+              جستجو در نام سازمان
+            </label>
             <div className="relative">
               <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 id="search"
                 name="search"
                 defaultValue={search}
-                placeholder="نام شرکت..."
+                placeholder="نام سازمان..."
                 className="pl-8 pr-8"
               />
             </div>
           </div>
 
-          <div className="w-full sm:w-48 space-y-1">
+          {/* Country filter */}
+          <div className="w-full sm:w-36 space-y-1">
+            <label htmlFor="country" className="text-sm font-medium">
+              فیلتر کشور
+            </label>
+            <Input
+              id="country"
+              name="country"
+              defaultValue={country}
+              placeholder="مثلاً IR..."
+              onChange={(e) => updateFilters("country", e.target.value.trim().toUpperCase())}
+            />
+          </div>
+
+          {/* Capability filter */}
+          <div className="w-full sm:w-40 space-y-1">
             <label className="text-sm font-medium">نقش</label>
-            <Select value={capability} onValueChange={(val) => updateFilters("capability", val === "all" ? "" : val)}>
+            <Select
+              value={capability}
+              onValueChange={(val) => updateFilters("capability", val === "all" ? "" : val)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="همه" />
               </SelectTrigger>
@@ -136,19 +185,47 @@ export function DirectoryClient() {
             </Select>
           </div>
 
-          <div className="w-full sm:w-48 space-y-1">
-            <label className="text-sm font-medium">وضعیت تاییدیه</label>
-            <Select value={verification} onValueChange={(val) => updateFilters("verification", val === "all" ? "" : val)}>
+          {/* Commodity filter */}
+          <div className="w-full sm:w-44 space-y-1">
+            <label className="text-sm font-medium">کالا</label>
+            <Select
+              value={commodity}
+              onValueChange={(val) => updateFilters("commodity", val === "all" ? "" : val)}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="همه" />
+                <SelectValue placeholder="همه کالاها" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">همه</SelectItem>
+                <SelectItem value="all">همه کالاها</SelectItem>
+                {commodities
+                  ?.filter((c) => c && typeof c.code === "string" && c.code.length > 0)
+                  .map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.name_fa || c.name_en || c.code}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Verification Status filter */}
+          <div className="w-full sm:w-48 space-y-1">
+            <label className="text-sm font-medium">وضعیت تاییدیه</label>
+            <Select
+              value={verification}
+              onValueChange={(val) => updateFilters("verification", val === "all" ? "" : val)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="همه وضعیت‌ها" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه وضعیت‌ها</SelectItem>
                 <SelectItem value="verified">تایید شده</SelectItem>
-                <SelectItem value="basic_verified">تاییدیه پایه</SelectItem>
+                <SelectItem value="basic_verified">تایید اولیه</SelectItem>
+                <SelectItem value="documents_submitted">مدارک ارسال شده</SelectItem>
                 <SelectItem value="under_review">در حال بررسی</SelectItem>
                 <SelectItem value="unverified">تایید نشده</SelectItem>
-                <SelectItem value="suspended">معلق</SelectItem>
+                <SelectItem value="suspended">تعلیق شده</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -187,22 +264,35 @@ export function DirectoryClient() {
               ) : data && data.length > 0 ? (
                 data.map((org: Organization) => (
                   <TableRow key={org.id}>
-                    <TableCell className="font-medium">{org.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/${locale}/directory/${org.id}`}
+                        className="text-primary hover:underline font-semibold"
+                      >
+                        {org.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>{org.country || "-"}</TableCell>
-                    <TableCell className="flex gap-1 flex-wrap">
-                      {org.capabilities.length > 0
-                        ? org.capabilities.map(cap => getCapabilityBadge(cap))
-                        : "-"
-                      }
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {org.capabilities.length > 0
+                          ? org.capabilities.map((cap) => getCapabilityBadge(cap))
+                          : "-"}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {org.commodities.length > 0
-                        ? org.commodities.join(", ")
-                        : "-"
-                      }
+                      <div className="flex gap-1 flex-wrap">
+                        {org.commodities.length > 0
+                          ? org.commodities.map((comm) => (
+                              <Badge variant="secondary" key={comm}>
+                                {comm}
+                              </Badge>
+                            ))
+                          : "-"}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {getVerificationBadge(org.verification_status)}
+                      <VerificationBadge status={org.verification_status} />
                     </TableCell>
                   </TableRow>
                 ))
