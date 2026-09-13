@@ -16,6 +16,12 @@ from trade_hub.api.views_rfq import (
     RFQListCreateView,
     RFQPublishActionView,
 )
+from trade_hub.api.views_supply import (
+    SupplyListingActivateActionView,
+    SupplyListingCloseActionView,
+    SupplyListingDetailView,
+    SupplyListingListCreateView,
+)
 
 app_name = "trade_hub"
 
@@ -74,5 +80,25 @@ urlpatterns = [
         "rfqs/<uuid:rfq_id>/invitations/<uuid:invitation_id>/decline/",
         RFQInvitationDeclineActionView.as_view(),
         name="rfq-invitation-decline",
+    ),
+    path(
+        "supply-listings/",
+        SupplyListingListCreateView.as_view(),
+        name="supply-listing-list-create",
+    ),
+    path(
+        "supply-listings/<uuid:listing_id>/",
+        SupplyListingDetailView.as_view(),
+        name="supply-listing-detail",
+    ),
+    path(
+        "supply-listings/<uuid:listing_id>/activate/",
+        SupplyListingActivateActionView.as_view(),
+        name="supply-listing-activate",
+    ),
+    path(
+        "supply-listings/<uuid:listing_id>/close/",
+        SupplyListingCloseActionView.as_view(),
+        name="supply-listing-close",
     ),
 ]

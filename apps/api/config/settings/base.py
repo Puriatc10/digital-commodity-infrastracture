@@ -80,6 +80,7 @@ SPECTACULAR_SETTINGS = {
         "RFQInvitationStatusEnum": "trade_hub.models.RFQInvitationStatus",
         "RFQStatusEnum": "trade_hub.models.RFQStatus",
         "RFQVisibilityEnum": "trade_hub.models.RFQVisibility",
+        "SupplyListingStatusEnum": "trade_hub.models.SupplyListingStatus",
     },
 }
 

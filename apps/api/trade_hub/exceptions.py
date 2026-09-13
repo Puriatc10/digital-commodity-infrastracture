@@ -89,3 +89,30 @@ class InvitationPermissionDeniedError(InvitationError):
     """Raised when the actor lacks authorization to manage or act on the invitation."""
 
     pass
+
+
+class SupplyListingDomainError(Exception):
+    """Base domain exception for Supply Listing operations."""
+
+    pass
+
+
+class SupplyListingNotFoundError(SupplyListingDomainError, ObjectDoesNotExist):
+    """Raised when a Supply Listing cannot be found or is hidden."""
+
+    pass
+
+
+class SupplyListingPermissionDeniedError(SupplyListingDomainError):
+    """Raised when an actor lacks authority to create, edit, or activate a Supply Listing."""
+
+    pass
+
+
+class SupplyListingValidationError(SupplyListingDomainError):
+    """Raised when Supply Listing activation prerequisites or dynamic specification validation fails."""
+
+    def __init__(self, message: str, errors: list | None = None):
+        super().__init__(message)
+        self.message = message
+        self.errors = errors or []
