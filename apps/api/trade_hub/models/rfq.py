@@ -228,6 +228,67 @@ class RFQ(models.Model):
         if self.version is not None and self.version < 1:
             errors["version"] = "Version must be at least 1."
 
+        # Post-publication immutability enforcement
+        if self.pk and not self._state.adding:
+            persisted = (
+                RFQ.objects.filter(pk=self.pk)
+                .only(
+                    "status",
+                    "organization_id",
+                    "commodity_id",
+                    "schema_version_id",
+                    "specifications",
+                    "quantity",
+                    "unit",
+                    "target_price",
+                    "currency",
+                    "payment_terms",
+                    "incoterm",
+                    "origin",
+                    "destination",
+                    "delivery_window_start",
+                    "delivery_window_end",
+                    "inspection_required",
+                    "quality_notes",
+                    "created_by_id",
+                    "created_by_operator",
+                )
+                .first()
+            )
+            if persisted:
+                core_fields = [
+                    "organization_id",
+                    "commodity_id",
+                    "schema_version_id",
+                    "specifications",
+                    "quantity",
+                    "unit",
+                    "target_price",
+                    "currency",
+                    "payment_terms",
+                    "incoterm",
+                    "origin",
+                    "destination",
+                    "delivery_window_start",
+                    "delivery_window_end",
+                    "inspection_required",
+                    "quality_notes",
+                    "created_by_id",
+                    "created_by_operator",
+                ]
+                changed_core_fields = [
+                    f for f in core_fields if getattr(self, f) != getattr(persisted, f)
+                ]
+                if changed_core_fields:
+                    if persisted.status != RFQStatus.DRAFT:
+                        errors["core_fields"] = (
+                            f"Core fields cannot be modified after publication: {', '.join(changed_core_fields)}"
+                        )
+                    elif self.status == RFQStatus.PUBLISHED:
+                        errors["core_fields"] = (
+                            f"Core fields cannot be modified during publication: {', '.join(changed_core_fields)}"
+                        )
+
         if errors:
             raise ValidationError(errors)
 
