@@ -1,3 +1,4 @@
+from typing import Any
 import uuid
 
 from django.conf import settings
@@ -21,6 +22,17 @@ class RFQVisibility(models.TextChoices):
     PRIVATE = "private", "Private"
 
 
+class RFQQuerySet(models.QuerySet):
+    def visible_to(self, user: Any, organization: Any = None) -> "RFQQuerySet":
+        from trade_hub.services.visibility_service import get_visible_rfqs
+
+        return get_visible_rfqs(user, organization=organization, base_queryset=self)
+
+
+class RFQManager(models.Manager.from_queryset(RFQQuerySet)):
+    pass
+
+
 class RFQ(models.Model):
     """
     RFQ (Request for Quotation) Aggregate Root.
@@ -29,6 +41,8 @@ class RFQ(models.Model):
     commodity, bound to an immutable commodity schema version and validated
     dynamic specifications JSONB.
     """
+
+    objects = RFQManager()
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
