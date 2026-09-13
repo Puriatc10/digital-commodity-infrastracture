@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, waitFor, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, fireEvent, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/lib/auth-context";
@@ -90,6 +91,9 @@ interface RequestOptions {
 describe("T0509 — Supply Listing UI Component Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    HTMLElement.prototype.hasPointerCapture = vi.fn().mockReturnValue(false);
+    HTMLElement.prototype.releasePointerCapture = vi.fn();
+    HTMLElement.prototype.setPointerCapture = vi.fn();
   });
 
   afterEach(() => {
@@ -247,6 +251,7 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
   });
 
   it("5. Draft creation: creates initial draft via POST and stores authoritative ID and version", async () => {
+    const user = userEvent.setup();
     setupAuth("manager", ["supplier"]);
 
     vi.mocked(apiClient.POST).mockImplementation(async (url: string, opts?: unknown) => {
@@ -275,19 +280,11 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
       </Wrapper>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText("نوع کالا")).toBeInTheDocument();
-    });
+    const combobox = await screen.findByRole("combobox", { name: /نوع کالا/ });
+    await user.click(combobox);
 
-    // Select commodity by clicking trigger
-    const commodityTrigger = screen.getByLabelText("نوع کالا");
-    fireEvent.click(commodityTrigger);
-
-    // Wait for options and select Bitumen
-    await waitFor(() => {
-      expect(screen.getByText("قیر (bitumen)")).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText("قیر (bitumen)"));
+    const bitumenOption = await screen.findByRole("option", { name: /قیر/ });
+    await user.click(bitumenOption);
 
     // Enter positive quantity
     const quantityInput = screen.getByPlaceholderText("مثال: ۱۰۰۰");
@@ -437,6 +434,7 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
   });
 
   it("8. Multi-commodity dynamic rendering: renders Bitumen and Base Oil without branching", async () => {
+    const user = userEvent.setup();
     setupAuth("owner", ["supplier"]);
 
     render(
@@ -445,14 +443,12 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
       </Wrapper>
     );
 
-    await waitFor(() => {
-      expect(screen.getByLabelText("نوع کالا")).toBeInTheDocument();
-    });
+    const combobox = await screen.findByRole("combobox", { name: /نوع کالا/ });
 
     // Select Bitumen
-    fireEvent.click(screen.getByLabelText("نوع کالا"));
-    await waitFor(() => expect(screen.getByText("قیر (bitumen)")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("قیر (bitumen)"));
+    await user.click(combobox);
+    const bitumenOption = await screen.findByRole("option", { name: /قیر/ });
+    await user.click(bitumenOption);
 
     await waitFor(() => {
       expect(screen.getByText("درجه نفوذ")).toBeInTheDocument();
@@ -460,18 +456,19 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
     });
 
     // Switch to Base Oil
-    fireEvent.click(screen.getByLabelText("نوع کالا"));
-    await waitFor(() => expect(screen.getByText("روغن پایه (base_oil)")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("روغن پایه (base_oil)"));
+    await user.click(combobox);
+    const baseOilOption = await screen.findByRole("option", { name: /روغن پایه/ });
+    await user.click(baseOilOption);
 
     await waitFor(() => {
-      expect(screen.getByText("گرانروی کینماتیک در ۱۰۰ درجه")).toBeInTheDocument();
+      expect(screen.getByText("گرانروی در ۴۰ درجه")).toBeInTheDocument();
       expect(screen.getByText("نقطه اشتعال")).toBeInTheDocument();
       expect(screen.queryByText("درجه نفوذ")).not.toBeInTheDocument();
     });
   });
 
   it("9. Dynamic specification backend errors: maps structured errors to fields", async () => {
+    const user = userEvent.setup();
     setupAuth("owner", ["supplier"]);
 
     vi.mocked(apiClient.POST).mockResolvedValueOnce({
@@ -499,8 +496,11 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
     );
 
     // Select Bitumen & enter quantity
-    fireEvent.click(await screen.findByLabelText("نوع کالا"));
-    fireEvent.click(await screen.findByText("قیر (bitumen)"));
+    const combobox = await screen.findByRole("combobox", { name: /نوع کالا/ });
+    await user.click(combobox);
+    const bitumenOption = await screen.findByRole("option", { name: /قیر/ });
+    await user.click(bitumenOption);
+
     fireEvent.change(screen.getByPlaceholderText("مثال: ۱۰۰۰"), { target: { value: "100" } });
 
     // Save draft to trigger backend validation errors
@@ -514,6 +514,7 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
   });
 
   it("10. Commercial and availability fields rendering: renders all supported T0508 fields", async () => {
+    const user = userEvent.setup();
     setupAuth("owner", ["supplier"]);
 
     render(
@@ -523,8 +524,11 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
     );
 
     // Select commodity & quantity
-    fireEvent.click(await screen.findByLabelText("نوع کالا"));
-    fireEvent.click(await screen.findByText("قیر (bitumen)"));
+    const combobox = await screen.findByRole("combobox", { name: /نوع کالا/ });
+    await user.click(combobox);
+    const bitumenOption = await screen.findByRole("option", { name: /قیر/ });
+    await user.click(bitumenOption);
+
     fireEvent.change(screen.getByPlaceholderText("مثال: ۱۰۰۰"), { target: { value: "500" } });
 
     vi.mocked(apiClient.POST).mockResolvedValueOnce({
@@ -599,14 +603,14 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
     fireEvent.click(screen.getByText("پیش‌نمایش و فعال‌سازی"));
 
     await waitFor(() => {
-      expect(screen.getByText("پیش‌نمایش آگهی عرضه کالا")).toBeInTheDocument();
+      expect(screen.getByText("پیش‌نمایش و فعال‌سازی آگهی")).toBeInTheDocument();
       expect(screen.getByText("420.00 USD")).toBeInTheDocument();
       expect(screen.getByText("Bandar Abbas")).toBeInTheDocument();
-      expect(screen.getByText("فعال‌سازی آگهی")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /فعال‌سازی آگهی/ })).toBeInTheDocument();
     });
 
     // Click Activate Listing
-    fireEvent.click(screen.getByText("فعال‌سازی آگهی"));
+    fireEvent.click(screen.getByRole("button", { name: /فعال‌سازی آگهی/ }));
 
     await waitFor(() => {
       expect(apiClient.POST).toHaveBeenCalledWith(
@@ -792,6 +796,7 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
   });
 
   it("15. Close listing: closes active listing using expected_version and confirmation modal", async () => {
+    const user = userEvent.setup();
     const activeListing = {
       id: "listing-to-close-123",
       version: 2,
@@ -831,20 +836,17 @@ describe("T0509 — Supply Listing UI Component Suite", () => {
       </Wrapper>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText("بستن آگهی")).toBeInTheDocument();
-    });
-
-    // Open close confirmation modal
-    fireEvent.click(screen.getByText("بستن آگهی"));
+    const closeBtn = await screen.findByRole("button", { name: "بستن آگهی" });
+    await user.click(closeBtn);
 
     await waitFor(() => {
       expect(screen.getByText("تأیید بستن آگهی عرضه")).toBeInTheDocument();
     });
 
     // Confirm close in modal
-    const confirmButtons = screen.getAllByText("بستن آگهی");
-    fireEvent.click(confirmButtons[confirmButtons.length - 1]);
+    const modal = screen.getByText("تأیید بستن آگهی عرضه").closest("div[class*='fixed']")!;
+    const confirmBtn = within(modal as HTMLElement).getByRole("button", { name: "بستن آگهی" });
+    await user.click(confirmBtn);
 
     await waitFor(() => {
       expect(apiClient.POST).toHaveBeenCalledWith(
