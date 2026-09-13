@@ -712,6 +712,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trade-hub/supply-listings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List visible supply listings
+         * @description Retrieve a paginated list of supply listings visible to the caller. Scoped strictly server-side according to the caller's active organization, capabilities, and commodity associations.
+         */
+        get: operations["trade_hub_supply_listings_list"];
+        put?: never;
+        /**
+         * Create supply listing draft
+         * @description Create a new Draft Supply Listing. Supplier organization is bound server-side from the active organization context. Requires Owner or Manager role in a Supplier organization (or Platform Operator). Validates referenced commodity is active, referenced schema version is published, and dynamic specifications conform to the exact schema.
+         */
+        post: operations["trade_hub_supply_listings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/supply-listings/{listing_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve supply listing detail
+         * @description Retrieve complete details of a Supply Listing. Returns the Supplier projection (including internal notes and audit details) to the owning Supplier organization or Platform Operators. Returns the safe Public projection to external counterparties. Returns 404 if the supply listing does not exist or is hidden to the caller.
+         */
+        get: operations["trade_hub_supply_listings_retrieve"];
+        /**
+         * Update draft supply listing
+         * @description Update mutable fields of a Draft Supply Listing. Requires expected_version. Rejects stale versions with 409 Conflict. Rejects updates on Active, Closed, or Expired listings. Restricted to Supplier Owner/Manager or Platform Operator. Safely handles commodity/schema switching by re-validating specifications.
+         */
+        put: operations["trade_hub_supply_listings_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Partial update draft supply listing
+         * @description Partially update mutable fields of a Draft Supply Listing. Requires expected_version for optimistic concurrency control.
+         */
+        patch: operations["trade_hub_supply_listings_partial_update"];
+        trace?: never;
+    };
+    "/api/trade-hub/supply-listings/{listing_id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activate supply listing
+         * @description Transition a Draft Supply Listing to Active. Requires expected_version for optimistic concurrency control. Validates dynamic specifications against stored exact schema version under row lock. Freezes core technical and commercial terms upon successful activation.
+         */
+        post: operations["trade_hub_supply_listings_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/supply-listings/{listing_id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close supply listing
+         * @description Transition a Draft or Active Supply Listing to Closed. Requires expected_version for optimistic concurrency control. Restricted to Supplier Owner/Manager or Platform Operator.
+         */
+        post: operations["trade_hub_supply_listings_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -989,6 +1081,67 @@ export interface components {
             /** @description Updated quality notes. */
             quality_notes?: string;
             /** @description Updated general procurement notes. */
+            notes?: string;
+            /**
+             * @description Updated visibility tier.
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             */
+            visibility?: components["schemas"]["RFQVisibilityEnum"];
+        };
+        /** @description Payload for updating an existing Draft Supply Listing. */
+        PatchedSupplyListingUpdate: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version?: number;
+            /**
+             * Format: uuid
+             * @description UUID of new commodity definition if updating product.
+             */
+            commodity_id?: string;
+            /**
+             * Format: uuid
+             * @description UUID of new schema version if updating product.
+             */
+            schema_version_id?: string;
+            /**
+             * Format: decimal
+             * @description Updated supply quantity.
+             */
+            quantity?: string;
+            /** @description Updated unit of measurement. */
+            unit?: string;
+            /** @description Updated dynamic technical specifications JSON payload. */
+            specifications?: unknown;
+            /**
+             * Format: decimal
+             * @description Updated indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /** @description Updated ISO 4217 currency code. */
+            currency?: string;
+            /** @description Updated payment terms. */
+            payment_terms?: string;
+            /** @description Updated incoterm code. */
+            incoterm?: string;
+            /** @description Updated origin location or port. */
+            origin?: string;
+            /** @description Updated allowable destination. */
+            destination?: string;
+            /**
+             * Format: date
+             * @description Updated availability window start date.
+             */
+            availability_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Updated availability window end date.
+             */
+            availability_window_end?: string | null;
+            /** @description Updated quality notes. */
+            quality_notes?: string;
+            /** @description Updated internal notes. */
             notes?: string;
             /**
              * @description Updated visibility tier.
@@ -1538,6 +1691,356 @@ export interface components {
          * @enum {string}
          */
         RFQVisibilityEnum: "public" | "network" | "private";
+        /** @description Payload for activating a Draft Supply Listing. */
+        SupplyListingActivateAction: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /** @description Payload for closing a Draft or Active Supply Listing. */
+        SupplyListingCloseAction: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /** @description Payload for creating a new Draft Supply Listing. */
+        SupplyListingCreate: {
+            /**
+             * Format: uuid
+             * @description UUID of the referenced commodity definition.
+             */
+            commodity_id: string;
+            /**
+             * Format: uuid
+             * @description UUID of the exact referenced commodity schema version.
+             */
+            schema_version_id: string;
+            /**
+             * Format: decimal
+             * @description Supply quantity available (must be positive).
+             */
+            quantity: string;
+            /**
+             * @description Unit of measurement (e.g. MT, Barrels).
+             * @default MT
+             */
+            unit: string;
+            /** @description Dynamic technical specifications JSON payload. */
+            specifications?: unknown;
+            /**
+             * Format: decimal
+             * @description Optional indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /**
+             * @description ISO 4217 3-letter currency code (e.g. USD, EUR).
+             * @default USD
+             */
+            currency: string;
+            /**
+             * @description Indicative payment terms (e.g. LC, TT).
+             * @default
+             */
+            payment_terms: string;
+            /**
+             * @description Incoterm code (e.g. FOB, CIF, CFR).
+             * @default
+             */
+            incoterm: string;
+            /**
+             * @description Origin location, facility, or port.
+             * @default
+             */
+            origin: string;
+            /**
+             * @description Allowable destination country or port if restricted.
+             * @default
+             */
+            destination: string;
+            /**
+             * Format: date
+             * @description Earliest availability date.
+             */
+            availability_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest availability date.
+             */
+            availability_window_end?: string | null;
+            /**
+             * @description Quality, testing, or specification notes.
+             * @default
+             */
+            quality_notes: string;
+            /**
+             * @description General internal notes or comments (hidden from external counterparties).
+             * @default
+             */
+            notes: string;
+            /**
+             * @description Participation visibility tier (public, network, private).
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             * @default public
+             */
+            visibility: components["schemas"]["RFQVisibilityEnum"];
+            /**
+             * Format: uuid
+             * @description Target supplier organization UUID. Allowed only for platform operators/admins acting on behalf.
+             */
+            organization_id?: string | null;
+        };
+        /** @description Standardized error response payload with optional structured dynamic field errors. */
+        SupplyListingErrorResponse: {
+            /** @description High-level error summary. */
+            detail: string;
+            /** @description Structured dynamic specification errors if applicable. */
+            errors?: components["schemas"]["DynamicFieldError"][];
+        };
+        /**
+         * @description Safe public/counterparty Supply Listing projection for external Buyers and Brokers.
+         *     Exposes commercial and technical terms while omitting internal notes,
+         *     operator provenance, and internal administrative audit details.
+         */
+        SupplyListingPublicResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["DirectoryOrganization"];
+            /** Format: uuid */
+            readonly commodity_id: string;
+            readonly commodity_code: string;
+            readonly commodity_name_fa: string;
+            readonly commodity_name_en: string;
+            /** Format: uuid */
+            readonly schema_version_id: string;
+            readonly schema_version_number: number;
+            /** @description Dynamic technical specifications validated against the referenced schema version. */
+            readonly specifications: unknown;
+            /**
+             * Format: decimal
+             * @description Supply quantity available (must be positive).
+             */
+            readonly quantity: string;
+            /** @description Unit of measurement (e.g. MT, Barrels). */
+            readonly unit: string;
+            /**
+             * Format: decimal
+             * @description Optional indicative price per unit.
+             */
+            readonly indicative_price: string | null;
+            /** @description ISO 4217 3-letter currency code (e.g. USD, EUR). */
+            readonly currency: string;
+            /** @description Indicative payment terms (e.g. LC, TT). */
+            readonly payment_terms: string;
+            /** @description Incoterm code (e.g. FOB, CIF, CFR). */
+            readonly incoterm: string;
+            /** @description Origin location, facility, or port. */
+            readonly origin: string;
+            /** @description Allowable destination country or port if restricted. */
+            readonly destination: string;
+            /**
+             * Format: date
+             * @description Earliest availability date.
+             */
+            readonly availability_window_start: string | null;
+            /**
+             * Format: date
+             * @description Latest availability date.
+             */
+            readonly availability_window_end: string | null;
+            /** @description Quality, testing, or specification notes. */
+            readonly quality_notes: string;
+            /**
+             * @description Current lifecycle state of the supply listing.
+             *
+             *     * `draft` - Draft
+             *     * `active` - Active
+             *     * `expired` - Expired
+             *     * `closed` - Closed
+             */
+            readonly status: components["schemas"]["SupplyListingStatusEnum"];
+            /**
+             * @description Participation visibility tier (public, network, private).
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             */
+            readonly visibility: components["schemas"]["RFQVisibilityEnum"];
+            /** @description Optimistic concurrency aggregate version counter. */
+            readonly version: number;
+            /**
+             * Format: date-time
+             * @description Timestamp when the supply listing was activated.
+             */
+            readonly activated_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `active` - Active
+         *     * `expired` - Expired
+         *     * `closed` - Closed
+         * @enum {string}
+         */
+        SupplyListingStatusEnum: "draft" | "active" | "expired" | "closed";
+        /**
+         * @description Comprehensive Supply Listing projection for the owning Supplier organization and Platform Operators.
+         *     Exposes full commercial, availability, technical, internal notes, and lifecycle audit details.
+         */
+        SupplyListingSupplierResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["DirectoryOrganization"];
+            /** Format: uuid */
+            readonly commodity_id: string;
+            readonly commodity_code: string;
+            readonly commodity_name_fa: string;
+            readonly commodity_name_en: string;
+            /** Format: uuid */
+            readonly schema_version_id: string;
+            readonly schema_version_number: number;
+            /** @description Dynamic technical specifications validated against the referenced schema version. */
+            readonly specifications: unknown;
+            /**
+             * Format: decimal
+             * @description Supply quantity available (must be positive).
+             */
+            readonly quantity: string;
+            /** @description Unit of measurement (e.g. MT, Barrels). */
+            readonly unit: string;
+            /**
+             * Format: decimal
+             * @description Optional indicative price per unit.
+             */
+            readonly indicative_price: string | null;
+            /** @description ISO 4217 3-letter currency code (e.g. USD, EUR). */
+            readonly currency: string;
+            /** @description Indicative payment terms (e.g. LC, TT). */
+            readonly payment_terms: string;
+            /** @description Incoterm code (e.g. FOB, CIF, CFR). */
+            readonly incoterm: string;
+            /** @description Origin location, facility, or port. */
+            readonly origin: string;
+            /** @description Allowable destination country or port if restricted. */
+            readonly destination: string;
+            /**
+             * Format: date
+             * @description Earliest availability date.
+             */
+            readonly availability_window_start: string | null;
+            /**
+             * Format: date
+             * @description Latest availability date.
+             */
+            readonly availability_window_end: string | null;
+            /** @description Quality, testing, or specification notes. */
+            readonly quality_notes: string;
+            /** @description General internal notes or comments (hidden from external counterparties). */
+            readonly notes: string;
+            /**
+             * @description Current lifecycle state of the supply listing.
+             *
+             *     * `draft` - Draft
+             *     * `active` - Active
+             *     * `expired` - Expired
+             *     * `closed` - Closed
+             */
+            readonly status: components["schemas"]["SupplyListingStatusEnum"];
+            /**
+             * @description Participation visibility tier (public, network, private).
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             */
+            readonly visibility: components["schemas"]["RFQVisibilityEnum"];
+            /** @description Optimistic concurrency aggregate version counter. */
+            readonly version: number;
+            /** @description True if created by a platform operator on behalf of the supplier organization. */
+            readonly created_by_operator: boolean;
+            /**
+             * Format: date-time
+             * @description Timestamp when the supply listing was activated.
+             */
+            readonly activated_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the supply listing was closed.
+             */
+            readonly closed_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the supply listing was marked expired.
+             */
+            readonly expired_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Payload for updating an existing Draft Supply Listing. */
+        SupplyListingUpdate: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description UUID of new commodity definition if updating product.
+             */
+            commodity_id?: string;
+            /**
+             * Format: uuid
+             * @description UUID of new schema version if updating product.
+             */
+            schema_version_id?: string;
+            /**
+             * Format: decimal
+             * @description Updated supply quantity.
+             */
+            quantity?: string;
+            /** @description Updated unit of measurement. */
+            unit?: string;
+            /** @description Updated dynamic technical specifications JSON payload. */
+            specifications?: unknown;
+            /**
+             * Format: decimal
+             * @description Updated indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /** @description Updated ISO 4217 currency code. */
+            currency?: string;
+            /** @description Updated payment terms. */
+            payment_terms?: string;
+            /** @description Updated incoterm code. */
+            incoterm?: string;
+            /** @description Updated origin location or port. */
+            origin?: string;
+            /** @description Updated allowable destination. */
+            destination?: string;
+            /**
+             * Format: date
+             * @description Updated availability window start date.
+             */
+            availability_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Updated availability window end date.
+             */
+            availability_window_end?: string | null;
+            /** @description Updated quality notes. */
+            quality_notes?: string;
+            /** @description Updated internal notes. */
+            notes?: string;
+            /**
+             * @description Updated visibility tier.
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             */
+            visibility?: components["schemas"]["RFQVisibilityEnum"];
+        };
         /**
          * @description * `company_registration` - Company Registration
          *     * `tax_id` - Tax ID
@@ -3434,6 +3937,356 @@ export interface operations {
                 content?: never;
             };
             /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_supply_listings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingPublicResponse"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_supply_listings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplyListingCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingSupplierResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Supplier Owner/Manager role or Supplier capability */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_supply_listings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingSupplierResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Supply listing not found or not visible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_supply_listings_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplyListingUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingSupplierResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks edit permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Supply listing not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_supply_listings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedSupplyListingUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingSupplierResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks edit permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Supply listing not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_supply_listings_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplyListingActivateAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingSupplierResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks activation permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Supply listing not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_supply_listings_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplyListingCloseAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingSupplierResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplyListingErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks close permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Supply listing not found */
             404: {
                 headers: {
                     [name: string]: unknown;

@@ -11,8 +11,13 @@ from organizations.models import (
     OrganizationCommodity,
     OrganizationMembership,
 )
-from trade_hub.exceptions import RFQNotFoundError
+from trade_hub.exceptions import RFQNotFoundError, SupplyListingNotFoundError
 from trade_hub.models.rfq import RFQ, RFQStatus, RFQVisibility
+from trade_hub.models.supply import (
+    SupplyListing,
+    SupplyListingStatus,
+    SupplyListingVisibility,
+)
 
 
 def _extract_rfq_id(rfq_or_id: Any) -> uuid.UUID:
@@ -332,3 +337,184 @@ has_global_visibility = RFQVisibilityService.has_global_visibility
 resolve_authoritative_organization = (
     RFQVisibilityService.resolve_authoritative_organization
 )
+
+
+def _extract_supply_id(supply_or_id: Any) -> uuid.UUID:
+    if isinstance(supply_or_id, SupplyListing):
+        return supply_or_id.pk
+    if isinstance(supply_or_id, uuid.UUID):
+        return supply_or_id
+    if isinstance(supply_or_id, str):
+        try:
+            return uuid.UUID(supply_or_id)
+        except (ValueError, AttributeError) as exc:
+            raise SupplyListingNotFoundError(
+                f"Invalid supply listing ID: '{supply_or_id}'"
+            ) from exc
+    raise SupplyListingNotFoundError(f"Invalid supply listing identifier: '{supply_or_id}'")
+
+
+class SupplyListingVisibilityService:
+    """
+    Authoritative domain service governing server-side SupplyListing visibility and QuerySet scoping.
+
+    Centralizes all visibility rules across Public, Network, and Private visibility tiers,
+    ensuring strict separation of business capabilities and system roles, preventing IDOR,
+    and avoiding information leakage across lifecycle states.
+    """
+
+    @classmethod
+    def get_visible_supply_listings(
+        cls,
+        user: Any,
+        organization: Any = None,
+        base_queryset: QuerySet[SupplyListing] | None = None,
+    ) -> QuerySet[SupplyListing]:
+        """
+        Return the visibility-scoped QuerySet of SupplyListings for a given user and organization context.
+
+        Scoping rules:
+        - Anonymous / unauthenticated -> none()
+        - Operator / Product Admin -> all supply listings (Draft, Active, Closed, Expired, all tiers)
+        - Non-operator without valid active organization -> none()
+        - Owning Supplier Organization -> all listings owned by that organization (all statuses, all tiers)
+        - External Organizations:
+            - Must be Active (Draft, Closed, Expired are hidden)
+            - Public tier: visible to any authenticated organization
+            - Network tier: visible only if organization has matching OrganizationCommodity
+            - Private tier: hidden from external parties (only owner and operators can view)
+        """
+        if base_queryset is None:
+            base_queryset = SupplyListing.objects.all()
+
+        if not user or not getattr(user, "is_authenticated", False):
+            return base_queryset.none()
+
+        # 1. Global operational access (Operator / Admin)
+        if has_global_visibility(user):
+            return base_queryset.all()
+
+        # 2. Resolve authoritative current organization
+        current_org = resolve_authoritative_organization(user, organization)
+        if current_org is None:
+            return base_queryset.none()
+
+        # 3. Owner access: can view own supply listings in any lifecycle state
+        owner_q = models.Q(organization=current_org)
+
+        # 4. External access:
+        # External discovery rule: only Active supply listings owned by other organizations
+        external_active_base = models.Q(
+            status=SupplyListingStatus.ACTIVE
+        ) & ~models.Q(organization=current_org)
+
+        # Public tier: visible to any external authenticated organization
+        public_q = models.Q(visibility=SupplyListingVisibility.PUBLIC)
+
+        # Network tier: requires OrganizationCommodity matching listing commodity
+        org_commodities = OrganizationCommodity.objects.filter(
+            organization=current_org
+        ).values("commodity_id")
+        network_q = models.Q(
+            visibility=SupplyListingVisibility.NETWORK,
+            commodity_id__in=org_commodities,
+        )
+
+        external_q = public_q | network_q
+        final_q = owner_q | (external_active_base & external_q)
+        return base_queryset.filter(final_q).distinct()
+
+    @classmethod
+    def get_visible_supply_listing(
+        cls,
+        supply_or_id: Any,
+        user: Any,
+        organization: Any = None,
+        base_queryset: QuerySet[SupplyListing] | None = None,
+    ) -> SupplyListing:
+        """
+        Perform a direct ID lookup of a SupplyListing through the visibility-scoped QuerySet.
+
+        Raises SupplyListingNotFoundError if the listing does not exist OR is not visible to the caller,
+        ensuring 404-like hidden resource semantics and preventing existence/timing leaks.
+        """
+        supply_id = _extract_supply_id(supply_or_id)
+        qs = cls.get_visible_supply_listings(
+            user, organization=organization, base_queryset=base_queryset
+        )
+        try:
+            return qs.get(pk=supply_id)
+        except SupplyListing.DoesNotExist as exc:
+            raise SupplyListingNotFoundError(
+                f"Supply listing with id '{supply_id}' does not exist or is not visible."
+            ) from exc
+
+    @classmethod
+    def is_supply_listing_visible(
+        cls,
+        supply_or_id: Any,
+        user: Any,
+        organization: Any = None,
+    ) -> bool:
+        """Helper predicate returning boolean visibility without raising exceptions."""
+        try:
+            cls.get_visible_supply_listing(supply_or_id, user, organization=organization)
+            return True
+        except SupplyListingNotFoundError:
+            return False
+
+
+def get_visible_supply_listings_for_request(
+    request: Any,
+    base_queryset: QuerySet[SupplyListing] | None = None,
+) -> QuerySet[SupplyListing]:
+    """
+    Convenience helper for API views to resolve visibility scope directly from a DRF request.
+    Extracts user and organization hint, resolving authoritative membership server-side.
+    """
+    user = getattr(request, "user", None)
+    org_hint = getattr(request, "current_organization", None) or getattr(
+        request, "organization", None
+    )
+    if org_hint is None and hasattr(request, "session"):
+        org_hint = request.session.get("organization_id")
+    if org_hint is None and hasattr(request, "headers"):
+        org_hint = request.headers.get("X-Organization-Id")
+    if org_hint is None and hasattr(request, "query_params"):
+        org_hint = request.query_params.get("organization")
+
+    return SupplyListingVisibilityService.get_visible_supply_listings(
+        user=user,
+        organization=org_hint,
+        base_queryset=base_queryset,
+    )
+
+
+def get_visible_supply_listing_for_request(
+    supply_or_id: Any,
+    request: Any,
+    base_queryset: QuerySet[SupplyListing] | None = None,
+) -> SupplyListing:
+    """Convenience helper for API views to retrieve a single visible SupplyListing from a DRF request."""
+    user = getattr(request, "user", None)
+    org_hint = getattr(request, "current_organization", None) or getattr(
+        request, "organization", None
+    )
+    if org_hint is None and hasattr(request, "session"):
+        org_hint = request.session.get("organization_id")
+    if org_hint is None and hasattr(request, "headers"):
+        org_hint = request.headers.get("X-Organization-Id")
+    if org_hint is None and hasattr(request, "query_params"):
+        org_hint = request.query_params.get("organization")
+
+    return SupplyListingVisibilityService.get_visible_supply_listing(
+        supply_or_id=supply_or_id,
+        user=user,
+        organization=org_hint,
+        base_queryset=base_queryset,
+    )
+
+
+get_visible_supply_listings = SupplyListingVisibilityService.get_visible_supply_listings
+get_visible_supply_listing = SupplyListingVisibilityService.get_visible_supply_listing
+is_supply_listing_visible = SupplyListingVisibilityService.is_supply_listing_visible

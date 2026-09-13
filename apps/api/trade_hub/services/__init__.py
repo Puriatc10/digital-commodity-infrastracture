@@ -28,9 +28,30 @@ from trade_hub.services.rfq_service import (
     RFQService,
     can_manage_rfq_builder,
     create_draft_rfq,
-    update_draft_rfq,
     publish_draft_rfq,
+    update_draft_rfq,
     validate_specifications_payload,
+)
+from trade_hub.services.supply_lifecycle import (
+    SupplyLifecycleService,
+    activate_supply,
+    close_supply,
+    expire_supply,
+)
+from trade_hub.services.supply_service import (
+    SupplyService,
+    activate_draft_supply,
+    can_manage_supply_listing,
+    create_draft_supply,
+    update_draft_supply,
+)
+from trade_hub.services.visibility_service import (
+    SupplyListingVisibilityService,
+    get_visible_supply_listing,
+    get_visible_supply_listing_for_request,
+    get_visible_supply_listings,
+    get_visible_supply_listings_for_request,
+    is_supply_listing_visible,
 )
 
 __all__ = [
@@ -59,4 +80,19 @@ __all__ = [
     "publish_draft_rfq",
     "can_manage_rfq_builder",
     "validate_specifications_payload",
+    "SupplyLifecycleService",
+    "activate_supply",
+    "close_supply",
+    "expire_supply",
+    "SupplyService",
+    "create_draft_supply",
+    "update_draft_supply",
+    "activate_draft_supply",
+    "can_manage_supply_listing",
+    "SupplyListingVisibilityService",
+    "get_visible_supply_listings",
+    "get_visible_supply_listing",
+    "is_supply_listing_visible",
+    "get_visible_supply_listings_for_request",
+    "get_visible_supply_listing_for_request",
 ]
