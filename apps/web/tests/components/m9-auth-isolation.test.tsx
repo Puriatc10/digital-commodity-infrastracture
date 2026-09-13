@@ -15,6 +15,7 @@ vi.mock("../../src/lib/api/client", () => ({
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "test-org-id", locale: "fa" }),
+  usePathname: () => "/fa/operator/verification/test-org-id",
 }));
 
 function createTestQueryClient() {

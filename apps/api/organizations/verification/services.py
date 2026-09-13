@@ -215,7 +215,7 @@ class VerificationService:
     def add_internal_note(organization_id, actor, note: str):
         if not note:
              raise VerificationDomainException("Note cannot be empty")
-        verification = OrganizationVerification.objects.get(organization_id=organization_id)
+        verification = VerificationService.get_or_create_verification(organization_id)
         return VerificationNote.objects.create(
             verification=verification,
             actor=actor,

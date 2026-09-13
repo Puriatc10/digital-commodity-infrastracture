@@ -590,9 +590,7 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
             readonly decisions: components["schemas"]["VerificationDecision"][];
-            readonly notes: {
-                [key: string]: unknown;
-            }[];
+            readonly notes: components["schemas"]["VerificationNote"][];
         };
         Login: {
             /** Format: email */
@@ -614,6 +612,10 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        OrganizationCommodityAction: {
+            /** @description Canonical commodity code (e.g. bitumen, base_oil) */
+            commodity_code: string;
         };
         OrganizationContext: {
             organization: components["schemas"]["Organization"];
@@ -689,7 +691,10 @@ export interface components {
         };
         UploadDocument: {
             type: components["schemas"]["TypeEnum"];
-            /** Format: uri */
+            /**
+             * Format: binary
+             * @description Binary document file (PDF, JPEG, PNG, max 10MB)
+             */
             file: string;
             /** Format: uuid */
             organization: string;
@@ -709,10 +714,6 @@ export interface components {
             maximum?: number;
             minLength?: number;
             maxLength?: number;
-        };
-        VerificationAction: {
-            reason?: string;
-            expected_version: number;
         };
         VerificationDecision: {
             /** Format: uuid */
@@ -754,6 +755,9 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        VerificationNoteCreate: {
+            note: string;
+        };
         VerificationQueue: {
             /** Format: uuid */
             readonly id: string;
@@ -765,6 +769,10 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        VerificationReasonAction: {
+            reason: string;
+            expected_version: number;
+        };
         /**
          * @description * `unverified` - Unverified
          *     * `documents_submitted` - Documents Submitted
@@ -775,6 +783,12 @@ export interface components {
          * @enum {string}
          */
         VerificationStatusEnum: "unverified" | "documents_submitted" | "under_review" | "basic_verified" | "verified" | "suspended";
+        VerificationSubmit: {
+            expected_version?: number | null;
+        };
+        VerificationVersionAction: {
+            expected_version: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -1101,6 +1115,7 @@ export interface operations {
     documents_list: {
         parameters: {
             query: {
+                /** @description Organization UUID */
                 organization: string;
             };
             header?: never;
@@ -1117,6 +1132,13 @@ export interface operations {
                     "application/json": components["schemas"]["VerificationDocument"][];
                 };
             };
+            /** @description Invalid organization UUID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     documents_download_retrieve: {
@@ -1130,13 +1152,28 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Binary document file bytes download. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/octet-stream": string;
                 };
+            };
+            /** @description Not authorized to download this document. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Document or file not found in storage. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1160,6 +1197,34 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VerificationDocument"];
                 };
+            };
+            /** @description Validation error (e.g. invalid file type or size) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict (concurrent upload) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Storage or database failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1233,7 +1298,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationVersionAction"];
             };
         };
         responses: {
@@ -1245,7 +1310,7 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error (e.g. missing document, invalid transition) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1272,7 +1337,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationVersionAction"];
             };
         };
         responses: {
@@ -1284,7 +1349,7 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error (e.g. missing document, invalid transition) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1350,7 +1415,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationNote"];
+                "application/json": components["schemas"]["VerificationNoteCreate"];
             };
         };
         responses: {
@@ -1361,6 +1426,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VerificationNote"];
                 };
+            };
+            /** @description Domain error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1375,7 +1447,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationReasonAction"];
             };
         };
         responses: {
@@ -1387,7 +1459,7 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error (e.g. reason required, invalid transition) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1414,7 +1486,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationVersionAction"];
             };
         };
         responses: {
@@ -1453,7 +1525,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationVersionAction"];
             };
         };
         responses: {
@@ -1490,9 +1562,9 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationSubmit"];
             };
         };
         responses: {
@@ -1501,7 +1573,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
+                    "application/json": components["schemas"]["OrganizationVerificationDetail"];
                 };
             };
             /** @description Domain error (e.g. invalid transition) */
@@ -1531,7 +1603,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["VerificationAction"];
+                "application/json": components["schemas"]["VerificationReasonAction"];
             };
         };
         responses: {
@@ -1543,7 +1615,7 @@ export interface operations {
                     "application/json": components["schemas"]["InternalOrganizationVerificationDetail"];
                 };
             };
-            /** @description Domain error (e.g. invalid transition) */
+            /** @description Domain error (e.g. reason required, invalid transition) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -1645,17 +1717,37 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Organization"];
+                "application/json": components["schemas"]["OrganizationCommodityAction"];
             };
         };
         responses: {
-            200: {
+            /** @description Commodity added successfully. */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["Organization"];
+                content?: never;
+            };
+            /** @description Invalid request or commodity_code missing. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
                 };
+                content?: never;
+            };
+            /** @description Not authorized to manage commodities for this organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Commodity not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1671,8 +1763,29 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No response body */
+            /** @description Commodity removed successfully. */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request or commodity_code missing. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not authorized to manage commodities for this organization. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Commodity not found. */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1682,7 +1795,18 @@ export interface operations {
     };
     organizations_directory_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter by business capability (buyer, supplier, broker) */
+                capability?: string[];
+                /** @description Filter by commodity code */
+                commodity?: string[];
+                /** @description Filter by country ISO code */
+                country?: string;
+                /** @description Search by organization name */
+                search?: string;
+                /** @description Filter by verification status */
+                verification?: string[];
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1719,11 +1843,23 @@ export interface operations {
                     "application/json": components["schemas"]["OrganizationProfile"];
                 };
             };
+            /** @description Organization profile not found or inactive */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     organizations_verification_cases_list: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter for pending cases (Documents Submitted, Under Review) */
+                is_pending?: boolean;
+                /** @description Filter by exact status */
+                status?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

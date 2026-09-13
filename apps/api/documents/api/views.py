@@ -6,7 +6,7 @@ from rest_framework.parsers import MultiPartParser
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.http import HttpResponse
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, OpenApiResponse
 from organizations.models import Organization, OrganizationMembership
 from identity.models import SystemRoleAssignment
 from documents.models import VerificationDocument
@@ -30,7 +30,18 @@ def is_owner_or_manager(user, organization):
 class DocumentUploadView(APIView):
     parser_classes = [MultiPartParser]
 
-    @extend_schema(request=UploadDocumentSerializer, responses={201: VerificationDocumentSerializer})
+    @extend_schema(
+        request={
+            "multipart/form-data": UploadDocumentSerializer,
+        },
+        responses={
+            201: VerificationDocumentSerializer,
+            400: OpenApiResponse(description="Validation error (e.g. invalid file type or size)"),
+            403: OpenApiResponse(description="Forbidden"),
+            409: OpenApiResponse(description="Conflict (concurrent upload)"),
+            500: OpenApiResponse(description="Storage or database failure"),
+        }
+    )
     def post(self, request):
         serializer = UploadDocumentSerializer(data=request.data)
         if not serializer.is_valid():
@@ -151,7 +162,16 @@ class DocumentUploadView(APIView):
         return Response(VerificationDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
 
 class DocumentDownloadView(APIView):
-    @extend_schema(responses={200: OpenApiTypes.BINARY})
+    @extend_schema(
+        responses={
+            (200, "application/octet-stream"): OpenApiResponse(
+                response=OpenApiTypes.BINARY,
+                description="Binary document file bytes download."
+            ),
+            403: OpenApiResponse(description="Not authorized to download this document."),
+            404: OpenApiResponse(description="Document or file not found in storage.")
+        }
+    )
     def get(self, request, pk):
         doc = get_object_or_404(VerificationDocument, id=pk)
 
@@ -180,7 +200,13 @@ class DocumentListView(generics.ListAPIView):
         if not org_id:
             return VerificationDocument.objects.none()
 
-        organization = get_object_or_404(Organization, id=org_id)
+        try:
+            org_uuid = uuid.UUID(org_id)
+        except (ValueError, TypeError):
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"organization": "Invalid organization UUID format."})
+
+        organization = get_object_or_404(Organization, id=org_uuid)
 
         is_op_admin = has_operator_or_admin_role(self.request.user)
         is_own_manager = is_owner_or_manager(self.request.user, organization)
@@ -188,10 +214,16 @@ class DocumentListView(generics.ListAPIView):
         if not (is_op_admin or (is_own_manager and organization.is_active)):
             return VerificationDocument.objects.none()
 
-        return VerificationDocument.objects.filter(organization=organization).order_by("-created_at")
+        return VerificationDocument.objects.filter(organization=organization).order_by("-created_at", "-id")
 
-    @extend_schema(parameters=[
-        OpenApiParameter(name="organization", type=OpenApiTypes.UUID, required=True)
-    ])
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="organization", type=OpenApiTypes.UUID, required=True, description="Organization UUID")
+        ],
+        responses={
+            200: VerificationDocumentSerializer(many=True),
+            400: OpenApiResponse(description="Invalid organization UUID"),
+        }
+    )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)

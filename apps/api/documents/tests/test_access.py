@@ -84,3 +84,9 @@ class DocumentAccessTests(APITestCase):
         with mock.patch('documents.api.views.get_document_bytes', return_value=None):
             response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_list_documents_invalid_uuid(self):
+        self.client.force_login(self.owner)
+        url = reverse("document-list")
+        response = self.client.get(url, {"organization": "not-a-uuid"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
