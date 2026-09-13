@@ -24,6 +24,15 @@ from trade_hub.services.visibility_service import (
     resolve_authoritative_organization,
 )
 
+from trade_hub.services.rfq_service import (
+    RFQService,
+    can_manage_rfq_builder,
+    create_draft_rfq,
+    update_draft_rfq,
+    publish_draft_rfq,
+    validate_specifications_payload,
+)
+
 __all__ = [
     "RFQLifecycleService",
     "publish_rfq",
@@ -44,4 +53,10 @@ __all__ = [
     "list_rfq_invitations",
     "get_own_invitation",
     "get_invitation_detail",
+    "RFQService",
+    "create_draft_rfq",
+    "update_draft_rfq",
+    "publish_draft_rfq",
+    "can_manage_rfq_builder",
+    "validate_specifications_payload",
 ]

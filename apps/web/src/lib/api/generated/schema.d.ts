@@ -476,6 +476,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trade-hub/rfqs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List visible RFQs
+         * @description Retrieve a paginated list of RFQs visible to the caller. Scoped strictly server-side according to the caller's active organization, capabilities, commodity associations, and explicit invitations.
+         */
+        get: operations["trade_hub_rfqs_list"];
+        put?: never;
+        /**
+         * Create RFQ draft
+         * @description Create a new Draft RFQ. Buyer organization is bound server-side from the active organization context. Requires Owner or Manager role in a Buyer organization (or Platform Operator). Validates referenced commodity is active, referenced schema version is published, and dynamic specifications conform to the exact schema.
+         */
+        post: operations["trade_hub_rfqs_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve RFQ detail
+         * @description Retrieve complete details of an RFQ. Returns the Builder projection (including internal notes and audit details) to the owning Buyer organization or Platform Operators. Returns the safe Public projection to external invited/network counterparties. Returns 404 if the RFQ does not exist or is hidden to the caller.
+         */
+        get: operations["trade_hub_rfqs_retrieve"];
+        /**
+         * Update draft RFQ
+         * @description Update mutable fields of a Draft RFQ. Requires expected_version. Rejects stale versions with 409 Conflict. Rejects updates on Published, Closed, or Cancelled RFQs. Restricted to Buyer Owner/Manager or Platform Operator. Safely handles commodity/schema switching by re-validating specifications.
+         */
+        put: operations["trade_hub_rfqs_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Partial update draft RFQ
+         * @description Partially update mutable fields of a Draft RFQ. Requires expected_version for optimistic concurrency control.
+         */
+        patch: operations["trade_hub_rfqs_partial_update"];
+        trace?: never;
+    };
     "/api/trade-hub/rfqs/{rfq_id}/invitations/": {
         parameters: {
             query?: never;
@@ -580,6 +632,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trade-hub/rfqs/{rfq_id}/publish/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish RFQ
+         * @description Transition a Draft RFQ to Published. Requires expected_version for optimistic concurrency control. Validates dynamic specifications against stored exact schema version under row lock. Freezes core technical and commercial terms upon successful publication.
+         */
+        post: operations["trade_hub_rfqs_publish_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -673,6 +745,15 @@ export interface components {
             readonly capabilities: string[];
             readonly commodities: string[];
             readonly verification_status: string;
+        };
+        /** @description Structured representation of a dynamic specification validation error. */
+        DynamicFieldError: {
+            /** @description Specification attribute key. */
+            field: string;
+            /** @description Machine-readable error code. */
+            code: string;
+            /** @description Human-readable error description. */
+            message: string;
         };
         EnumMetadata: {
             options?: components["schemas"]["EnumOption"][];
@@ -769,6 +850,74 @@ export interface components {
             /** Format: date-time */
             readonly updated_at?: string;
         };
+        /** @description Payload for updating an existing Draft RFQ. */
+        PatchedRFQUpdate: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version?: number;
+            /**
+             * Format: uuid
+             * @description UUID of new commodity definition if updating product.
+             */
+            commodity_id?: string;
+            /**
+             * Format: uuid
+             * @description UUID of new schema version if updating product.
+             */
+            schema_version_id?: string;
+            /**
+             * Format: decimal
+             * @description Updated procurement quantity.
+             */
+            quantity?: string;
+            /** @description Updated unit of measurement. */
+            unit?: string;
+            /** @description Updated dynamic technical specifications JSON payload. */
+            specifications?: unknown;
+            /**
+             * Format: decimal
+             * @description Updated target price per unit.
+             */
+            target_price?: string | null;
+            /** @description Updated ISO 4217 currency code. */
+            currency?: string;
+            /** @description Updated payment terms. */
+            payment_terms?: string;
+            /** @description Updated incoterm code. */
+            incoterm?: string;
+            /** @description Updated origin country or port. */
+            origin?: string;
+            /** @description Updated destination country or port. */
+            destination?: string;
+            /**
+             * Format: date
+             * @description Updated delivery window start date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Updated delivery window end date.
+             */
+            delivery_window_end?: string | null;
+            /**
+             * Format: date-time
+             * @description Updated offer submission deadline timestamp.
+             */
+            submission_deadline?: string | null;
+            /** @description Updated inspection requirement flag. */
+            inspection_required?: boolean;
+            /** @description Updated quality notes. */
+            quality_notes?: string;
+            /** @description Updated general procurement notes. */
+            notes?: string;
+            /**
+             * @description Updated visibility tier.
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             */
+            visibility?: components["schemas"]["RFQVisibilityEnum"];
+        };
         /**
          * @description * `buyer` - buyer
          *     * `supplier` - supplier
@@ -778,6 +927,219 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
+        /**
+         * @description Comprehensive RFQ projection for the owning Buyer organization and Platform Operators.
+         *     Exposes full commercial, delivery, technical, administrative, and lifecycle audit details.
+         */
+        RFQBuilderResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["DirectoryOrganization"];
+            /** Format: uuid */
+            readonly commodity_id: string;
+            readonly commodity_code: string;
+            readonly commodity_name_fa: string;
+            readonly commodity_name_en: string;
+            /** Format: uuid */
+            readonly schema_version_id: string;
+            readonly schema_version_number: number;
+            /** @description Dynamic technical specifications validated against the referenced schema version. */
+            readonly specifications: unknown;
+            /**
+             * Format: decimal
+             * @description Procurement quantity (must be positive).
+             */
+            readonly quantity: string;
+            /** @description Unit of measurement (e.g. MT, Barrels). */
+            readonly unit: string;
+            /**
+             * Format: decimal
+             * @description Optional target price per unit.
+             */
+            readonly target_price: string | null;
+            /** @description ISO 4217 3-letter currency code (e.g. USD, EUR). */
+            readonly currency: string;
+            /** @description Requested payment terms (e.g. LC, TT). */
+            readonly payment_terms: string;
+            /** @description Incoterm code (e.g. FOB, CIF, CFR). */
+            readonly incoterm: string;
+            /** @description Requested origin country or port. */
+            readonly origin: string;
+            /** @description Requested destination country or port. */
+            readonly destination: string;
+            /**
+             * Format: date
+             * @description Earliest acceptable delivery date.
+             */
+            readonly delivery_window_start: string | null;
+            /**
+             * Format: date
+             * @description Latest acceptable delivery date.
+             */
+            readonly delivery_window_end: string | null;
+            /**
+             * Format: date-time
+             * @description Offer submission deadline.
+             */
+            readonly submission_deadline: string | null;
+            /** @description Whether third-party quality inspection is required. */
+            readonly inspection_required: boolean;
+            /** @description Quality, testing, or inspection instructions. */
+            readonly quality_notes: string;
+            /** @description General procurement notes or comments. */
+            readonly notes: string;
+            /**
+             * @description Current lifecycle state of the RFQ.
+             *
+             *     * `draft` - Draft
+             *     * `published` - Published
+             *     * `collecting_offers` - Collecting Offers
+             *     * `negotiating` - Negotiating
+             *     * `awarded` - Awarded
+             *     * `closed` - Closed
+             *     * `cancelled` - Cancelled
+             */
+            readonly status: components["schemas"]["RFQStatusEnum"];
+            /**
+             * @description Participation visibility tier (private, network, public).
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             */
+            readonly visibility: components["schemas"]["RFQVisibilityEnum"];
+            /** @description Optimistic concurrency aggregate version counter. */
+            readonly version: number;
+            /** @description True if created by a platform operator on behalf of the buyer organization. */
+            readonly created_by_operator: boolean;
+            /**
+             * Format: date-time
+             * @description Timestamp when the RFQ was published.
+             */
+            readonly published_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the RFQ was closed.
+             */
+            readonly closed_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the RFQ was cancelled.
+             */
+            readonly cancelled_at: string | null;
+            /** @description Reason provided when the RFQ was cancelled. */
+            readonly cancellation_reason: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Payload for creating a new Draft RFQ. */
+        RFQCreate: {
+            /**
+             * Format: uuid
+             * @description UUID of the referenced commodity definition.
+             */
+            commodity_id: string;
+            /**
+             * Format: uuid
+             * @description UUID of the exact referenced commodity schema version.
+             */
+            schema_version_id: string;
+            /**
+             * Format: decimal
+             * @description Procurement quantity (must be positive).
+             */
+            quantity: string;
+            /**
+             * @description Unit of measurement (e.g. MT, Barrels).
+             * @default MT
+             */
+            unit: string;
+            /** @description Dynamic technical specifications JSON payload. */
+            specifications?: unknown;
+            /**
+             * Format: decimal
+             * @description Optional target price per unit.
+             */
+            target_price?: string | null;
+            /**
+             * @description ISO 4217 3-letter currency code (e.g. USD, EUR).
+             * @default USD
+             */
+            currency: string;
+            /**
+             * @description Requested payment terms (e.g. LC at sight, TT).
+             * @default
+             */
+            payment_terms: string;
+            /**
+             * @description Incoterm code (e.g. FOB, CIF, CFR).
+             * @default
+             */
+            incoterm: string;
+            /**
+             * @description Requested origin country or port.
+             * @default
+             */
+            origin: string;
+            /**
+             * @description Requested destination country or port.
+             * @default
+             */
+            destination: string;
+            /**
+             * Format: date
+             * @description Earliest acceptable delivery date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest acceptable delivery date.
+             */
+            delivery_window_end?: string | null;
+            /**
+             * Format: date-time
+             * @description Offer submission deadline timestamp.
+             */
+            submission_deadline?: string | null;
+            /**
+             * @description Whether third-party quality inspection is required.
+             * @default false
+             */
+            inspection_required: boolean;
+            /**
+             * @description Quality, testing, or inspection instructions.
+             * @default
+             */
+            quality_notes: string;
+            /**
+             * @description General procurement notes or comments.
+             * @default
+             */
+            notes: string;
+            /**
+             * @description Participation visibility tier (private, network, public).
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             * @default private
+             */
+            visibility: components["schemas"]["RFQVisibilityEnum"];
+            /**
+             * Format: uuid
+             * @description Target buyer organization UUID. Allowed only for platform operators/admins acting on behalf.
+             */
+            organization_id?: string | null;
+        };
+        /** @description Standardized error response payload with optional structured dynamic field errors. */
+        RFQErrorResponse: {
+            /** @description High-level error summary. */
+            detail: string;
+            /** @description Structured dynamic specification errors if applicable. */
+            errors?: components["schemas"]["DynamicFieldError"][];
+        };
         /** @description Payload for inviting an organization to an RFQ. */
         RFQInvitationCreate: {
             /**
@@ -857,6 +1219,187 @@ export interface components {
          * @enum {string}
          */
         RFQInvitationStatusEnum: "invited" | "viewed" | "responded" | "declined" | "expired";
+        /**
+         * @description Safe public/counterparty RFQ projection for external Suppliers and Brokers.
+         *     Exposes commercial and technical procurement terms while omitting internal buyer notes,
+         *     operator provenance, and internal administrative audit details.
+         */
+        RFQPublicResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly organization: components["schemas"]["DirectoryOrganization"];
+            /** Format: uuid */
+            readonly commodity_id: string;
+            readonly commodity_code: string;
+            readonly commodity_name_fa: string;
+            readonly commodity_name_en: string;
+            /** Format: uuid */
+            readonly schema_version_id: string;
+            readonly schema_version_number: number;
+            /** @description Dynamic technical specifications validated against the referenced schema version. */
+            readonly specifications: unknown;
+            /**
+             * Format: decimal
+             * @description Procurement quantity (must be positive).
+             */
+            readonly quantity: string;
+            /** @description Unit of measurement (e.g. MT, Barrels). */
+            readonly unit: string;
+            /**
+             * Format: decimal
+             * @description Optional target price per unit.
+             */
+            readonly target_price: string | null;
+            /** @description ISO 4217 3-letter currency code (e.g. USD, EUR). */
+            readonly currency: string;
+            /** @description Requested payment terms (e.g. LC, TT). */
+            readonly payment_terms: string;
+            /** @description Incoterm code (e.g. FOB, CIF, CFR). */
+            readonly incoterm: string;
+            /** @description Requested origin country or port. */
+            readonly origin: string;
+            /** @description Requested destination country or port. */
+            readonly destination: string;
+            /**
+             * Format: date
+             * @description Earliest acceptable delivery date.
+             */
+            readonly delivery_window_start: string | null;
+            /**
+             * Format: date
+             * @description Latest acceptable delivery date.
+             */
+            readonly delivery_window_end: string | null;
+            /**
+             * Format: date-time
+             * @description Offer submission deadline.
+             */
+            readonly submission_deadline: string | null;
+            /** @description Whether third-party quality inspection is required. */
+            readonly inspection_required: boolean;
+            /** @description Quality, testing, or inspection instructions. */
+            readonly quality_notes: string;
+            /**
+             * @description Current lifecycle state of the RFQ.
+             *
+             *     * `draft` - Draft
+             *     * `published` - Published
+             *     * `collecting_offers` - Collecting Offers
+             *     * `negotiating` - Negotiating
+             *     * `awarded` - Awarded
+             *     * `closed` - Closed
+             *     * `cancelled` - Cancelled
+             */
+            readonly status: components["schemas"]["RFQStatusEnum"];
+            /**
+             * @description Participation visibility tier (private, network, public).
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             */
+            readonly visibility: components["schemas"]["RFQVisibilityEnum"];
+            /** @description Optimistic concurrency aggregate version counter. */
+            readonly version: number;
+            /**
+             * Format: date-time
+             * @description Timestamp when the RFQ was published.
+             */
+            readonly published_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description Payload for publishing a Draft RFQ. */
+        RFQPublishAction: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `collecting_offers` - Collecting Offers
+         *     * `negotiating` - Negotiating
+         *     * `awarded` - Awarded
+         *     * `closed` - Closed
+         *     * `cancelled` - Cancelled
+         * @enum {string}
+         */
+        RFQStatusEnum: "draft" | "published" | "collecting_offers" | "negotiating" | "awarded" | "closed" | "cancelled";
+        /** @description Payload for updating an existing Draft RFQ. */
+        RFQUpdate: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description UUID of new commodity definition if updating product.
+             */
+            commodity_id?: string;
+            /**
+             * Format: uuid
+             * @description UUID of new schema version if updating product.
+             */
+            schema_version_id?: string;
+            /**
+             * Format: decimal
+             * @description Updated procurement quantity.
+             */
+            quantity?: string;
+            /** @description Updated unit of measurement. */
+            unit?: string;
+            /** @description Updated dynamic technical specifications JSON payload. */
+            specifications?: unknown;
+            /**
+             * Format: decimal
+             * @description Updated target price per unit.
+             */
+            target_price?: string | null;
+            /** @description Updated ISO 4217 currency code. */
+            currency?: string;
+            /** @description Updated payment terms. */
+            payment_terms?: string;
+            /** @description Updated incoterm code. */
+            incoterm?: string;
+            /** @description Updated origin country or port. */
+            origin?: string;
+            /** @description Updated destination country or port. */
+            destination?: string;
+            /**
+             * Format: date
+             * @description Updated delivery window start date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Updated delivery window end date.
+             */
+            delivery_window_end?: string | null;
+            /**
+             * Format: date-time
+             * @description Updated offer submission deadline timestamp.
+             */
+            submission_deadline?: string | null;
+            /** @description Updated inspection requirement flag. */
+            inspection_required?: boolean;
+            /** @description Updated quality notes. */
+            quality_notes?: string;
+            /** @description Updated general procurement notes. */
+            notes?: string;
+            /**
+             * @description Updated visibility tier.
+             *
+             *     * `public` - Public
+             *     * `network` - Network
+             *     * `private` - Private
+             */
+            visibility?: components["schemas"]["RFQVisibilityEnum"];
+        };
+        /**
+         * @description * `public` - Public
+         *     * `network` - Network
+         *     * `private` - Private
+         * @enum {string}
+         */
+        RFQVisibilityEnum: "public" | "network" | "private";
         /**
          * @description * `company_registration` - Company Registration
          *     * `tax_id` - Tax ID
@@ -2059,6 +2602,234 @@ export interface operations {
             };
         };
     };
+    trade_hub_rfqs_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQPublicResponse"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RFQCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQBuilderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer Owner/Manager role or Buyer capability */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQBuilderResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found or not visible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RFQUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQBuilderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks edit permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRFQUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQBuilderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks edit permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     trade_hub_rfqs_invitations_list: {
         parameters: {
             query?: never;
@@ -2315,6 +3086,67 @@ export interface operations {
             };
             /** @description No invitation found for current organization */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_publish_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RFQPublishAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQBuilderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks publish permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

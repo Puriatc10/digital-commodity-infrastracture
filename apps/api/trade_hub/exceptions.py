@@ -40,6 +40,21 @@ class PublicationValidationError(RFQDomainError):
         self.errors = errors or []
 
 
+class SpecificationValidationError(RFQDomainError):
+    """Raised when dynamic commodity specification validation fails."""
+
+    def __init__(self, message: str, errors: list | None = None):
+        super().__init__(message)
+        self.message = message
+        self.errors = errors or []
+
+
+class RFQPermissionDeniedError(RFQDomainError):
+    """Raised when an actor lacks authority to create, edit, or publish an RFQ."""
+
+    pass
+
+
 class InvitationError(RFQDomainError):
     """Base domain exception for RFQ invitation operations."""
 

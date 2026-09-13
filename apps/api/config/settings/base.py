@@ -78,6 +78,8 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "VerificationStatusEnum": "organizations.verification.models.VerificationStatus",
         "RFQInvitationStatusEnum": "trade_hub.models.RFQInvitationStatus",
+        "RFQStatusEnum": "trade_hub.models.RFQStatus",
+        "RFQVisibilityEnum": "trade_hub.models.RFQVisibility",
     },
 }
 
