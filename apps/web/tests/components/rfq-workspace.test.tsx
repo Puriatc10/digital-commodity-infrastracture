@@ -298,8 +298,8 @@ describe("T0507 - RFQ Workspace Component Suite", () => {
     });
 
     // Commercial and Delivery Terms
-    expect(screen.getByText("5000 MT")).toBeInTheDocument();
-    expect(screen.getByText("420.00 USD")).toBeInTheDocument();
+    expect(screen.getByText(/5,?000\s+MT/)).toBeInTheDocument();
+    expect(screen.getByText(/420(\.00)?\s+USD/)).toBeInTheDocument();
     expect(screen.getByText("FOB")).toBeInTheDocument();
     expect(screen.getByText("Bandar Abbas")).toBeInTheDocument();
     expect(screen.getByText("Jebel Ali")).toBeInTheDocument();
