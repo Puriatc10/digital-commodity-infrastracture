@@ -476,6 +476,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trade-hub/rfqs/{rfq_id}/invitations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List RFQ participants
+         * @description Retrieve all invited participants for an RFQ. Strictly restricted to the RFQ Buyer organization (Owner/Manager) or Platform Operators. Competitors and invited suppliers receive 403 Forbidden.
+         */
+        get: operations["trade_hub_rfqs_invitations_list"];
+        put?: never;
+        /**
+         * Invite organization to RFQ
+         * @description Invite a verified Supplier or Broker organization to participate in an RFQ. Restricted to Buyer Owner/Manager or Platform Operator. Cannot invite Buyer-only organizations or the RFQ owner. Cannot invite to Closed or Cancelled RFQs.
+         */
+        post: operations["trade_hub_rfqs_invitations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/invitations/{invitation_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get invitation detail
+         * @description Retrieve a specific invitation record. Hidden (404) to competitors.
+         */
+        get: operations["trade_hub_rfqs_invitations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/invitations/{invitation_id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline RFQ invitation
+         * @description Decline an RFQ invitation. Revokes visibility to Private RFQs.
+         */
+        post: operations["trade_hub_rfqs_invitations_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/invitations/{invitation_id}/view/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark invitation viewed
+         * @description Record that the invited organization has viewed the RFQ invitation.
+         */
+        post: operations["trade_hub_rfqs_invitations_view_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/invitations/me/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get own RFQ invitation
+         * @description Retrieve the caller organization's own invitation for this RFQ. Provides competitor isolation: returns 404 if the organization is not invited.
+         */
+        get: operations["trade_hub_rfqs_invitations_me_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -674,6 +778,85 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
+        /** @description Payload for inviting an organization to an RFQ. */
+        RFQInvitationCreate: {
+            /**
+             * Format: uuid
+             * @description UUID of the target supplier or broker organization.
+             */
+            organization_id: string;
+            /**
+             * Format: date-time
+             * @description Optional expiration timestamp for the invitation.
+             */
+            expires_at?: string | null;
+        };
+        /** @description Payload for declining an RFQ invitation. */
+        RFQInvitationDecline: {
+            /**
+             * @description Optional reason explaining why the invitation is being declined.
+             * @default
+             */
+            reason: string;
+        };
+        /**
+         * @description Customer-safe projection of an RFQ participant invitation.
+         *     Exposes safe directory identity for the invited organization, lifecycle timestamps,
+         *     and current invitation status. Never leaks internal memberships, audit records, or
+         *     competitor data.
+         */
+        RFQInvitationResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly rfq_id: string;
+            readonly organization: components["schemas"]["DirectoryOrganization"];
+            /**
+             * @description Current lifecycle state of the invitation.
+             *
+             *     * `invited` - Invited
+             *     * `viewed` - Viewed
+             *     * `responded` - Responded
+             *     * `declined` - Declined
+             *     * `expired` - Expired
+             */
+            readonly status: components["schemas"]["RFQInvitationStatusEnum"];
+            /** @description True if invited by a platform operator on behalf of the buyer organization. */
+            readonly invited_by_operator: boolean;
+            /** Format: date-time */
+            readonly created_at: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the invitee first viewed the RFQ/invitation.
+             */
+            readonly viewed_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the invitee submitted a response or offer.
+             */
+            readonly responded_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the invitee declined the invitation.
+             */
+            readonly declined_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the invitation expires.
+             */
+            readonly expires_at: string | null;
+            /** @description Optional reason provided when declining the invitation. */
+            readonly decline_reason: string;
+        };
+        /**
+         * @description * `invited` - Invited
+         *     * `viewed` - Viewed
+         *     * `responded` - Responded
+         *     * `declined` - Declined
+         *     * `expired` - Expired
+         * @enum {string}
+         */
+        RFQInvitationStatusEnum: "invited" | "viewed" | "responded" | "declined" | "expired";
         /**
          * @description * `company_registration` - Company Registration
          *     * `tax_id` - Tax ID
@@ -1873,6 +2056,269 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VerificationQueue"][];
                 };
+            };
+        };
+    };
+    trade_hub_rfqs_invitations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQInvitationResponse"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - only RFQ buyer or operator can view participant list */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_invitations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RFQInvitationCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQInvitationResponse"];
+                };
+            };
+            /** @description Invalid request or ineligible invitee */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks invite permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or target organization not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - organization is already invited */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_invitations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: string;
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQInvitationResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invitation not found or hidden */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_invitations_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: string;
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RFQInvitationDecline"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQInvitationResponse"];
+                };
+            };
+            /** @description Invalid request or invitation already expired */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - only invitee Owner/Manager can decline */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invitation not found or hidden */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_invitations_view_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invitation_id: string;
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQInvitationResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invitation not found or hidden */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_invitations_me_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQInvitationResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No invitation found for current organization */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

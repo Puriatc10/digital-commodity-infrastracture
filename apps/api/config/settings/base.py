@@ -76,7 +76,8 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
-        "VerificationStatusEnum": "organizations.verification.models.VerificationStatus"
+        "VerificationStatusEnum": "organizations.verification.models.VerificationStatus",
+        "RFQInvitationStatusEnum": "trade_hub.models.RFQInvitationStatus",
     },
 }
 
