@@ -253,6 +253,78 @@ class RFQPublishActionSerializer(serializers.Serializer):
     )
 
 
+class RFQCloseActionSerializer(serializers.Serializer):
+    """Payload for closing a Published RFQ."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Current aggregate version counter for optimistic concurrency control.",
+    )
+
+
+class RFQCancelActionSerializer(serializers.Serializer):
+    """Payload for cancelling a Draft or Published RFQ."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Current aggregate version counter for optimistic concurrency control.",
+    )
+    reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Reason for cancellation. Required when cancelling a published RFQ.",
+    )
+
+
+class RFQActivityItemSerializer(serializers.Serializer):
+    """Authoritative audit activity fact for an RFQ."""
+
+    id = serializers.CharField(help_text="Deterministic event identifier.")
+    event_type = serializers.ChoiceField(
+        choices=[
+            ("rfq_created", "RFQ Created"),
+            ("rfq_published", "RFQ Published"),
+            ("participant_invited", "Participant Invited"),
+            ("participant_viewed", "Participant Viewed"),
+            ("participant_declined", "Participant Declined"),
+            ("participant_responded", "Participant Responded"),
+            ("rfq_closed", "RFQ Closed"),
+            ("rfq_cancelled", "RFQ Cancelled"),
+        ],
+        help_text="Canonical event classification.",
+    )
+    timestamp = serializers.DateTimeField(help_text="Event timestamp.")
+    actor_type = serializers.ChoiceField(
+        choices=[
+            ("buyer", "Buyer"),
+            ("supplier", "Supplier"),
+            ("broker", "Broker"),
+            ("operator", "Operator"),
+            ("system", "System"),
+        ],
+        help_text="Actor category.",
+    )
+    organization_id = serializers.UUIDField(
+        allow_null=True,
+        required=False,
+        help_text="Organization UUID associated with this event.",
+    )
+    organization_name = serializers.CharField(
+        allow_null=True,
+        required=False,
+        help_text="Organization name associated with this event.",
+    )
+    details = serializers.JSONField(
+        allow_null=True,
+        required=False,
+        help_text="Additional public/safe event metadata.",
+    )
+
+
+
 class RFQBuilderResponseSerializer(serializers.ModelSerializer):
     """
     Comprehensive RFQ projection for the owning Buyer organization and Platform Operators.

@@ -6,7 +6,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from trade_hub.api.serializers_rfq import (
+    RFQActivityItemSerializer,
     RFQBuilderResponseSerializer,
+    RFQCancelActionSerializer,
+    RFQCloseActionSerializer,
     RFQCreateSerializer,
     RFQErrorResponseSerializer,
     RFQPublicResponseSerializer,
@@ -23,6 +26,7 @@ from trade_hub.exceptions import (
     StaleVersionError,
 )
 from trade_hub.services.rfq_service import (
+    RFQService,
     create_draft_rfq,
     is_operator_or_admin,
     publish_draft_rfq,
@@ -353,3 +357,157 @@ class RFQPublishActionView(APIView):
 
         out_serializer = RFQBuilderResponseSerializer(rfq)
         return Response(out_serializer.data, status=status.HTTP_200_OK)
+
+
+class RFQCloseActionView(APIView):
+    """
+    Close a Published RFQ.
+    Requires expected_version. Delegates authoritatively to RFQLifecycleService.close.
+    Restricted to Buyer Owner/Manager or Platform Operator.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Close RFQ",
+        description=(
+            "Transition a Published RFQ to Closed. "
+            "Requires expected_version for optimistic concurrency control. "
+            "Restricted to Buyer Owner/Manager or Platform Operator. "
+            "Rejects non-published RFQs with 400 Bad Request."
+        ),
+        request=RFQCloseActionSerializer,
+        responses={
+            200: RFQBuilderResponseSerializer,
+            400: RFQErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - lacks close permissions"),
+            404: OpenApiResponse(description="RFQ not found"),
+            409: OpenApiResponse(description="Conflict - stale expected_version"),
+        },
+    )
+    def post(self, request, rfq_id):
+        serializer = RFQCloseActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        expected_version = serializer.validated_data["expected_version"]
+        org_hint = _get_org_hint(request)
+
+        try:
+            rfq = RFQService.close(
+                rfq_or_id=rfq_id,
+                expected_version=expected_version,
+                user=request.user,
+                organization_hint=org_hint,
+            )
+        except RFQNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except RFQPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except StaleVersionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except InvalidVersionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except InvalidTransitionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out_serializer = RFQBuilderResponseSerializer(rfq)
+        return Response(out_serializer.data, status=status.HTTP_200_OK)
+
+
+class RFQCancelActionView(APIView):
+    """
+    Cancel a Draft or Published RFQ.
+    Requires expected_version. Cancelling a published RFQ requires a non-empty reason.
+    Restricted to Buyer Owner/Manager or Platform Operator.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Cancel RFQ",
+        description=(
+            "Transition a Draft or Published RFQ to Cancelled. "
+            "Requires expected_version for optimistic concurrency control. "
+            "Cancelling a published RFQ requires a non-empty cancellation reason. "
+            "Restricted to Buyer Owner/Manager or Platform Operator."
+        ),
+        request=RFQCancelActionSerializer,
+        responses={
+            200: RFQBuilderResponseSerializer,
+            400: RFQErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - lacks cancel permissions"),
+            404: OpenApiResponse(description="RFQ not found"),
+            409: OpenApiResponse(description="Conflict - stale expected_version"),
+        },
+    )
+    def post(self, request, rfq_id):
+        serializer = RFQCancelActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        expected_version = serializer.validated_data["expected_version"]
+        reason = serializer.validated_data.get("reason", "")
+        org_hint = _get_org_hint(request)
+
+        try:
+            rfq = RFQService.cancel(
+                rfq_or_id=rfq_id,
+                expected_version=expected_version,
+                reason=reason,
+                user=request.user,
+                organization_hint=org_hint,
+            )
+        except RFQNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except RFQPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except StaleVersionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except InvalidVersionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except InvalidTransitionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out_serializer = RFQBuilderResponseSerializer(rfq)
+        return Response(out_serializer.data, status=status.HTTP_200_OK)
+
+
+class RFQActivityView(APIView):
+    """
+    Retrieve chronological audit activity facts for an RFQ.
+    Reconstructed strictly from persisted facts on RFQ and RFQInvitation models.
+    Actor-scoped: external participants never receive competitor details.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Retrieve RFQ activity",
+        description=(
+            "Retrieve chronological audit facts for an RFQ. "
+            "Buyer Owner/Manager or Platform Operator sees full activity history including all invitations. "
+            "External participants see only public milestones and their own invitation events. "
+            "Competitor events are strictly excluded."
+        ),
+        responses={
+            200: RFQActivityItemSerializer(many=True),
+            401: OpenApiResponse(description="Unauthenticated"),
+            404: OpenApiResponse(description="RFQ not found or not visible"),
+        },
+    )
+    def get(self, request, rfq_id):
+        org_hint = _get_org_hint(request)
+        try:
+            events = RFQService.get_activity(
+                rfq_or_id=rfq_id,
+                user=request.user,
+                organization_hint=org_hint,
+            )
+        except RFQNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = RFQActivityItemSerializer(events, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

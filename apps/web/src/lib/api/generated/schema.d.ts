@@ -528,6 +528,66 @@ export interface paths {
         patch: operations["trade_hub_rfqs_partial_update"];
         trace?: never;
     };
+    "/api/trade-hub/rfqs/{rfq_id}/activity/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve RFQ activity
+         * @description Retrieve chronological audit facts for an RFQ. Buyer Owner/Manager or Platform Operator sees full activity history including all invitations. External participants see only public milestones and their own invitation events. Competitor events are strictly excluded.
+         */
+        get: operations["trade_hub_rfqs_activity_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel RFQ
+         * @description Transition a Draft or Published RFQ to Cancelled. Requires expected_version for optimistic concurrency control. Cancelling a published RFQ requires a non-empty cancellation reason. Restricted to Buyer Owner/Manager or Platform Operator.
+         */
+        post: operations["trade_hub_rfqs_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Close RFQ
+         * @description Transition a Published RFQ to Closed. Requires expected_version for optimistic concurrency control. Restricted to Buyer Owner/Manager or Platform Operator. Rejects non-published RFQs with 400 Bad Request.
+         */
+        post: operations["trade_hub_rfqs_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trade-hub/rfqs/{rfq_id}/invitations/": {
         parameters: {
             query?: never;
@@ -668,6 +728,15 @@ export interface components {
          * @enum {string}
          */
         ActionEnum: "submit" | "start_review" | "approve_basic" | "approve_full" | "reject" | "suspend" | "reopen" | "evidence_replacement_invalidation";
+        /**
+         * @description * `buyer` - Buyer
+         *     * `supplier` - Supplier
+         *     * `broker` - Broker
+         *     * `operator` - Operator
+         *     * `system` - System
+         * @enum {string}
+         */
+        ActorTypeEnum: "buyer" | "supplier" | "broker" | "operator" | "system";
         ChecklistReview: {
             /** Format: uuid */
             document_id: string;
@@ -764,6 +833,18 @@ export interface components {
             label_en?: string;
             sort_order?: number;
         };
+        /**
+         * @description * `rfq_created` - RFQ Created
+         *     * `rfq_published` - RFQ Published
+         *     * `participant_invited` - Participant Invited
+         *     * `participant_viewed` - Participant Viewed
+         *     * `participant_declined` - Participant Declined
+         *     * `participant_responded` - Participant Responded
+         *     * `rfq_closed` - RFQ Closed
+         *     * `rfq_cancelled` - RFQ Cancelled
+         * @enum {string}
+         */
+        EventTypeEnum: "rfq_created" | "rfq_published" | "participant_invited" | "participant_viewed" | "participant_declined" | "participant_responded" | "rfq_closed" | "rfq_cancelled";
         HealthResponse: {
             status: string;
         };
@@ -927,6 +1008,48 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
+        /** @description Authoritative audit activity fact for an RFQ. */
+        RFQActivityItem: {
+            /** @description Deterministic event identifier. */
+            id: string;
+            /**
+             * @description Canonical event classification.
+             *
+             *     * `rfq_created` - RFQ Created
+             *     * `rfq_published` - RFQ Published
+             *     * `participant_invited` - Participant Invited
+             *     * `participant_viewed` - Participant Viewed
+             *     * `participant_declined` - Participant Declined
+             *     * `participant_responded` - Participant Responded
+             *     * `rfq_closed` - RFQ Closed
+             *     * `rfq_cancelled` - RFQ Cancelled
+             */
+            event_type: components["schemas"]["EventTypeEnum"];
+            /**
+             * Format: date-time
+             * @description Event timestamp.
+             */
+            timestamp: string;
+            /**
+             * @description Actor category.
+             *
+             *     * `buyer` - Buyer
+             *     * `supplier` - Supplier
+             *     * `broker` - Broker
+             *     * `operator` - Operator
+             *     * `system` - System
+             */
+            actor_type: components["schemas"]["ActorTypeEnum"];
+            /**
+             * Format: uuid
+             * @description Organization UUID associated with this event.
+             */
+            organization_id?: string | null;
+            /** @description Organization name associated with this event. */
+            organization_name?: string | null;
+            /** @description Additional public/safe event metadata. */
+            details?: unknown;
+        };
         /**
          * @description Comprehensive RFQ projection for the owning Buyer organization and Platform Operators.
          *     Exposes full commercial, delivery, technical, administrative, and lifecycle audit details.
@@ -1033,6 +1156,21 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /** @description Payload for cancelling a Draft or Published RFQ. */
+        RFQCancelAction: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Reason for cancellation. Required when cancelling a published RFQ.
+             * @default
+             */
+            reason: string;
+        };
+        /** @description Payload for closing a Published RFQ. */
+        RFQCloseAction: {
+            /** @description Current aggregate version counter for optimistic concurrency control. */
+            expected_version: number;
         };
         /** @description Payload for creating a new Draft RFQ. */
         RFQCreate: {
@@ -2808,6 +2946,163 @@ export interface operations {
                 content?: never;
             };
             /** @description Forbidden - lacks edit permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_activity_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQActivityItem"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found or not visible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RFQCancelAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQBuilderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks cancel permissions */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RFQCloseAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQBuilderResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks close permissions */
             403: {
                 headers: {
                     [name: string]: unknown;

@@ -9,6 +9,9 @@ from trade_hub.api.views_invitation import (
 )
 
 from trade_hub.api.views_rfq import (
+    RFQActivityView,
+    RFQCancelActionView,
+    RFQCloseActionView,
     RFQDetailView,
     RFQListCreateView,
     RFQPublishActionView,
@@ -31,6 +34,21 @@ urlpatterns = [
         "rfqs/<uuid:rfq_id>/publish/",
         RFQPublishActionView.as_view(),
         name="rfq-publish",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/close/",
+        RFQCloseActionView.as_view(),
+        name="rfq-close",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/cancel/",
+        RFQCancelActionView.as_view(),
+        name="rfq-cancel",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/activity/",
+        RFQActivityView.as_view(),
+        name="rfq-activity",
     ),
     path(
         "rfqs/<uuid:rfq_id>/invitations/",
