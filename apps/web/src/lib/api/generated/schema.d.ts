@@ -204,6 +204,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/opportunities/external-counterparties/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List external counterparties
+         * @description List and search external counterparties recorded by Operators. Supports text search across company name, contact name, email, phone, and geography.
+         */
+        get: operations["opportunities_external_counterparties_list"];
+        put?: never;
+        /**
+         * Record external counterparty
+         * @description Create a new external counterparty record without creating a platform User, Organization, OrganizationMembership, or OrganizationCapability.
+         */
+        post: operations["opportunities_external_counterparties_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/external-counterparties/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve external counterparty details
+         * @description Retrieve the details of a single external counterparty by UUID.
+         */
+        get: operations["opportunities_external_counterparties_retrieve"];
+        /**
+         * Update external counterparty (full)
+         * @description Update all editable fields of an existing external counterparty.
+         */
+        put: operations["opportunities_external_counterparties_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update external counterparty (partial)
+         * @description Partially update editable fields of an existing external counterparty.
+         */
+        patch: operations["opportunities_external_counterparties_partial_update"];
+        trace?: never;
+    };
     "/api/organizations/": {
         parameters: {
             query?: never;
@@ -937,6 +989,49 @@ export interface components {
          * @enum {string}
          */
         EventTypeEnum: "rfq_created" | "rfq_published" | "participant_invited" | "participant_viewed" | "participant_declined" | "participant_responded" | "rfq_closed" | "rfq_cancelled";
+        /**
+         * @description Explicit serializer for ExternalCounterparty.
+         *
+         *     Guards against mass assignment:
+         *     - Primary key (id), timestamps (created_at, updated_at), and
+         *       internal actor (created_by) are strictly read-only.
+         *     - Rejects empty or whitespace-only company_name.
+         *     - Validates email format if provided.
+         */
+        ExternalCounterparty: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Display or legal entity name of the external counterparty. */
+            company_name: string;
+            /**
+             * @description Name of the contact person or representative.
+             * @default
+             */
+            contact_name: string;
+            /**
+             * @description Phone number for operational contact.
+             * @default
+             */
+            phone: string;
+            /** @description Email address for operational contact. */
+            email?: string;
+            /**
+             * @description Country, port, or regional jurisdiction.
+             * @default
+             */
+            geography: string;
+            /**
+             * @description Operational notes recorded by the Operator.
+             * @default
+             */
+            notes: string;
+            /** @description Operator who recorded this external counterparty (null if unassigned/system). */
+            readonly created_by: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         HealthResponse: {
             status: string;
         };
@@ -1009,6 +1104,64 @@ export interface components {
          * @enum {string}
          */
         OutcomeEnum: "accepted" | "rejected";
+        PaginatedExternalCounterpartyList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["ExternalCounterparty"][];
+        };
+        /**
+         * @description Explicit serializer for ExternalCounterparty.
+         *
+         *     Guards against mass assignment:
+         *     - Primary key (id), timestamps (created_at, updated_at), and
+         *       internal actor (created_by) are strictly read-only.
+         *     - Rejects empty or whitespace-only company_name.
+         *     - Validates email format if provided.
+         */
+        PatchedExternalCounterparty: {
+            /** Format: uuid */
+            readonly id?: string;
+            /** @description Display or legal entity name of the external counterparty. */
+            company_name?: string;
+            /**
+             * @description Name of the contact person or representative.
+             * @default
+             */
+            contact_name: string;
+            /**
+             * @description Phone number for operational contact.
+             * @default
+             */
+            phone: string;
+            /** @description Email address for operational contact. */
+            email?: string;
+            /**
+             * @description Country, port, or regional jurisdiction.
+             * @default
+             */
+            geography: string;
+            /**
+             * @description Operational notes recorded by the Operator.
+             * @default
+             */
+            notes: string;
+            /** @description Operator who recorded this external counterparty (null if unassigned/system). */
+            readonly created_by?: number | null;
+            /** Format: date-time */
+            readonly created_at?: string;
+            /** Format: date-time */
+            readonly updated_at?: string;
+        };
         PatchedOrganization: {
             /** Format: uuid */
             readonly id?: string;
@@ -2611,6 +2764,245 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+        };
+    };
+    opportunities_external_counterparties_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by company name substring. */
+                company_name?: string;
+                /** @description Filter by geography or location substring. */
+                geography?: string;
+                /** @description یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده. */
+                page?: number;
+                /** @description تعداد نتایج برای نمایش در هر صفحه. */
+                page_size?: number;
+                /** @description Search across company name, contact person, email, phone, or geography. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedExternalCounterpartyList"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_external_counterparties_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalCounterparty"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalCounterparty"];
+                };
+            };
+            /** @description Validation error (e.g. blank company name, invalid email) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_external_counterparties_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این External Counterparty را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalCounterparty"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description External counterparty not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_external_counterparties_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این External Counterparty را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalCounterparty"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalCounterparty"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description External counterparty not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_external_counterparties_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این External Counterparty را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedExternalCounterparty"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalCounterparty"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description External counterparty not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
