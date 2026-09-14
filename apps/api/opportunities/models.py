@@ -76,6 +76,35 @@ class ExternalCounterparty(models.Model):
         return self.company_name
 
 
+class OpportunityIdentifierSequence(models.Model):
+    """
+    Authoritative sequence tracker for annual human-readable Opportunity references.
+
+    Guarantees concurrency-safe sequence allocation scoped per calendar year:
+    - OPP-{YEAR}-{SEQUENCE} (e.g. OPP-2026-000001, OPP-2026-000124)
+    - Safe under multi-threaded and multi-process execution via row-level locks.
+    - Resets to 1 each calendar year (2026 -> 1, 2, 3...; 2027 -> 1, 2, 3...).
+    """
+
+    year = models.PositiveIntegerField(
+        primary_key=True,
+        help_text="Calendar year for which sequence numbers are allocated.",
+    )
+    next_value = models.PositiveBigIntegerField(
+        default=1,
+        help_text="The next available sequence number for this calendar year.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Opportunity Identifier Sequence"
+        verbose_name_plural = "Opportunity Identifier Sequences"
+
+    def __str__(self):
+        return f"Year {self.year}: next={self.next_value}"
+
+
 class OpportunityDirection(models.TextChoices):
     SUPPLY = "Supply", "Supply"
     DEMAND = "Demand", "Demand"
@@ -95,6 +124,14 @@ class Opportunity(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Human-readable immutable reference (Spec §17: OPP-2026-000124)
+    identifier = models.CharField(
+        max_length=32,
+        unique=True,
+        editable=False,
+        help_text="Human-readable immutable opportunity identifier (e.g. OPP-2026-000124).",
+    )
 
     # Direction (Spec §17: Supply or Demand)
     direction = models.CharField(
@@ -255,6 +292,13 @@ class Opportunity(models.Model):
         super().clean()
         errors = {}
 
+        if not self.identifier:
+            errors["identifier"] = "Opportunity identifier is required."
+        elif not self._state.adding and self.pk:
+            original = Opportunity.objects.filter(pk=self.pk).values("identifier").first()
+            if original and original["identifier"] and original["identifier"] != self.identifier:
+                errors["identifier"] = "Opportunity identifier is immutable once created."
+
         if self.direction not in [OpportunityDirection.SUPPLY, OpportunityDirection.DEMAND]:
             errors["direction"] = "Direction must be either 'Supply' or 'Demand'."
 
@@ -284,4 +328,5 @@ class Opportunity(models.Model):
 
     def __str__(self):
         counterparty = self.organization.name if self.organization else str(self.external_counterparty)
-        return f"Opportunity {self.id} [{self.direction}] - {counterparty}"
+        ref = self.identifier or str(self.id)
+        return f"Opportunity {ref} [{self.direction}] - {counterparty}"

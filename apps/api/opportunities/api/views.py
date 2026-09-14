@@ -1,4 +1,7 @@
+import uuid
+
 from django.db.models import Q
+from django.http import Http404
 from drf_spectacular.utils import (
     OpenApiParameter,
     OpenApiResponse,
@@ -17,6 +20,7 @@ from opportunities.api.serializers import (
     OpportunityUpdateSerializer,
 )
 from opportunities.models import ExternalCounterparty, Opportunity
+from opportunities.services import create_opportunity
 
 
 
@@ -194,6 +198,13 @@ class OpportunityPagination(PageNumberPagination):
                 required=False,
                 description="Filter by commodity code (e.g. bitumen).",
             ),
+            OpenApiParameter(
+                name="identifier",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by exact human-readable identifier (e.g. OPP-2026-000124).",
+            ),
         ],
         responses={
             200: OpportunityDetailSerializer(many=True),
@@ -294,7 +305,26 @@ class OpportunityViewSet(
         if commodity:
             queryset = queryset.filter(commodity__code=commodity)
 
+        identifier = self.request.query_params.get("identifier", "").strip()
+        if identifier:
+            queryset = queryset.filter(identifier=identifier)
+
         return queryset
+
+    def get_object(self):
+        lookup_val = self.kwargs.get(self.lookup_field)
+        queryset = self.filter_queryset(self.get_queryset())
+        try:
+            uuid.UUID(str(lookup_val))
+            obj = queryset.filter(id=lookup_val).first()
+        except (ValueError, AttributeError):
+            obj = queryset.filter(identifier=lookup_val).first()
+
+        if obj is None:
+            raise Http404("No Opportunity matches the given query.")
+
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -303,7 +333,7 @@ class OpportunityViewSet(
 
         user = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
 
-        opportunity = Opportunity.objects.create(
+        opportunity = create_opportunity(
             direction=validated["direction"],
             organization_id=validated.get("organization_id"),
             external_counterparty_id=validated.get("external_counterparty_id"),

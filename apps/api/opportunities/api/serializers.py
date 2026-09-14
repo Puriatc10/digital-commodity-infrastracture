@@ -143,6 +143,7 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
         model = Opportunity
         fields = [
             "id",
+            "identifier",
             "direction",
             "counterparty_type",
             "organization",

@@ -1192,6 +1192,8 @@ export interface components {
         OpportunityDetail: {
             /** Format: uuid */
             readonly id: string;
+            /** @description Human-readable immutable opportunity identifier (e.g. OPP-2026-000124). */
+            readonly identifier: string;
             /**
              * @description Trade direction: Supply or Demand.
              *
@@ -3367,6 +3369,8 @@ export interface operations {
                 commodity?: string;
                 /** @description Filter by direction (Supply or Demand). */
                 direction?: string;
+                /** @description Filter by exact human-readable identifier (e.g. OPP-2026-000124). */
+                identifier?: string;
                 /** @description یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده. */
                 page?: number;
                 /** @description تعداد نتایج برای نمایش در هر صفحه. */

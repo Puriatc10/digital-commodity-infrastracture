@@ -13,11 +13,11 @@ class Epic6ScopeGuardTests(TestCase):
     """
 
     def test_opportunities_app_models(self):
-        """Confirm that the opportunities app only defines ExternalCounterparty and Opportunity."""
+        """Confirm that the opportunities app only defines ExternalCounterparty, Opportunity, and OpportunityIdentifierSequence."""
         app_config = apps.get_app_config("opportunities")
         model_names = sorted([m.__name__ for m in app_config.get_models()])
 
-        self.assertEqual(model_names, ["ExternalCounterparty", "Opportunity"])
+        self.assertEqual(model_names, ["ExternalCounterparty", "Opportunity", "OpportunityIdentifierSequence"])
 
     def test_no_premature_opportunity_models_registered(self):
         """Confirm no premature lifecycle, attribution, contact, or task models exist."""
