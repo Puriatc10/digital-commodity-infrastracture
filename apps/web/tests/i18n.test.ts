@@ -13,6 +13,13 @@ describe("i18n config", () => {
     expect(isEnabledLocale("ar")).toBe(false);
   });
 
+  it("handles case-sensitivity and whitespace padding correctly", () => {
+    expect(isEnabledLocale("FA")).toBe(false);
+    expect(isEnabledLocale("Fa")).toBe(false);
+    expect(isEnabledLocale(" fa ")).toBe(false);
+    expect(isEnabledLocale("fa\n")).toBe(false);
+  });
+
   it("has defaultLocale configured as 'fa'", () => {
     expect(defaultLocale).toBe("fa");
     expect(enabledLocales).toContain("fa");
