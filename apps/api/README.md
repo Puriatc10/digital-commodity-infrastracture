@@ -46,7 +46,7 @@ With the virtual environment active, run from `apps/api`:
 | `python manage.py makemigrations --check --dry-run` | Reject missing migrations. |
 | `python manage.py migrate` | Connect to PostgreSQL and run pending migrations. |
 | `python manage.py runserver` | Start the local API at `http://127.0.0.1:8000`. |
-| `python manage.py test` | Run health, schema validation, and Swagger rendering tests. |
+| `python manage.py test --settings=config.settings.test` | Run backend test suite with test-optimized settings. |
 | `python manage.py spectacular --validate --fail-on-warn --file schema.yaml` | Generate and validate the OpenAPI schema. |
 | `python -m pip check` | Check installed dependency compatibility. |
 
