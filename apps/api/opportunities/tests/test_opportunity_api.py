@@ -9,10 +9,10 @@ from commodities.models import CommodityDefinition
 from identity.models import SystemRoleAssignment, User
 from opportunities.models import (
     ExternalCounterparty,
-    Opportunity,
     OpportunityDirection,
     OpportunityStatus,
 )
+from opportunities.services import create_opportunity
 from organizations.models import (
     Organization,
     OrganizationCapability,
@@ -90,10 +90,10 @@ class OpportunityAPITests(TestCase):
         )
 
         # Seed opportunity
-        self.opportunity = Opportunity.objects.create(
+        self.opportunity = create_opportunity(
             direction=OpportunityDirection.SUPPLY,
-            organization=self.supplier_org,
-            commodity=self.commodity,
+            organization_id=self.supplier_org.id,
+            commodity_id=self.commodity.id,
             quantity=Decimal("500.000"),
             unit="MT",
             indicative_price=Decimal("380.00"),
