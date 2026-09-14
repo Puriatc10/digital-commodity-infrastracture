@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "organizations.verification",
     "commodities",
     "documents",
+    "trade_hub",
 ]
 
 # drf-spectacular renders the Swagger UI from its packaged template.
@@ -75,7 +76,11 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
-        "VerificationStatusEnum": "organizations.verification.models.VerificationStatus"
+        "VerificationStatusEnum": "organizations.verification.models.VerificationStatus",
+        "RFQInvitationStatusEnum": "trade_hub.models.RFQInvitationStatus",
+        "RFQStatusEnum": "trade_hub.models.RFQStatus",
+        "RFQVisibilityEnum": "trade_hub.models.RFQVisibility",
+        "SupplyListingStatusEnum": "trade_hub.models.SupplyListingStatus",
     },
 }
 

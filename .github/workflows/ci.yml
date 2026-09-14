@@ -8,6 +8,7 @@ on:
       - codex/epic-02-*
       - codex/epic-03-*
       - codex/epic-04-*
+      - codex/epic-05-*
   pull_request:
 
 permissions:
