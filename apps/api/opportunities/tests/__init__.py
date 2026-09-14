@@ -1,0 +1,1 @@
+"""Opportunities test suite."""
