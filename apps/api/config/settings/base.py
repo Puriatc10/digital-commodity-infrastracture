@@ -82,6 +82,8 @@ SPECTACULAR_SETTINGS = {
         "RFQStatusEnum": "trade_hub.models.RFQStatus",
         "RFQVisibilityEnum": "trade_hub.models.RFQVisibility",
         "SupplyListingStatusEnum": "trade_hub.models.SupplyListingStatus",
+        "OpportunityDirectionEnum": "opportunities.models.OpportunityDirection",
+        "OpportunityStatusEnum": "opportunities.models.OpportunityStatus",
     },
 }
 

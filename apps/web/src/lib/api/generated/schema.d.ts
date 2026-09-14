@@ -256,6 +256,58 @@ export interface paths {
         patch: operations["opportunities_external_counterparties_partial_update"];
         trace?: never;
     };
+    "/api/opportunities/opportunities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List opportunities
+         * @description List and filter trade opportunities (Supply and Demand) captured by Operators. Supports filtering by direction, status, and commodity.
+         */
+        get: operations["opportunities_opportunities_list"];
+        put?: never;
+        /**
+         * Capture opportunity
+         * @description Capture a new trade lead (Supply or Demand) linked to either an internal registered Organization or an off-platform ExternalCounterparty.
+         */
+        post: operations["opportunities_opportunities_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve opportunity details
+         * @description Retrieve full details and safe counterparty/commodity projection for a single opportunity by UUID.
+         */
+        get: operations["opportunities_opportunities_retrieve"];
+        /**
+         * Update opportunity (full)
+         * @description Update editable commercial and counterparty fields of an existing opportunity.
+         */
+        put: operations["opportunities_opportunities_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update opportunity (partial)
+         * @description Partially update editable commercial and counterparty fields of an existing opportunity.
+         */
+        patch: operations["opportunities_opportunities_partial_update"];
+        trace?: never;
+    };
     "/api/organizations/": {
         parameters: {
             query?: never;
@@ -1052,6 +1104,234 @@ export interface components {
         };
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description Safe projection of CommodityDefinition for Opportunity consumers. */
+        OpportunityCommodityProjection: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            readonly name_fa: string;
+            readonly name_en: string;
+        };
+        /**
+         * @description Payload for capturing a new Opportunity.
+         *     Explicit writable fields with strict mass-assignment prevention.
+         */
+        OpportunityCreate: {
+            /**
+             * @description Trade direction: Supply or Demand.
+             *
+             *     * `Supply` - Supply
+             *     * `Demand` - Demand
+             */
+            direction: components["schemas"]["OpportunityDirectionEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of internal registered organization (mutually exclusive with external_counterparty_id).
+             */
+            organization_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of off-platform external counterparty (mutually exclusive with organization_id).
+             */
+            external_counterparty_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Optional UUID of referenced commodity definition.
+             */
+            commodity_id?: string | null;
+            /**
+             * Format: decimal
+             * @description Lead quantity (must be positive).
+             */
+            quantity?: string | null;
+            /**
+             * @description Unit of measurement.
+             * @default MT
+             */
+            unit: string;
+            /**
+             * Format: decimal
+             * @description Optional indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /**
+             * @description ISO 4217 currency code.
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Format: date
+             * @description Earliest expected delivery date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest expected delivery date.
+             */
+            delivery_window_end?: string | null;
+            /**
+             * @description Indicative payment terms.
+             * @default
+             */
+            payment_terms: string;
+            /**
+             * @description Origin/destination region, country, or port.
+             * @default
+             */
+            geography: string;
+            /**
+             * @description Internal operational notes.
+             * @default
+             */
+            notes: string;
+        };
+        /**
+         * @description Read projection for Opportunity records.
+         *     Provides safe representations of linked counterparty and commodity entities.
+         */
+        OpportunityDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * @description Trade direction: Supply or Demand.
+             *
+             *     * `Supply` - Supply
+             *     * `Demand` - Demand
+             */
+            readonly direction: components["schemas"]["OpportunityDirectionEnum"];
+            /** @description Type of counterparty: 'organization' or 'external_counterparty'. */
+            readonly counterparty_type: string;
+            readonly organization: components["schemas"]["OpportunityOrganizationProjection"];
+            readonly external_counterparty: components["schemas"]["OpportunityExternalCounterpartyProjection"];
+            readonly commodity: components["schemas"]["OpportunityCommodityProjection"];
+            /**
+             * Format: decimal
+             * @description Lead quantity (must be positive if specified).
+             */
+            readonly quantity: string | null;
+            /** @description Unit of measurement. */
+            readonly unit: string;
+            /**
+             * Format: decimal
+             * @description Indicative or target unit price.
+             */
+            readonly indicative_price: string | null;
+            /** @description ISO 4217 currency code. */
+            readonly currency: string;
+            /**
+             * Format: date
+             * @description Earliest expected delivery date.
+             */
+            readonly delivery_window_start: string | null;
+            /**
+             * Format: date
+             * @description Latest expected delivery date.
+             */
+            readonly delivery_window_end: string | null;
+            /** @description Indicative payment terms. */
+            readonly payment_terms: string;
+            /** @description Origin/destination region, country, or port. */
+            readonly geography: string;
+            /** @description Internal operational notes. */
+            readonly notes: string;
+            /**
+             * @description Foundational lifecycle state.
+             *
+             *     * `Captured` - Captured
+             */
+            readonly status: components["schemas"]["OpportunityStatusEnum"];
+            /** @description Operator who recorded this opportunity. */
+            readonly created_by: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `Supply` - Supply
+         *     * `Demand` - Demand
+         * @enum {string}
+         */
+        OpportunityDirectionEnum: "Supply" | "Demand";
+        /** @description Safe projection of ExternalCounterparty details for Opportunity consumers. */
+        OpportunityExternalCounterpartyProjection: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly company_name: string;
+            readonly contact_name: string;
+            readonly geography: string;
+        };
+        /** @description Safe projection of internal Organization details for Opportunity consumers. */
+        OpportunityOrganizationProjection: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly country: string;
+        };
+        /**
+         * @description * `Captured` - Captured
+         * @enum {string}
+         */
+        OpportunityStatusEnum: "Captured";
+        /**
+         * @description Payload for updating an Opportunity.
+         *     Permits updating editable commercial/delivery/counterparty fields while
+         *     strictly guarding status, created_by, timestamps, etc.
+         */
+        OpportunityUpdate: {
+            /**
+             * @description Trade direction: Supply or Demand.
+             *
+             *     * `Supply` - Supply
+             *     * `Demand` - Demand
+             */
+            direction?: components["schemas"]["OpportunityDirectionEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of internal registered organization.
+             */
+            organization_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of off-platform external counterparty.
+             */
+            external_counterparty_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of referenced commodity definition.
+             */
+            commodity_id?: string | null;
+            /**
+             * Format: decimal
+             * @description Lead quantity (must be positive).
+             */
+            quantity?: string | null;
+            /** @description Unit of measurement. */
+            unit?: string;
+            /**
+             * Format: decimal
+             * @description Indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /** @description ISO 4217 currency code. */
+            currency?: string;
+            /**
+             * Format: date
+             * @description Earliest expected delivery date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest expected delivery date.
+             */
+            delivery_window_end?: string | null;
+            /** @description Indicative payment terms. */
+            payment_terms?: string;
+            /** @description Origin/destination region, country, or port. */
+            geography?: string;
+            /** @description Internal operational notes. */
+            notes?: string;
+        };
         Organization: {
             /** Format: uuid */
             readonly id: string;
@@ -1119,6 +1399,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["ExternalCounterparty"][];
         };
+        PaginatedOpportunityDetailList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["OpportunityDetail"][];
+        };
         /**
          * @description Explicit serializer for ExternalCounterparty.
          *
@@ -1161,6 +1456,65 @@ export interface components {
             readonly created_at?: string;
             /** Format: date-time */
             readonly updated_at?: string;
+        };
+        /**
+         * @description Payload for updating an Opportunity.
+         *     Permits updating editable commercial/delivery/counterparty fields while
+         *     strictly guarding status, created_by, timestamps, etc.
+         */
+        PatchedOpportunityUpdate: {
+            /**
+             * @description Trade direction: Supply or Demand.
+             *
+             *     * `Supply` - Supply
+             *     * `Demand` - Demand
+             */
+            direction?: components["schemas"]["OpportunityDirectionEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of internal registered organization.
+             */
+            organization_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of off-platform external counterparty.
+             */
+            external_counterparty_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of referenced commodity definition.
+             */
+            commodity_id?: string | null;
+            /**
+             * Format: decimal
+             * @description Lead quantity (must be positive).
+             */
+            quantity?: string | null;
+            /** @description Unit of measurement. */
+            unit?: string;
+            /**
+             * Format: decimal
+             * @description Indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /** @description ISO 4217 currency code. */
+            currency?: string;
+            /**
+             * Format: date
+             * @description Earliest expected delivery date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest expected delivery date.
+             */
+            delivery_window_end?: string | null;
+            /** @description Indicative payment terms. */
+            payment_terms?: string;
+            /** @description Origin/destination region, country, or port. */
+            geography?: string;
+            /** @description Internal operational notes. */
+            notes?: string;
         };
         PatchedOrganization: {
             /** Format: uuid */
@@ -2998,6 +3352,245 @@ export interface operations {
                 content?: never;
             };
             /** @description External counterparty not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by commodity code (e.g. bitumen). */
+                commodity?: string;
+                /** @description Filter by direction (Supply or Demand). */
+                direction?: string;
+                /** @description یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده. */
+                page?: number;
+                /** @description تعداد نتایج برای نمایش در هر صفحه. */
+                page_size?: number;
+                /** @description Filter by opportunity status (e.g. Captured). */
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOpportunityDetailList"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error (e.g. counterparty exclusivity violation, invalid direction) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OpportunityUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOpportunityUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
             404: {
                 headers: {
                     [name: string]: unknown;
