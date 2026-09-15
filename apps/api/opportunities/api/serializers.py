@@ -15,6 +15,7 @@ from opportunities.models import (
     OpportunityStatus,
     OpportunityTask,
 )
+from trade_hub.api.serializers_rfq import RFQBuilderResponseSerializer
 
 
 
@@ -197,6 +198,22 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
         allow_null=True,
         help_text="Safe projection of attributed broker organization (present for Broker Referral).",
     )
+    converted_rfq_id = serializers.UUIDField(
+        source="converted_rfq.id",
+        read_only=True,
+        allow_null=True,
+        help_text="UUID of the converted RFQ if converted.",
+    )
+    schema_version_id = serializers.UUIDField(
+        source="schema_version.id",
+        read_only=True,
+        allow_null=True,
+        help_text="UUID of the referenced commodity schema version if bound.",
+    )
+    specifications = serializers.JSONField(
+        read_only=True,
+        help_text="Dynamic specifications JSON payload if recorded.",
+    )
 
     class Meta:
         model = Opportunity
@@ -210,6 +227,8 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             "organization",
             "external_counterparty",
             "commodity",
+            "schema_version_id",
+            "specifications",
             "source",
             "broker",
             "quantity",
@@ -223,6 +242,7 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             "notes",
             "status",
             "version",
+            "converted_rfq_id",
             "contacted_at",
             "qualified_at",
             "converted_at",
@@ -765,6 +785,77 @@ class OpportunityExpireActionSerializer(OpportunityLifecycleOptionalReasonAction
     """Payload to expire an Opportunity."""
 
     pass
+
+
+class OpportunityConvertToRFQActionSerializer(OpportunityLifecycleBaseActionSerializer):
+    """
+    Action payload to authoritatively convert an eligible Demand Opportunity into a Draft RFQ.
+    Guards strictly against mass-assignment of status, version, timestamps, or unverified ownership.
+    """
+
+    schema_version_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="UUID of the referenced commodity schema version (required if not stored on Opportunity).",
+    )
+    specifications = serializers.JSONField(
+        required=False,
+        default=dict,
+        help_text="Dynamic technical specifications JSON payload validated against schema version.",
+    )
+    buyer_organization_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="UUID of the internal Buyer Organization (required if Opportunity references an External Counterparty).",
+    )
+    destination = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Requested destination country or port (defaults to Opportunity geography).",
+    )
+    origin = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Requested origin country or port.",
+    )
+    incoterm = serializers.CharField(
+        max_length=10,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Incoterm code (e.g. FOB, CIF, CFR).",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Additional procurement notes to append to RFQ notes.",
+    )
+    visibility = serializers.ChoiceField(
+        choices=[("private", "Private"), ("network", "Network"), ("public", "Public")],
+        required=False,
+        default="private",
+        help_text="Participation visibility tier for the new RFQ.",
+    )
+
+
+class OpportunityConvertToRFQResponseSerializer(serializers.Serializer):
+    """Structured response payload returned upon successful conversion to RFQ."""
+
+    opportunity = OpportunityDetailSerializer(
+        read_only=True,
+        help_text="The updated Opportunity aggregate in Converted status.",
+    )
+    rfq = RFQBuilderResponseSerializer(
+        read_only=True,
+        help_text="The newly created Draft RFQ aggregate.",
+    )
 
 
 # -------------------------------------------------------------------------

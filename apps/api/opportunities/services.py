@@ -22,6 +22,7 @@ from opportunities.models import (
     OpportunityTask,
     OpportunityTaskStatus,
 )
+from opportunities.services_conversion import convert_opportunity_to_rfq
 from opportunities.services_lifecycle import (
     TERMINAL_STATUSES,
     OpportunityLifecycleService,
@@ -41,6 +42,7 @@ from organizations.models import Organization, OrganizationCapability
 __all__ = [
     "OpportunityLifecycleService",
     "convert_opportunity",
+    "convert_opportunity_to_rfq",
     "expire_opportunity",
     "mark_opportunity_contacted",
     "mark_opportunity_lost",

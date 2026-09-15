@@ -74,3 +74,15 @@ class OpportunityQualificationError(OpportunityDomainError):
         self.message = message
         self.missing_requirements = list(missing_requirements) if missing_requirements else []
         self.invalid_requirements = list(invalid_requirements) if invalid_requirements else []
+
+
+class OpportunityAlreadyConvertedError(OpportunityDomainError):
+    """Raised when attempting to convert an Opportunity that has already been converted."""
+
+    pass
+
+
+class OpportunityConversionError(OpportunityDomainError):
+    """Raised when conversion prerequisites are not met (e.g. wrong direction, counterparty policy)."""
+
+    pass

@@ -185,6 +185,29 @@ class Opportunity(models.Model):
         related_name="opportunities",
         help_text="Referenced commodity definition.",
     )
+    schema_version = models.ForeignKey(
+        "commodities.CommoditySchemaVersion",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="opportunities",
+        help_text="Optional exact commodity schema version if dynamic specifications were recorded.",
+    )
+    specifications = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Dynamic technical specifications validated against the referenced schema version.",
+    )
+
+    # Conversion Target Links (Spec §19, Roadmap T0609)
+    converted_rfq = models.OneToOneField(
+        "trade_hub.RFQ",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="source_opportunity",
+        help_text="Authoritative RFQ created from this Opportunity upon conversion.",
+    )
 
     # Commercial & Quantity Terms
     quantity = models.DecimalField(
@@ -391,6 +414,20 @@ class Opportunity(models.Model):
                 ),
                 name="check_opportunity_broker_source_consistency",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(converted_rfq__isnull=True)
+                    | models.Q(status=OpportunityStatus.CONVERTED)
+                ),
+                name="check_rfq_only_when_converted",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(direction=OpportunityDirection.DEMAND, status=OpportunityStatus.CONVERTED)
+                    | models.Q(converted_rfq__isnull=False)
+                ),
+                name="check_demand_converted_has_rfq",
+            ),
         ]
         indexes = [
             models.Index(fields=["direction"], name="idx_opp_direction"),
@@ -400,6 +437,8 @@ class Opportunity(models.Model):
             models.Index(fields=["organization"], name="idx_opp_organization"),
             models.Index(fields=["external_counterparty"], name="idx_opp_ext_counterparty"),
             models.Index(fields=["commodity"], name="idx_opp_commodity"),
+            models.Index(fields=["converted_rfq"], name="idx_opp_converted_rfq"),
+            models.Index(fields=["schema_version"], name="idx_opp_schema_version"),
             models.Index(fields=["-created_at"], name="idx_opp_created_at_desc"),
         ]
 
@@ -452,10 +491,38 @@ class Opportunity(models.Model):
             if self.delivery_window_end < self.delivery_window_start:
                 errors["delivery_window_end"] = "Delivery window end must be on or after delivery window start."
 
+        # Converted RFQ immutability and state consistency
+        if not self._state.adding and self.pk:
+            orig = Opportunity.objects.filter(pk=self.pk).values("converted_rfq_id").first()
+            if orig and orig["converted_rfq_id"] and self.converted_rfq_id != orig["converted_rfq_id"]:
+                errors["converted_rfq"] = "Converted RFQ link is immutable once set."
+
+        if self.converted_rfq_id and self.status != OpportunityStatus.CONVERTED:
+            errors["converted_rfq"] = "Opportunity cannot reference a converted RFQ unless in Converted status."
+
+        if self.status == OpportunityStatus.CONVERTED and self.direction == OpportunityDirection.DEMAND:
+            if not self.converted_rfq_id:
+                errors["converted_rfq"] = "Converted demand opportunity must reference a converted RFQ."
+
+        # Schema version commodity consistency
+        if self.schema_version_id and self.commodity_id:
+            if self.schema_version.commodity_id != self.commodity_id:
+                errors["schema_version"] = "Schema version does not belong to the referenced commodity."
+
         if errors:
             from django.core.exceptions import ValidationError
 
             raise ValidationError(errors)
+
+    def delete(self, *args, **kwargs):
+        if self.converted_rfq_id is not None:
+            from django.db.models import ProtectedError
+
+            raise ProtectedError(
+                "Cannot delete an Opportunity that has been converted to an RFQ.",
+                [self.converted_rfq],
+            )
+        return super().delete(*args, **kwargs)
 
     def save(self, *args, **kwargs):
         self.clean()
