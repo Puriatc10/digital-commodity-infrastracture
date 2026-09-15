@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 import threading
 import time
@@ -51,6 +52,10 @@ class OpportunityLifecycleConcurrencyTests(TransactionTestCase):
             commodity_id=self.commodity.id,
             quantity=Decimal("1000.000"),
             source=OpportunitySource.OPERATOR_SOURCING,
+            geography="Jebel Ali, UAE",
+            delivery_window_start=datetime.date(2026, 10, 1),
+            delivery_window_end=datetime.date(2026, 10, 31),
+            payment_terms="Letter of Credit",
         )
 
     # -------------------------------------------------------------------------

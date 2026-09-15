@@ -12,6 +12,7 @@ from opportunities.models import (
     OpportunityContactAttempt,
     OpportunityDirection,
     OpportunitySource,
+    OpportunityStatus,
     OpportunityTask,
 )
 
@@ -146,6 +147,23 @@ class OpportunityCommodityProjectionSerializer(serializers.Serializer):
     name_en = serializers.CharField(read_only=True)
 
 
+class QualificationIssueSerializer(serializers.Serializer):
+    """Machine-readable qualification issue for readiness inspection and error responses."""
+
+    field = serializers.CharField(read_only=True, help_text="Field name associated with the qualification issue.")
+    code = serializers.CharField(read_only=True, help_text="Machine-readable issue code (e.g. required, min_value, invalid_broker).")
+    message = serializers.CharField(read_only=True, help_text="Human-readable explanation of the qualification issue.")
+
+
+class OpportunityQualificationErrorResponseSerializer(serializers.Serializer):
+    """Structured machine-readable error payload returned on qualification failure."""
+
+    detail = serializers.CharField(read_only=True, help_text="Summary explanation of the qualification failure.")
+    qualifiable = serializers.BooleanField(read_only=True, help_text="Always false for failed qualification evaluations.")
+    missing_requirements = QualificationIssueSerializer(many=True, read_only=True, help_text="List of mandatory fields missing from the Opportunity.")
+    invalid_requirements = QualificationIssueSerializer(many=True, read_only=True, help_text="List of fields present with invalid values.")
+
+
 # -------------------------------------------------------------------------
 # Opportunity Read Projection
 # -------------------------------------------------------------------------
@@ -153,11 +171,18 @@ class OpportunityCommodityProjectionSerializer(serializers.Serializer):
 class OpportunityDetailSerializer(serializers.ModelSerializer):
     """
     Read projection for Opportunity records.
-    Provides safe representations of linked counterparty and commodity entities.
+    Provides safe representations of linked counterparty and commodity entities,
+    lifecycle state, and qualification readiness indicators.
     """
 
     counterparty_type = serializers.SerializerMethodField(
         help_text="Type of counterparty: 'organization' or 'external_counterparty'."
+    )
+    can_qualify = serializers.SerializerMethodField(
+        help_text="Readiness flag indicating if this Opportunity can be qualified in its current state."
+    )
+    qualification_issues = serializers.SerializerMethodField(
+        help_text="List of qualification issues blocking qualification (empty if ready or qualifiable)."
     )
     organization = OpportunityOrganizationProjectionSerializer(read_only=True)
     external_counterparty = OpportunityExternalCounterpartyProjectionSerializer(read_only=True)
@@ -180,6 +205,8 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             "identifier",
             "direction",
             "counterparty_type",
+            "can_qualify",
+            "qualification_issues",
             "organization",
             "external_counterparty",
             "commodity",
@@ -221,6 +248,29 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
         if obj.external_counterparty_id:
             return "external_counterparty"
         return "unknown"
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_can_qualify(self, obj) -> bool:
+        if obj.status not in (OpportunityStatus.CAPTURED, OpportunityStatus.CONTACTED):
+            return False
+        from opportunities.services_qualification import evaluate_qualification
+
+        return evaluate_qualification(obj).is_qualifiable
+
+    @extend_schema_field(QualificationIssueSerializer(many=True))
+    def get_qualification_issues(self, obj) -> list[dict[str, str]]:
+        if obj.status not in (OpportunityStatus.CAPTURED, OpportunityStatus.CONTACTED):
+            return [
+                {
+                    "field": "status",
+                    "code": "invalid_status",
+                    "message": f"Opportunities in status '{obj.status}' cannot be qualified.",
+                }
+            ]
+        from opportunities.services_qualification import evaluate_qualification
+
+        eval_result = evaluate_qualification(obj)
+        return [i.to_dict() for i in eval_result.all_issues]
 
 
 # -------------------------------------------------------------------------

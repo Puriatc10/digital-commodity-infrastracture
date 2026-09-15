@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -68,6 +69,10 @@ class OpportunityLifecycleDomainServiceTests(TestCase):
             currency="USD",
             source=OpportunitySource.BROKER_REFERRAL,
             broker_id=self.broker_org.id,
+            geography="Rotterdam, Netherlands",
+            delivery_window_start=datetime.date(2026, 10, 1),
+            delivery_window_end=datetime.date(2026, 10, 31),
+            payment_terms="100% LC at sight",
         )
 
     # -------------------------------------------------------------------------
