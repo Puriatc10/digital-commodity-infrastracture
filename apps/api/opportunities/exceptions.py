@@ -56,3 +56,21 @@ class OpportunityTaskNotFoundError(OpportunityDomainError, ObjectDoesNotExist):
     """Raised when an Opportunity Task cannot be found."""
 
     pass
+
+
+class OpportunityQualificationError(OpportunityDomainError):
+    """
+    Raised when an Opportunity fails authoritative qualification requirements evaluation.
+    Carries structured, machine-readable lists of missing and invalid requirements.
+    """
+
+    def __init__(
+        self,
+        message: str = "Opportunity cannot be qualified due to missing or invalid requirements.",
+        missing_requirements: list | None = None,
+        invalid_requirements: list | None = None,
+    ):
+        super().__init__(message)
+        self.message = message
+        self.missing_requirements = list(missing_requirements) if missing_requirements else []
+        self.invalid_requirements = list(invalid_requirements) if invalid_requirements else []

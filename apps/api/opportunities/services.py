@@ -206,11 +206,30 @@ def check_opportunity_mutation_allowed(
     if field_name == "identifier":
         raise ValidationError({"identifier": "Opportunity identifier is immutable once created."})
 
-    # Status and version are managed strictly through explicit lifecycle actions
-    if field_name == "status":
-        raise ValidationError({"status": "Lifecycle status cannot be modified via generic update. Use explicit lifecycle actions."})
-    if field_name == "version":
-        raise ValidationError({"version": "Version is managed by optimistic concurrency and cannot be directly modified."})
+    # Status, version, and lifecycle timestamps are managed strictly through explicit lifecycle actions
+    lifecycle_fields = {
+        "status",
+        "version",
+        "contacted_at",
+        "qualified_at",
+        "converted_at",
+        "held_at",
+        "hold_reason",
+        "status_before_hold",
+        "rejected_at",
+        "rejection_reason",
+        "lost_at",
+        "lost_reason",
+        "expired_at",
+        "expiration_reason",
+        "created_by",
+        "created_at",
+        "updated_at",
+    }
+    if field_name in lifecycle_fields:
+        raise ValidationError(
+            {field_name: f"Field '{field_name}' is lifecycle-controlled and cannot be directly modified."}
+        )
 
     # Terminal state protection: terminal opportunities cannot be generically modified
     if opportunity.status in TERMINAL_STATUSES:

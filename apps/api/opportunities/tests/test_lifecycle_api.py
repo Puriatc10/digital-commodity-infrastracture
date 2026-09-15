@@ -1,3 +1,4 @@
+import datetime
 from decimal import Decimal
 import uuid
 
@@ -58,6 +59,10 @@ class OpportunityLifecycleAPITests(TestCase):
             quantity=Decimal("300.000"),
             indicative_price=Decimal("360.00"),
             source=OpportunitySource.OPERATOR_SOURCING,
+            geography="Bandar Abbas, Iran",
+            delivery_window_start=datetime.date(2026, 10, 1),
+            delivery_window_end=datetime.date(2026, 10, 31),
+            payment_terms="Cash Against Documents",
         )
         self.base_url = f"/api/opportunities/opportunities/{self.opp.id}/"
 

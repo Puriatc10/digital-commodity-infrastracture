@@ -419,7 +419,7 @@ export interface paths {
         put?: never;
         /**
          * Qualify opportunity
-         * @description Transition an Opportunity to Qualified. Requires expected_version for optimistic concurrency control.
+         * @description Transition an Opportunity to Qualified. Requires expected_version for optimistic concurrency control and evaluates persisted aggregate data against the authoritative qualification contract.
          */
         post: operations["opportunities_opportunities_qualify_create"];
         delete?: never;
@@ -1584,7 +1584,8 @@ export interface components {
         };
         /**
          * @description Read projection for Opportunity records.
-         *     Provides safe representations of linked counterparty and commodity entities.
+         *     Provides safe representations of linked counterparty and commodity entities,
+         *     lifecycle state, and qualification readiness indicators.
          */
         OpportunityDetail: {
             /** Format: uuid */
@@ -1600,6 +1601,10 @@ export interface components {
             readonly direction: components["schemas"]["OpportunityDirectionEnum"];
             /** @description Type of counterparty: 'organization' or 'external_counterparty'. */
             readonly counterparty_type: string;
+            /** @description Readiness flag indicating if this Opportunity can be qualified in its current state. */
+            readonly can_qualify: boolean;
+            /** @description List of qualification issues blocking qualification (empty if ready or qualifiable). */
+            readonly qualification_issues: components["schemas"]["QualificationIssue"][];
             readonly organization: components["schemas"]["OpportunityOrganizationProjection"];
             readonly external_counterparty: components["schemas"]["OpportunityExternalCounterpartyProjection"];
             readonly commodity: components["schemas"]["OpportunityCommodityProjection"];
@@ -1763,6 +1768,17 @@ export interface components {
             readonly id: string;
             readonly name: string;
             readonly country: string;
+        };
+        /** @description Structured machine-readable error payload returned on qualification failure. */
+        OpportunityQualificationErrorResponse: {
+            /** @description Summary explanation of the qualification failure. */
+            readonly detail: string;
+            /** @description Always false for failed qualification evaluations. */
+            readonly qualifiable: boolean;
+            /** @description List of mandatory fields missing from the Opportunity. */
+            readonly missing_requirements: components["schemas"]["QualificationIssue"][];
+            /** @description List of fields present with invalid values. */
+            readonly invalid_requirements: components["schemas"]["QualificationIssue"][];
         };
         /** @description Payload to qualify an Opportunity. */
         OpportunityQualifyAction: {
@@ -2330,6 +2346,15 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
+        /** @description Machine-readable qualification issue for readiness inspection and error responses. */
+        QualificationIssue: {
+            /** @description Field name associated with the qualification issue. */
+            readonly field: string;
+            /** @description Machine-readable issue code (e.g. required, min_value, invalid_broker). */
+            readonly code: string;
+            /** @description Human-readable explanation of the qualification issue. */
+            readonly message: string;
+        };
         /** @description Authoritative audit activity fact for an RFQ. */
         RFQActivityItem: {
             /** @description Deterministic event identifier. */
@@ -4600,12 +4625,13 @@ export interface operations {
                     "application/json": components["schemas"]["OpportunityDetail"];
                 };
             };
-            /** @description Validation error or invalid transition */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OpportunityQualificationErrorResponse"];
+                };
             };
             /** @description Unauthenticated */
             401: {

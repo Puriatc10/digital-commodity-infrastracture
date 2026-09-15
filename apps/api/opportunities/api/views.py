@@ -28,6 +28,7 @@ from opportunities.api.serializers import (
     OpportunityHoldActionSerializer,
     OpportunityLostActionSerializer,
     OpportunityMatchActionSerializer,
+    OpportunityQualificationErrorResponseSerializer,
     OpportunityQualifyActionSerializer,
     OpportunityRejectActionSerializer,
     OpportunityResumeActionSerializer,
@@ -42,6 +43,7 @@ from opportunities.exceptions import (
     InvalidVersionError,
     OpportunityNotFoundError,
     OpportunityPermissionDeniedError,
+    OpportunityQualificationError,
     OpportunityTaskNotFoundError,
     ReservedTransitionError,
     StaleVersionError,
@@ -505,6 +507,16 @@ class OpportunityViewSet(
             )
         except StaleVersionError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except OpportunityQualificationError as exc:
+            return Response(
+                {
+                    "detail": str(exc),
+                    "qualifiable": False,
+                    "missing_requirements": [i.to_dict() for i in exc.missing_requirements],
+                    "invalid_requirements": [i.to_dict() for i in exc.invalid_requirements],
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         except (InvalidVersionError, InvalidTransitionError, ReservedTransitionError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except OpportunityNotFoundError as exc:
@@ -537,11 +549,14 @@ class OpportunityViewSet(
 
     @extend_schema(
         summary="Qualify opportunity",
-        description="Transition an Opportunity to Qualified. Requires expected_version for optimistic concurrency control.",
+        description=(
+            "Transition an Opportunity to Qualified. Requires expected_version for optimistic concurrency control "
+            "and evaluates persisted aggregate data against the authoritative qualification contract."
+        ),
         request=OpportunityQualifyActionSerializer,
         responses={
             200: OpportunityDetailSerializer,
-            400: OpenApiResponse(description="Validation error or invalid transition"),
+            400: OpportunityQualificationErrorResponseSerializer,
             401: OpenApiResponse(description="Unauthenticated"),
             403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
             404: OpenApiResponse(description="Opportunity not found"),

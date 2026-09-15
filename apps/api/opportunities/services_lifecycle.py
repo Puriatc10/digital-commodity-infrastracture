@@ -4,14 +4,18 @@ import uuid
 from django.db import transaction
 from django.utils import timezone
 
+from opportunities.api.permissions import is_operator_or_product_admin
 from opportunities.exceptions import (
     InvalidTransitionError,
     InvalidVersionError,
     OpportunityNotFoundError,
+    OpportunityPermissionDeniedError,
+    OpportunityQualificationError,
     ReservedTransitionError,
     StaleVersionError,
 )
 from opportunities.models import Opportunity, OpportunityStatus
+from opportunities.services_qualification import evaluate_qualification
 
 TERMINAL_STATUSES = frozenset(
     {
@@ -117,9 +121,15 @@ class OpportunityLifecycleService:
         """
         Transition an Opportunity to Qualified.
 
-        Permitted from Captured or Contacted. Advances version, records
-        qualified timestamp, and persists changes.
+        Permitted from Captured or Contacted with mandatory qualification contract validation.
+        Validates expected_version under exclusive row lock, evaluates business qualification
+        requirements, advances version, records qualified timestamp, and persists changes.
         """
+        if actor is not None and not is_operator_or_product_admin(actor):
+            raise OpportunityPermissionDeniedError(
+                "Only Operators and Product Admins are authorized to qualify Opportunities."
+            )
+
         opp_id = _extract_opportunity_id(opportunity_or_id)
         opp = _lock_opportunity(opp_id)
 
@@ -130,15 +140,27 @@ class OpportunityLifecycleService:
                 f"Cannot qualify Opportunity in terminal status '{opp.status}'."
             )
 
+        if opp.status == OpportunityStatus.QUALIFIED:
+            raise InvalidTransitionError("Opportunity is already in Qualified status.")
+
         if opp.status not in (OpportunityStatus.CAPTURED, OpportunityStatus.CONTACTED):
             raise InvalidTransitionError(
                 f"Cannot qualify Opportunity in status '{opp.status}'. Only Captured or Contacted opportunities can be qualified."
             )
 
+        eval_result = evaluate_qualification(opp)
+        if not eval_result.is_qualifiable:
+            raise OpportunityQualificationError(
+                message="Opportunity cannot be qualified due to missing or invalid requirements.",
+                missing_requirements=eval_result.missing_requirements,
+                invalid_requirements=eval_result.invalid_requirements,
+            )
+
         opp.status = OpportunityStatus.QUALIFIED
         opp.qualified_at = timezone.now()
+        opp.status_before_hold = ""
         opp.version += 1
-        opp.save(update_fields=["status", "qualified_at", "version", "updated_at"])
+        opp.save(update_fields=["status", "qualified_at", "status_before_hold", "version", "updated_at"])
         return opp
 
     @staticmethod
