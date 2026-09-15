@@ -9,18 +9,36 @@ from drf_spectacular.utils import (
     extend_schema_view,
 )
 from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from opportunities.api.permissions import IsOperatorOrProductAdmin
 from opportunities.api.serializers import (
     ExternalCounterpartySerializer,
+    OpportunityContactActionSerializer,
     OpportunityCreateSerializer,
     OpportunityDetailSerializer,
+    OpportunityExpireActionSerializer,
+    OpportunityHoldActionSerializer,
+    OpportunityLostActionSerializer,
+    OpportunityMatchActionSerializer,
+    OpportunityQualifyActionSerializer,
+    OpportunityRejectActionSerializer,
+    OpportunityResumeActionSerializer,
     OpportunityUpdateSerializer,
+)
+from opportunities.exceptions import (
+    InvalidTransitionError,
+    InvalidVersionError,
+    OpportunityNotFoundError,
+    OpportunityPermissionDeniedError,
+    ReservedTransitionError,
+    StaleVersionError,
 )
 from opportunities.models import ExternalCounterparty, Opportunity, OpportunitySource
 from opportunities.services import create_opportunity, update_opportunity
+from opportunities.services_lifecycle import OpportunityLifecycleService
 
 
 
@@ -302,6 +320,22 @@ class OpportunityViewSet(
             return OpportunityCreateSerializer
         if self.action in ["update", "partial_update"]:
             return OpportunityUpdateSerializer
+        if self.action == "contact":
+            return OpportunityContactActionSerializer
+        if self.action == "qualify":
+            return OpportunityQualifyActionSerializer
+        if self.action == "match":
+            return OpportunityMatchActionSerializer
+        if self.action == "hold":
+            return OpportunityHoldActionSerializer
+        if self.action == "resume":
+            return OpportunityResumeActionSerializer
+        if self.action == "reject":
+            return OpportunityRejectActionSerializer
+        if self.action == "lost":
+            return OpportunityLostActionSerializer
+        if self.action == "expire":
+            return OpportunityExpireActionSerializer
         return OpportunityDetailSerializer
 
     def get_queryset(self):
@@ -384,7 +418,208 @@ class OpportunityViewSet(
         serializer.is_valid(raise_exception=True)
         validated = serializer.validated_data
 
-        instance = update_opportunity(instance, data=validated)
+        try:
+            instance = update_opportunity(instance, data=validated)
+        except StaleVersionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (InvalidVersionError, InvalidTransitionError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         response_serializer = OpportunityDetailSerializer(instance)
         return Response(response_serializer.data)
+
+    def _execute_lifecycle_action(self, request, serializer_class, action_func, **extra_kwargs):
+        instance = self.get_object()
+        serializer = serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        expected_version = serializer.validated_data["expected_version"]
+
+        kwargs = {**extra_kwargs}
+        if "reason" in serializer.validated_data:
+            kwargs["reason"] = serializer.validated_data["reason"]
+
+        try:
+            opp = action_func(
+                instance.id,
+                expected_version=expected_version,
+                actor=request.user,
+                **kwargs,
+            )
+        except StaleVersionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (InvalidVersionError, InvalidTransitionError, ReservedTransitionError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except OpportunityNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except OpportunityPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response(OpportunityDetailSerializer(opp).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Mark opportunity as contacted",
+        description="Transition an Opportunity from Captured to Contacted. Requires expected_version for optimistic concurrency control.",
+        request=OpportunityContactActionSerializer,
+        responses={
+            200: OpportunityDetailSerializer,
+            400: OpenApiResponse(description="Validation error or invalid transition"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — stale expected_version"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="contact")
+    def contact(self, request, id=None):
+        return self._execute_lifecycle_action(
+            request,
+            OpportunityContactActionSerializer,
+            OpportunityLifecycleService.mark_contacted,
+        )
+
+    @extend_schema(
+        summary="Qualify opportunity",
+        description="Transition an Opportunity to Qualified. Requires expected_version for optimistic concurrency control.",
+        request=OpportunityQualifyActionSerializer,
+        responses={
+            200: OpportunityDetailSerializer,
+            400: OpenApiResponse(description="Validation error or invalid transition"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — stale expected_version"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="qualify")
+    def qualify(self, request, id=None):
+        return self._execute_lifecycle_action(
+            request,
+            OpportunityQualifyActionSerializer,
+            OpportunityLifecycleService.qualify,
+        )
+
+    @extend_schema(
+        summary="Move opportunity to matching",
+        description="Transition a Qualified Opportunity into Matching. Requires expected_version for optimistic concurrency control.",
+        request=OpportunityMatchActionSerializer,
+        responses={
+            200: OpportunityDetailSerializer,
+            400: OpenApiResponse(description="Validation error or invalid transition"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — stale expected_version"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="match")
+    def match(self, request, id=None):
+        return self._execute_lifecycle_action(
+            request,
+            OpportunityMatchActionSerializer,
+            OpportunityLifecycleService.start_matching,
+        )
+
+    @extend_schema(
+        summary="Put opportunity on hold",
+        description="Transition an active Opportunity to On Hold. Requires expected_version and mandatory non-empty reason.",
+        request=OpportunityHoldActionSerializer,
+        responses={
+            200: OpportunityDetailSerializer,
+            400: OpenApiResponse(description="Validation error or missing reason"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — stale expected_version"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="hold")
+    def hold(self, request, id=None):
+        return self._execute_lifecycle_action(
+            request,
+            OpportunityHoldActionSerializer,
+            OpportunityLifecycleService.put_on_hold,
+        )
+
+    @extend_schema(
+        summary="Resume opportunity from hold",
+        description="Resume an Opportunity from On Hold back to its pre-hold status. Requires expected_version.",
+        request=OpportunityResumeActionSerializer,
+        responses={
+            200: OpportunityDetailSerializer,
+            400: OpenApiResponse(description="Validation error or invalid transition"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — stale expected_version"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="resume")
+    def resume(self, request, id=None):
+        return self._execute_lifecycle_action(
+            request,
+            OpportunityResumeActionSerializer,
+            OpportunityLifecycleService.resume,
+        )
+
+    @extend_schema(
+        summary="Reject opportunity",
+        description="Transition an Opportunity to Rejected (terminal). Requires expected_version and mandatory non-empty reason.",
+        request=OpportunityRejectActionSerializer,
+        responses={
+            200: OpportunityDetailSerializer,
+            400: OpenApiResponse(description="Validation error or missing reason"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — stale expected_version"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, id=None):
+        return self._execute_lifecycle_action(
+            request,
+            OpportunityRejectActionSerializer,
+            OpportunityLifecycleService.reject,
+        )
+
+    @extend_schema(
+        summary="Mark opportunity as lost",
+        description="Transition an Opportunity to Lost (terminal). Requires expected_version and mandatory non-empty reason.",
+        request=OpportunityLostActionSerializer,
+        responses={
+            200: OpportunityDetailSerializer,
+            400: OpenApiResponse(description="Validation error or missing reason"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — stale expected_version"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="lost")
+    def lost(self, request, id=None):
+        return self._execute_lifecycle_action(
+            request,
+            OpportunityLostActionSerializer,
+            OpportunityLifecycleService.mark_lost,
+        )
+
+    @extend_schema(
+        summary="Expire opportunity",
+        description="Transition an Opportunity to Expired (terminal). Requires expected_version.",
+        request=OpportunityExpireActionSerializer,
+        responses={
+            200: OpportunityDetailSerializer,
+            400: OpenApiResponse(description="Validation error or invalid transition"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — stale expected_version"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="expire")
+    def expire(self, request, id=None):
+        return self._execute_lifecycle_action(
+            request,
+            OpportunityExpireActionSerializer,
+            OpportunityLifecycleService.expire,
+        )

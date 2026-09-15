@@ -112,6 +112,14 @@ class OpportunityDirection(models.TextChoices):
 
 class OpportunityStatus(models.TextChoices):
     CAPTURED = "Captured", "Captured"
+    CONTACTED = "Contacted", "Contacted"
+    QUALIFIED = "Qualified", "Qualified"
+    MATCHING = "Matching", "Matching"
+    CONVERTED = "Converted", "Converted"
+    ON_HOLD = "On Hold", "On Hold"
+    REJECTED = "Rejected", "Rejected"
+    LOST = "Lost", "Lost"
+    EXPIRED = "Expired", "Expired"
 
 
 class OpportunitySource(models.TextChoices):
@@ -255,6 +263,70 @@ class Opportunity(models.Model):
         help_text="Foundational lifecycle state.",
     )
 
+    # Optimistic Concurrency Foundation
+    version = models.IntegerField(
+        default=1,
+        help_text="Optimistic concurrency aggregate version counter.",
+    )
+
+    # Lifecycle Timestamps & Reasons
+    contacted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the opportunity was marked as contacted.",
+    )
+    qualified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the opportunity was qualified.",
+    )
+    converted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the opportunity was converted.",
+    )
+    held_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the opportunity was put on hold.",
+    )
+    hold_reason = models.TextField(
+        blank=True,
+        help_text="Operational reason provided when putting the opportunity on hold.",
+    )
+    status_before_hold = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="Persisted status prior to entering On Hold.",
+    )
+    rejected_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the opportunity was rejected.",
+    )
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text="Reason provided when rejecting the opportunity.",
+    )
+    lost_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the opportunity was marked lost.",
+    )
+    lost_reason = models.TextField(
+        blank=True,
+        help_text="Reason provided when marking the opportunity as lost.",
+    )
+    expired_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the opportunity expired.",
+    )
+    expiration_reason = models.TextField(
+        blank=True,
+        help_text="Operational reason or notes regarding expiration.",
+    )
+
     # Internal Actor Tracking & Timestamps
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -292,8 +364,12 @@ class Opportunity(models.Model):
                 name="check_non_negative_opportunity_indicative_price",
             ),
             models.CheckConstraint(
-                condition=models.Q(status__in=[OpportunityStatus.CAPTURED]),
+                condition=models.Q(status__in=[c[0] for c in OpportunityStatus.choices]),
                 name="check_valid_opportunity_status",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(version__gte=1),
+                name="check_positive_opportunity_version",
             ),
             models.CheckConstraint(
                 condition=(
@@ -329,6 +405,9 @@ class Opportunity(models.Model):
     def clean(self):
         super().clean()
         errors = {}
+
+        if self.version is not None and self.version < 1:
+            errors["version"] = "Version must be at least 1."
 
         if not self.identifier:
             errors["identifier"] = "Opportunity identifier is required."

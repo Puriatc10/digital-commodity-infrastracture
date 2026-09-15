@@ -219,3 +219,156 @@ class ExternalCounterpartyAuthorizationTests(TestCase):
             status.HTTP_403_FORBIDDEN,
         )
         self.assertEqual(self.client.get(self.detail_url).status_code, status.HTTP_403_FORBIDDEN)
+
+
+class OpportunityLifecycleAuthorizationTests(TestCase):
+    """
+    Authorization policy tests for Opportunity lifecycle action endpoints.
+
+    Requirements:
+    - Operator: ALLOWED (200 OK)
+    - Product Admin: ALLOWED (200 OK)
+    - Buyer Org User: DENIED (403 Forbidden)
+    - Supplier Org User: DENIED (403 Forbidden)
+    - Broker Org User: DENIED (403 Forbidden)
+    - Attributed Broker Org User: DENIED (403 Forbidden)
+    - Django Staff-only (no system role): DENIED (403 Forbidden)
+    - Django Superuser-only (no system role): DENIED (403 Forbidden)
+    - Anonymous: DENIED (401 Unauthorized)
+    """
+
+    def setUp(self):
+        self.client = APIClient()
+
+        # System roles
+        self.operator = User.objects.create_user(email="operator_life@platform.com", password="password")
+        SystemRoleAssignment.objects.create(
+            user=self.operator, role=SystemRoleAssignment.SystemRole.OPERATOR
+        )
+
+        self.admin = User.objects.create_user(email="admin_life@platform.com", password="password")
+        SystemRoleAssignment.objects.create(
+            user=self.admin, role=SystemRoleAssignment.SystemRole.ADMIN
+        )
+
+        # Buyer user
+        self.buyer_org = Organization.objects.create(name="Buyer Org Lifecycle")
+        OrganizationCapability.objects.create(
+            organization=self.buyer_org, capability=OrganizationCapability.CapabilityType.BUYER
+        )
+        self.buyer_user = User.objects.create_user(email="buyer_life@org.com", password="password")
+        OrganizationMembership.objects.create(
+            organization=self.buyer_org, user=self.buyer_user, role=OrganizationMembership.OrganizationRole.MANAGER
+        )
+
+        # Supplier user
+        self.supplier_org = Organization.objects.create(name="Supplier Org Lifecycle")
+        OrganizationCapability.objects.create(
+            organization=self.supplier_org, capability=OrganizationCapability.CapabilityType.SUPPLIER
+        )
+        self.supplier_user = User.objects.create_user(email="supplier_life@org.com", password="password")
+        OrganizationMembership.objects.create(
+            organization=self.supplier_org, user=self.supplier_user, role=OrganizationMembership.OrganizationRole.MANAGER
+        )
+
+        # Broker user (generic)
+        self.broker_org = Organization.objects.create(name="Broker Org Lifecycle")
+        OrganizationCapability.objects.create(
+            organization=self.broker_org, capability=OrganizationCapability.CapabilityType.BROKER
+        )
+        self.broker_user = User.objects.create_user(email="broker_life@org.com", password="password")
+        OrganizationMembership.objects.create(
+            organization=self.broker_org, user=self.broker_user, role=OrganizationMembership.OrganizationRole.MANAGER
+        )
+
+        # Attributed Broker user
+        self.attributed_broker_org = Organization.objects.create(name="Attributed Broker Org")
+        OrganizationCapability.objects.create(
+            organization=self.attributed_broker_org, capability=OrganizationCapability.CapabilityType.BROKER
+        )
+        self.attributed_broker_user = User.objects.create_user(email="attributed_broker@org.com", password="password")
+        OrganizationMembership.objects.create(
+            organization=self.attributed_broker_org, user=self.attributed_broker_user, role=OrganizationMembership.OrganizationRole.MANAGER
+        )
+
+        # Django staff-only and superuser-only
+        self.staff_only_user = User.objects.create_user(
+            email="staff_life@platform.com", password="password", is_staff=True
+        )
+        self.superuser_only_user = User.objects.create_user(
+            email="super_life@platform.com", password="password", is_superuser=True
+        )
+
+        # Opportunity with attributed broker
+        from decimal import Decimal
+        from commodities.models import CommodityDefinition
+        from opportunities.models import OpportunityDirection, OpportunitySource
+        from opportunities.services import create_opportunity
+
+        commodity = CommodityDefinition.objects.create(
+            code="bitumen_auth_test",
+            name_en="Bitumen Auth Test",
+            name_fa="قیر تست دسترسی",
+        )
+        self.opp = create_opportunity(
+            direction=OpportunityDirection.SUPPLY,
+            organization_id=self.supplier_org.id,
+            commodity_id=commodity.id,
+            quantity=Decimal("500.000"),
+            source=OpportunitySource.BROKER_REFERRAL,
+            broker_id=self.attributed_broker_org.id,
+        )
+        self.action_url = f"/api/opportunities/opportunities/{self.opp.id}/contact/"
+
+    def test_operator_allowed(self):
+        """Operator system role is allowed to invoke lifecycle action (200 OK)."""
+        self.client.force_authenticate(user=self.operator)
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_product_admin_allowed(self):
+        """Product Admin system role is allowed to invoke lifecycle action (200 OK)."""
+        self.client.force_authenticate(user=self.admin)
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_buyer_denied(self):
+        """Buyer organization user is denied (403 Forbidden)."""
+        self.client.force_authenticate(user=self.buyer_user)
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_supplier_denied(self):
+        """Supplier organization user is denied (403 Forbidden)."""
+        self.client.force_authenticate(user=self.supplier_user)
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_broker_denied(self):
+        """Generic Broker organization user is denied (403 Forbidden)."""
+        self.client.force_authenticate(user=self.broker_user)
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_attributed_broker_user_denied(self):
+        """User from the specifically attributed Broker organization is also denied (403 Forbidden)."""
+        self.client.force_authenticate(user=self.attributed_broker_user)
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_only_denied(self):
+        """Django is_staff=True without explicit system role is denied (403 Forbidden)."""
+        self.client.force_authenticate(user=self.staff_only_user)
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superuser_only_denied(self):
+        """Django is_superuser=True without explicit system role is denied (403 Forbidden)."""
+        self.client.force_authenticate(user=self.superuser_only_user)
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_anonymous_denied(self):
+        """Anonymous unauthenticated request is denied (401 Unauthorized or 403 Forbidden)."""
+        res = self.client.post(self.action_url, {"expected_version": 1}, format="json")
+        self.assertIn(res.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])

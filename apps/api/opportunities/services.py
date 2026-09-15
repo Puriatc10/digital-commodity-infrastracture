@@ -12,7 +12,40 @@ from opportunities.models import (
     OpportunityIdentifierSequence,
     OpportunitySource,
 )
+from opportunities.services_lifecycle import (
+    TERMINAL_STATUSES,
+    OpportunityLifecycleService,
+    convert_opportunity,
+    expire_opportunity,
+    mark_opportunity_contacted,
+    mark_opportunity_lost,
+    put_opportunity_on_hold,
+    qualify_opportunity,
+    reject_opportunity,
+    resume_opportunity,
+    start_opportunity_matching,
+)
 from organizations.models import Organization, OrganizationCapability
+
+__all__ = [
+    "OpportunityLifecycleService",
+    "convert_opportunity",
+    "expire_opportunity",
+    "mark_opportunity_contacted",
+    "mark_opportunity_lost",
+    "put_opportunity_on_hold",
+    "qualify_opportunity",
+    "reject_opportunity",
+    "resume_opportunity",
+    "start_opportunity_matching",
+    "format_opportunity_identifier",
+    "allocate_opportunity_sequence",
+    "allocate_opportunity_identifier",
+    "validate_opportunity_source_and_broker",
+    "check_opportunity_mutation_allowed",
+    "create_opportunity",
+    "update_opportunity",
+]
 
 
 def format_opportunity_identifier(year: int, sequence: int) -> str:
@@ -144,16 +177,21 @@ def check_opportunity_mutation_allowed(
     field_name: str,
 ) -> None:
     """
-    Guards Opportunity field mutation based on lifecycle state.
-
-    Currently (T0601/T0605), all opportunities are in the 'Captured' state,
-    where corrections and commercial adjustments are allowed.
-    T0603 will extend this hook with transition restrictions once qualification
-    or conversion states are reached.
+    Guards Opportunity field mutation based on lifecycle state and immutability invariants.
     """
     # Immutable identifier invariant
     if field_name == "identifier":
         raise ValidationError({"identifier": "Opportunity identifier is immutable once created."})
+
+    # Status and version are managed strictly through explicit lifecycle actions
+    if field_name == "status":
+        raise ValidationError({"status": "Lifecycle status cannot be modified via generic update. Use explicit lifecycle actions."})
+    if field_name == "version":
+        raise ValidationError({"version": "Version is managed by optimistic concurrency and cannot be directly modified."})
+
+    # Terminal state protection: terminal opportunities cannot be generically modified
+    if opportunity.status in TERMINAL_STATUSES:
+        raise ValidationError({"status": f"Cannot modify Opportunity in terminal status '{opportunity.status}'."})
 
 
 @transaction.atomic
@@ -225,39 +263,54 @@ def update_opportunity(
     opportunity: Opportunity,
     *,
     data: dict[str, Any],
+    expected_version: Any = None,
 ) -> Opportunity:
     """
     Authoritative Opportunity mutation service.
 
     Centralizes field-level mutation policy, source/broker validation,
-    and lifecycle checks.
+    concurrency control, and lifecycle checks.
     """
-    for field in data.keys():
-        check_opportunity_mutation_allowed(opportunity, field)
+    opp = Opportunity.objects.select_for_update().get(pk=opportunity.pk)
 
-    new_source = data.get("source", opportunity.source)
-    if "broker_id" in data:
-        new_broker_id = data["broker_id"]
-    elif "broker" in data:
-        broker_val = data["broker"]
+    exp_ver = expected_version
+    if exp_ver is None and "expected_version" in data:
+        exp_ver = data["expected_version"]
+
+    if exp_ver is not None:
+        from opportunities.services_lifecycle import _validate_expected_version
+
+        _validate_expected_version(opp, exp_ver)
+
+    clean_data = {k: v for k, v in data.items() if k != "expected_version"}
+
+    for field in clean_data.keys():
+        check_opportunity_mutation_allowed(opp, field)
+
+    new_source = clean_data.get("source", opp.source)
+    if "broker_id" in clean_data:
+        new_broker_id = clean_data["broker_id"]
+    elif "broker" in clean_data:
+        broker_val = clean_data["broker"]
         new_broker_id = broker_val.id if hasattr(broker_val, "id") else broker_val
     else:
-        new_broker_id = opportunity.broker_id
+        new_broker_id = opp.broker_id
 
     validate_opportunity_source_and_broker(source=new_source, broker_id=new_broker_id)
 
-    for field, value in data.items():
+    for field, value in clean_data.items():
         if field == "broker_id":
-            opportunity.broker_id = value
+            opp.broker_id = value
         elif field == "organization_id":
-            opportunity.organization_id = value
+            opp.organization_id = value
         elif field == "external_counterparty_id":
-            opportunity.external_counterparty_id = value
+            opp.external_counterparty_id = value
         elif field == "commodity_id":
-            opportunity.commodity_id = value
+            opp.commodity_id = value
         else:
-            setattr(opportunity, field, value)
+            setattr(opp, field, value)
 
-    opportunity.full_clean()
-    opportunity.save()
-    return opportunity
+    opp.version += 1
+    opp.full_clean()
+    opp.save()
+    return opp
