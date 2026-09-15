@@ -50,3 +50,9 @@ class ContactAttemptNotFoundError(OpportunityDomainError, ObjectDoesNotExist):
     """Raised when a Contact Attempt cannot be found."""
 
     pass
+
+
+class OpportunityTaskNotFoundError(OpportunityDomainError, ObjectDoesNotExist):
+    """Raised when an Opportunity Task cannot be found."""
+
+    pass

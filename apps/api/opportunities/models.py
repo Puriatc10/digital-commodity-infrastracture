@@ -561,3 +561,147 @@ class OpportunityContactAttempt(models.Model):
 
     def __str__(self):
         return f"{self.type} on Opportunity {self.opportunity_id} at {self.occurred_at}"
+
+
+class OpportunityTaskStatus(models.TextChoices):
+    OPEN = "OPEN", "Open"
+    COMPLETED = "COMPLETED", "Completed"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class OpportunityTask(models.Model):
+    """
+    Opportunity-specific operational follow-up task (Spec §22, Roadmap T0607).
+
+    Represents an actionable operational task scoped to a single Opportunity:
+    - Due date/time
+    - Optional assignment to an internal Operator or Admin
+    - Strict lifecycle: OPEN -> COMPLETED or OPEN -> CANCELLED
+    - Server-derived creator and completion timestamp
+    - Overdue status computed dynamically (status == OPEN and due_at < now)
+    - Concurrency-safe via row-level locking during transitions
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    opportunity = models.ForeignKey(
+        Opportunity,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+        help_text="Parent opportunity for this task.",
+    )
+    title = models.CharField(
+        max_length=255,
+        help_text="Brief summary or action required for the follow-up task.",
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Detailed instructions or operational context for the follow-up task.",
+    )
+    due_at = models.DateTimeField(
+        help_text="Due date and time for the follow-up task.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=OpportunityTaskStatus.choices,
+        default=OpportunityTaskStatus.OPEN,
+        help_text="Current lifecycle state of the task.",
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_opportunity_tasks",
+        help_text="Assigned internal Operator or Product Admin.",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_opportunity_tasks",
+        help_text="Operator who created this task.",
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when the task was marked as completed.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["due_at", "created_at", "id"]
+        verbose_name = "Opportunity Task"
+        verbose_name_plural = "Opportunity Tasks"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=OpportunityTaskStatus.values),
+                name="check_valid_opportunity_task_status",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(status=OpportunityTaskStatus.COMPLETED) & models.Q(completed_at__isnull=False))
+                    | (~models.Q(status=OpportunityTaskStatus.COMPLETED) & models.Q(completed_at__isnull=True))
+                ),
+                name="check_opportunity_task_completed_at_consistency",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["opportunity", "due_at", "created_at"], name="idx_opp_tsk_opp_due_cr"),
+            models.Index(fields=["status"], name="idx_opp_tsk_status"),
+            models.Index(fields=["assigned_to"], name="idx_opp_tsk_assigned"),
+            models.Index(fields=["due_at"], name="idx_opp_tsk_due_at"),
+        ]
+
+    @property
+    def is_overdue(self) -> bool:
+        """
+        Dynamically computes whether the task is open and overdue.
+        Never persisted as a stale database column.
+        """
+        return bool(self.status == OpportunityTaskStatus.OPEN and self.due_at and self.due_at < timezone.now())
+
+    def clean(self):
+        super().clean()
+        errors = {}
+
+        if not self.title or not self.title.strip():
+            errors["title"] = "Title is required."
+
+        if not self.due_at:
+            errors["due_at"] = "Due date and time is required."
+
+        if self.status not in OpportunityTaskStatus.values:
+            errors["status"] = f"Status must be one of: {', '.join(OpportunityTaskStatus.values)}."
+
+        if self.status == OpportunityTaskStatus.COMPLETED and not self.completed_at:
+            errors["completed_at"] = "Completed task must have a completed_at timestamp."
+        elif self.status != OpportunityTaskStatus.COMPLETED and self.completed_at is not None:
+            errors["completed_at"] = "Non-completed task must not have a completed_at timestamp."
+
+        if self.assigned_to_id:
+            from identity.models import SystemRoleAssignment
+
+            is_eligible = SystemRoleAssignment.objects.filter(
+                user_id=self.assigned_to_id,
+                role__in=[
+                    SystemRoleAssignment.SystemRole.OPERATOR,
+                    SystemRoleAssignment.SystemRole.ADMIN,
+                ],
+            ).exists()
+            if not is_eligible:
+                errors["assigned_to"] = "Assigned user must be an active internal Operator or Admin."
+
+        if errors:
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Task '{self.title}' [{self.status}] on Opportunity {self.opportunity_id}"

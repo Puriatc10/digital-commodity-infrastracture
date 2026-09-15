@@ -12,7 +12,9 @@ from opportunities.models import (
     OpportunityContactAttempt,
     OpportunityDirection,
     OpportunitySource,
+    OpportunityTask,
 )
+
 
 
 def normalize_opportunity_source(value: str) -> str:
@@ -790,5 +792,154 @@ class OpportunityContactAttemptDetailSerializer(serializers.ModelSerializer):
             "recorded_by_email",
             "notes",
             "created_at",
+        ]
+        read_only_fields = fields
+
+
+# -------------------------------------------------------------------------
+# Opportunity Task Serializers (T0607)
+# -------------------------------------------------------------------------
+
+class OpportunityTaskCreateSerializer(serializers.Serializer):
+    """
+    Payload for creating an Opportunity follow-up task.
+    Strictly prevents mass-assignment of system/lifecycle fields:
+    created_by, status, completed_at, id, opportunity_id, timestamps.
+    """
+
+    title = serializers.CharField(
+        max_length=255,
+        required=True,
+        allow_blank=False,
+        trim_whitespace=True,
+        help_text="Brief summary or action required for the follow-up task.",
+    )
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        trim_whitespace=True,
+        help_text="Detailed instructions or operational context for the follow-up task.",
+    )
+    due_at = serializers.DateTimeField(
+        required=True,
+        help_text="Due date and time for the follow-up task.",
+    )
+    assigned_to = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="User ID of the assigned Operator or Admin.",
+    )
+
+    def validate_title(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Title is required.")
+        return cleaned
+
+    def validate_assigned_to(self, value: int | None) -> int | None:
+        if value is not None:
+            from identity.models import SystemRoleAssignment, User
+
+            if not User.objects.filter(id=value, is_active=True).exists():
+                raise serializers.ValidationError("Assigned user does not exist or is inactive.")
+
+            is_eligible = SystemRoleAssignment.objects.filter(
+                user_id=value,
+                role__in=[
+                    SystemRoleAssignment.SystemRole.OPERATOR,
+                    SystemRoleAssignment.SystemRole.ADMIN,
+                ],
+            ).exists()
+            if not is_eligible:
+                raise serializers.ValidationError("Assigned user must be an active internal Operator or Admin.")
+        return value
+
+
+class OpportunityTaskUpdateSerializer(serializers.Serializer):
+    """
+    Payload for updating mutable attributes of an OPEN Opportunity follow-up task.
+    Protects status, completed_at, created_by, opportunity, id, timestamps against modification.
+    """
+
+    title = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=False,
+        trim_whitespace=True,
+        help_text="Updated task title.",
+    )
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        help_text="Updated task description.",
+    )
+    due_at = serializers.DateTimeField(
+        required=False,
+        help_text="Updated due date and time.",
+    )
+    assigned_to = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="User ID of the assigned Operator or Admin (or null to unassign).",
+    )
+
+    def validate_title(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Title is required.")
+        return cleaned
+
+    def validate_assigned_to(self, value: int | None) -> int | None:
+        if value is not None:
+            from identity.models import SystemRoleAssignment, User
+
+            if not User.objects.filter(id=value, is_active=True).exists():
+                raise serializers.ValidationError("Assigned user does not exist or is inactive.")
+
+            is_eligible = SystemRoleAssignment.objects.filter(
+                user_id=value,
+                role__in=[
+                    SystemRoleAssignment.SystemRole.OPERATOR,
+                    SystemRoleAssignment.SystemRole.ADMIN,
+                ],
+            ).exists()
+            if not is_eligible:
+                raise serializers.ValidationError("Assigned user must be an active internal Operator or Admin.")
+        return value
+
+
+class OpportunityTaskDetailSerializer(serializers.ModelSerializer):
+    """
+    Read representation for an Opportunity follow-up task.
+    All fields are strictly read-only.
+    """
+
+    opportunity_id = serializers.UUIDField(source="opportunity.id", read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
+    assigned_to = serializers.IntegerField(source="assigned_to.id", read_only=True, allow_null=True)
+    assigned_to_email = serializers.EmailField(source="assigned_to.email", read_only=True, allow_null=True)
+    created_by = serializers.IntegerField(source="created_by.id", read_only=True, allow_null=True)
+    created_by_email = serializers.EmailField(source="created_by.email", read_only=True, allow_null=True)
+
+    class Meta:
+        model = OpportunityTask
+        fields = [
+            "id",
+            "opportunity_id",
+            "title",
+            "description",
+            "due_at",
+            "status",
+            "is_overdue",
+            "assigned_to",
+            "assigned_to_email",
+            "created_by",
+            "created_by_email",
+            "completed_at",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = fields

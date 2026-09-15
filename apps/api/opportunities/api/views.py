@@ -3,6 +3,7 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import Http404
+from django.utils import timezone
 from drf_spectacular.utils import (
     OpenApiParameter,
     OpenApiResponse,
@@ -30,6 +31,9 @@ from opportunities.api.serializers import (
     OpportunityQualifyActionSerializer,
     OpportunityRejectActionSerializer,
     OpportunityResumeActionSerializer,
+    OpportunityTaskCreateSerializer,
+    OpportunityTaskDetailSerializer,
+    OpportunityTaskUpdateSerializer,
     OpportunityUpdateSerializer,
 )
 from opportunities.exceptions import (
@@ -38,18 +42,31 @@ from opportunities.exceptions import (
     InvalidVersionError,
     OpportunityNotFoundError,
     OpportunityPermissionDeniedError,
+    OpportunityTaskNotFoundError,
     ReservedTransitionError,
     StaleVersionError,
 )
-from opportunities.models import ExternalCounterparty, Opportunity, OpportunitySource
+from opportunities.models import (
+    ExternalCounterparty,
+    Opportunity,
+    OpportunitySource,
+    OpportunityTaskStatus,
+)
 from opportunities.services import (
+    cancel_opportunity_task,
+    complete_opportunity_task,
     create_opportunity,
+    create_opportunity_task,
     get_contact_attempt,
+    get_opportunity_task,
     list_contact_attempts,
+    list_opportunity_tasks,
     record_contact_attempt,
     update_opportunity,
+    update_opportunity_task,
 )
 from opportunities.services_lifecycle import OpportunityLifecycleService
+
 
 
 
@@ -248,7 +265,22 @@ class OpportunityPagination(PageNumberPagination):
                 required=False,
                 description="Filter by attributed broker organization UUID.",
             ),
+            OpenApiParameter(
+                name="assigned_to_me",
+                type=bool,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter opportunities that have at least one open follow-up task assigned to the current operator.",
+            ),
+            OpenApiParameter(
+                name="follow_up_required",
+                type=bool,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter opportunities that have at least one open follow-up task that is due or overdue.",
+            ),
         ],
+
         responses={
             200: OpportunityDetailSerializer(many=True),
             401: OpenApiResponse(description="Unauthenticated"),
@@ -376,7 +408,22 @@ class OpportunityViewSet(
         if broker:
             queryset = queryset.filter(broker_id=broker)
 
+        assigned_to_me = self.request.query_params.get("assigned_to_me", "").strip().lower()
+        if assigned_to_me in ("true", "1") and getattr(self.request, "user", None) and self.request.user.is_authenticated:
+            queryset = queryset.filter(
+                tasks__assigned_to=self.request.user,
+                tasks__status=OpportunityTaskStatus.OPEN,
+            ).distinct()
+
+        follow_up_required = self.request.query_params.get("follow_up_required", "").strip().lower()
+        if follow_up_required in ("true", "1"):
+            queryset = queryset.filter(
+                tasks__status=OpportunityTaskStatus.OPEN,
+                tasks__due_at__lte=timezone.now(),
+            ).distinct()
+
         return queryset
+
 
     def get_object(self):
         lookup_val = self.kwargs.get(self.lookup_field)
@@ -775,4 +822,393 @@ class OpportunityContactAttemptDetailView(APIView):
             raise Http404(str(exc))
 
         serializer = OpportunityContactAttemptDetailSerializer(attempt)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# -------------------------------------------------------------------------
+# Opportunity Task Views (T0607)
+# -------------------------------------------------------------------------
+
+class OpportunityTaskListCreateView(APIView):
+    """
+    List and create operational follow-up tasks for an Opportunity (Spec §22, Roadmap T0607).
+    Strictly restricted to Operator and Product Admin roles.
+    """
+
+    permission_classes = [IsOperatorOrProductAdmin]
+    serializer_class = OpportunityTaskDetailSerializer
+
+    @extend_schema(
+        summary="List opportunity follow-up tasks",
+        description=(
+            "Retrieve follow-up tasks for an opportunity in deterministic order (due_at ASC, created_at ASC, id ASC). "
+            "Supports filtering by status, assigned_to, and overdue. Strictly restricted to Operator and Product Admin roles."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+            OpenApiParameter(
+                name="status",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by task status: OPEN, COMPLETED, CANCELLED.",
+            ),
+            OpenApiParameter(
+                name="assigned_to",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by assigned user ID (or 'me' for authenticated user).",
+            ),
+            OpenApiParameter(
+                name="overdue",
+                type=bool,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter overdue open tasks (true/false).",
+            ),
+        ],
+        responses={
+            200: OpportunityTaskDetailSerializer(many=True),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+        },
+    )
+    def get(self, request, opportunity_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        status_param = request.query_params.get("status")
+        assigned_to_param = request.query_params.get("assigned_to")
+        overdue_param = request.query_params.get("overdue")
+
+        assigned_to_id = None
+        if assigned_to_param:
+            if assigned_to_param.strip().lower() == "me":
+                assigned_to_id = request.user.id if request.user and request.user.is_authenticated else None
+            else:
+                try:
+                    assigned_to_id = int(assigned_to_param.strip())
+                except ValueError:
+                    assigned_to_id = None
+
+        overdue_bool = None
+        if overdue_param is not None:
+            cleaned = overdue_param.strip().lower()
+            if cleaned in ("true", "1"):
+                overdue_bool = True
+            elif cleaned in ("false", "0"):
+                overdue_bool = False
+
+        tasks = list_opportunity_tasks(
+            opp.id,
+            status=status_param,
+            assigned_to_id=assigned_to_id,
+            overdue=overdue_bool,
+        )
+        serializer = OpportunityTaskDetailSerializer(tasks, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Create opportunity follow-up task",
+        description=(
+            "Create a new operational follow-up task scoped to the Opportunity. "
+            "Creator is derived server-side from the authenticated user. "
+            "If assigned_to is provided, user must be an active Operator or Admin."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+        ],
+        request=OpportunityTaskCreateSerializer,
+        responses={
+            201: OpportunityTaskDetailSerializer,
+            400: OpenApiResponse(description="Validation error"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+        },
+    )
+    def post(self, request, opportunity_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        serializer = OpportunityTaskCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        try:
+            task = create_opportunity_task(
+                opp.id,
+                title=validated["title"],
+                due_at=validated["due_at"],
+                description=validated.get("description", ""),
+                assigned_to_id=validated.get("assigned_to"),
+                actor=request.user,
+            )
+        except ValidationError as exc:
+            return Response(
+                exc.message_dict if hasattr(exc, "message_dict") else {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        response_serializer = OpportunityTaskDetailSerializer(task)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class OpportunityTaskDetailView(APIView):
+    """
+    Retrieve and update an Opportunity follow-up task scoped strictly to its parent Opportunity.
+    Strictly restricted to Operator and Product Admin roles.
+    """
+
+    permission_classes = [IsOperatorOrProductAdmin]
+    serializer_class = OpportunityTaskDetailSerializer
+
+    @extend_schema(
+        summary="Retrieve opportunity follow-up task detail",
+        description=(
+            "Retrieve a single follow-up task by UUID scoped to the parent Opportunity. "
+            "Strictly restricted to Operator and Product Admin roles."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+            OpenApiParameter(
+                name="task_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Task UUID.",
+            ),
+        ],
+        responses={
+            200: OpportunityTaskDetailSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Task or Opportunity not found"),
+        },
+    )
+    def get(self, request, opportunity_id, task_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        try:
+            task = get_opportunity_task(opp.id, task_id)
+        except OpportunityTaskNotFoundError as exc:
+            raise Http404(str(exc))
+
+        serializer = OpportunityTaskDetailSerializer(task)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Update opportunity follow-up task",
+        description=(
+            "Update mutable attributes (title, description, due_at, assigned_to) of an OPEN follow-up task. "
+            "Cannot modify status, completed_at, created_by, or parent Opportunity. "
+            "Completed or cancelled tasks cannot be updated."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+            OpenApiParameter(
+                name="task_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Task UUID.",
+            ),
+        ],
+        request=OpportunityTaskUpdateSerializer,
+        responses={
+            200: OpportunityTaskDetailSerializer,
+            400: OpenApiResponse(description="Validation error (e.g. ineligible assignee, task not OPEN)"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Task or Opportunity not found"),
+        },
+    )
+    def patch(self, request, opportunity_id, task_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        serializer = OpportunityTaskUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        kwargs = {}
+        if "title" in validated:
+            kwargs["title"] = validated["title"]
+        if "description" in validated:
+            kwargs["description"] = validated["description"]
+        if "due_at" in validated:
+            kwargs["due_at"] = validated["due_at"]
+        if "assigned_to" in validated:
+            kwargs["assigned_to_id"] = validated["assigned_to"]
+
+        try:
+            task = update_opportunity_task(
+                opp.id,
+                task_id,
+                actor=request.user,
+                **kwargs,
+            )
+        except OpportunityTaskNotFoundError as exc:
+            raise Http404(str(exc))
+        except ValidationError as exc:
+            return Response(
+                exc.message_dict if hasattr(exc, "message_dict") else {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        response_serializer = OpportunityTaskDetailSerializer(task)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Update opportunity follow-up task (full)",
+        description=(
+            "Update mutable attributes (title, description, due_at, assigned_to) of an OPEN follow-up task. "
+            "Cannot modify status, completed_at, created_by, or parent Opportunity. "
+            "Completed or cancelled tasks cannot be updated."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+            OpenApiParameter(
+                name="task_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Task UUID.",
+            ),
+        ],
+        request=OpportunityTaskUpdateSerializer,
+        responses={
+            200: OpportunityTaskDetailSerializer,
+            400: OpenApiResponse(description="Validation error (e.g. ineligible assignee, task not OPEN)"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Task or Opportunity not found"),
+        },
+    )
+    def put(self, request, opportunity_id, task_id):
+        return self.patch(request, opportunity_id, task_id)
+
+
+class OpportunityTaskCompleteView(APIView):
+    """
+    Explicit action endpoint to complete an Opportunity follow-up task.
+    Transitions OPEN -> COMPLETED and records server-side completed_at timestamp.
+    Strictly restricted to Operator and Product Admin roles.
+    """
+
+    permission_classes = [IsOperatorOrProductAdmin]
+    serializer_class = OpportunityTaskDetailSerializer
+
+
+    @extend_schema(
+        summary="Complete opportunity follow-up task",
+        description=(
+            "Explicit transition action to mark an OPEN follow-up task as COMPLETED. "
+            "Sets completed_at server-side. Fails predictably if already completed or cancelled. "
+            "Concurrency-safe via row-level locking."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+            OpenApiParameter(
+                name="task_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Task UUID.",
+            ),
+        ],
+        request=None,
+        responses={
+            200: OpportunityTaskDetailSerializer,
+            400: OpenApiResponse(description="Invalid transition (e.g. task is already completed or cancelled)"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Task or Opportunity not found"),
+        },
+    )
+    def post(self, request, opportunity_id, task_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        try:
+            task = complete_opportunity_task(opp.id, task_id, actor=request.user)
+        except OpportunityTaskNotFoundError as exc:
+            raise Http404(str(exc))
+        except InvalidTransitionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = OpportunityTaskDetailSerializer(task)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class OpportunityTaskCancelView(APIView):
+    """
+    Explicit action endpoint to cancel an Opportunity follow-up task.
+    Transitions OPEN -> CANCELLED. Does not delete the task.
+    Strictly restricted to Operator and Product Admin roles.
+    """
+
+    permission_classes = [IsOperatorOrProductAdmin]
+    serializer_class = OpportunityTaskDetailSerializer
+
+
+    @extend_schema(
+        summary="Cancel opportunity follow-up task",
+        description=(
+            "Explicit transition action to mark an OPEN follow-up task as CANCELLED. "
+            "Does not delete the task. Fails predictably if already completed or cancelled. "
+            "Concurrency-safe via row-level locking."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+            OpenApiParameter(
+                name="task_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Task UUID.",
+            ),
+        ],
+        request=None,
+        responses={
+            200: OpportunityTaskDetailSerializer,
+            400: OpenApiResponse(description="Invalid transition (e.g. task is already completed or cancelled)"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Task or Opportunity not found"),
+        },
+    )
+    def post(self, request, opportunity_id, task_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        try:
+            task = cancel_opportunity_task(opp.id, task_id, actor=request.user)
+        except OpportunityTaskNotFoundError as exc:
+            raise Http404(str(exc))
+        except InvalidTransitionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = OpportunityTaskDetailSerializer(task)
         return Response(serializer.data, status=status.HTTP_200_OK)
