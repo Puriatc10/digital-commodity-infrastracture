@@ -7,14 +7,21 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from opportunities.exceptions import (
+    ContactAttemptNotFoundError,
+    OpportunityNotFoundError,
+)
 from opportunities.models import (
+    ContactAttemptType,
     Opportunity,
+    OpportunityContactAttempt,
     OpportunityIdentifierSequence,
     OpportunitySource,
 )
 from opportunities.services_lifecycle import (
     TERMINAL_STATUSES,
     OpportunityLifecycleService,
+    _extract_opportunity_id,
     convert_opportunity,
     expire_opportunity,
     mark_opportunity_contacted,
@@ -45,6 +52,9 @@ __all__ = [
     "check_opportunity_mutation_allowed",
     "create_opportunity",
     "update_opportunity",
+    "record_contact_attempt",
+    "list_contact_attempts",
+    "get_contact_attempt",
 ]
 
 
@@ -314,3 +324,94 @@ def update_opportunity(
     opp.full_clean()
     opp.save()
     return opp
+
+
+def record_contact_attempt(
+    opportunity_or_id: Any,
+    *,
+    type: str,
+    occurred_at: datetime.datetime | None = None,
+    notes: str = "",
+    actor: Any = None,
+) -> OpportunityContactAttempt:
+    """
+    Records an append-only contact attempt for an Opportunity (Spec §22, Roadmap T0606).
+
+    Guarantees:
+    - Verifies parent Opportunity exists.
+    - Normalizes and validates contact attempt type against ContactAttemptType.
+    - Sets occurred_at to timezone.now() if not provided, and rejects future timestamps.
+    - Server-derives recorded_by from the authenticated actor.
+    - Append-only: does not alter Opportunity lifecycle state, version, or parent attributes.
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    try:
+        opp = Opportunity.objects.get(pk=opp_id)
+    except Opportunity.DoesNotExist as exc:
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.") from exc
+
+    normalized_type = type.strip().upper() if isinstance(type, str) else type
+    if normalized_type not in ContactAttemptType.values:
+        raise ValidationError({"type": f"Type must be one of: {', '.join(ContactAttemptType.values)}."})
+
+    if occurred_at is None:
+        occurred_at = timezone.now()
+    elif occurred_at > timezone.now() + datetime.timedelta(minutes=5):
+        raise ValidationError({"occurred_at": "occurred_at cannot be in the future."})
+
+    recorder = actor if actor and getattr(actor, "is_authenticated", False) else None
+
+    attempt = OpportunityContactAttempt(
+        opportunity=opp,
+        type=normalized_type,
+        occurred_at=occurred_at,
+        recorded_by=recorder,
+        notes=notes or "",
+    )
+    attempt.full_clean()
+    attempt.save()
+    return attempt
+
+
+def list_contact_attempts(opportunity_or_id: Any):
+    """
+    Retrieves contact attempts for an Opportunity in deterministic activity order:
+    Primary: -occurred_at
+    Secondary: -created_at
+    Tertiary: -id
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    if not Opportunity.objects.filter(pk=opp_id).exists():
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.")
+
+    return (
+        OpportunityContactAttempt.objects.filter(opportunity_id=opp_id)
+        .select_related("recorded_by")
+        .order_by("-occurred_at", "-created_at", "-id")
+    )
+
+
+def get_contact_attempt(opportunity_or_id: Any, attempt_id: Any) -> OpportunityContactAttempt:
+    """
+    Retrieves a single contact attempt strictly scoped to the parent Opportunity.
+    Prevents IDOR by verifying that the attempt belongs to the target Opportunity.
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    if not Opportunity.objects.filter(pk=opp_id).exists():
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.")
+
+    try:
+        parsed_attempt_id = uuid.UUID(str(attempt_id))
+    except (ValueError, AttributeError):
+        raise ContactAttemptNotFoundError(f"Contact attempt '{attempt_id}' not found.")
+
+    attempt = (
+        OpportunityContactAttempt.objects.filter(opportunity_id=opp_id, pk=parsed_attempt_id)
+        .select_related("recorded_by")
+        .first()
+    )
+    if attempt is None:
+        raise ContactAttemptNotFoundError(
+            f"Contact attempt '{attempt_id}' not found on Opportunity '{opp_id}'."
+        )
+    return attempt

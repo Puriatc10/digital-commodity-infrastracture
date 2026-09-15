@@ -1,11 +1,15 @@
+import datetime
 from decimal import Decimal
 
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from opportunities.models import (
+    ContactAttemptType,
     ExternalCounterparty,
     Opportunity,
+    OpportunityContactAttempt,
     OpportunityDirection,
     OpportunitySource,
 )
@@ -709,3 +713,82 @@ class OpportunityExpireActionSerializer(OpportunityLifecycleOptionalReasonAction
     """Payload to expire an Opportunity."""
 
     pass
+
+
+# -------------------------------------------------------------------------
+# Contact Attempt Serializers (T0606)
+# -------------------------------------------------------------------------
+
+class OpportunityContactAttemptCreateSerializer(serializers.Serializer):
+    """
+    Payload for recording a new Opportunity contact attempt.
+    Strictly guards server-derived fields: recorded_by, opportunity_id, id, created_at.
+    """
+
+    type = serializers.ChoiceField(
+        choices=ContactAttemptType.choices,
+        required=True,
+        help_text="Type of contact attempt: CALL, MESSAGE, EMAIL, MEETING, NOTE.",
+    )
+    occurred_at = serializers.DateTimeField(
+        required=False,
+        default=timezone.now,
+        help_text="Timestamp when the interaction took place (defaults to now).",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        trim_whitespace=True,
+        help_text="Operational notes or details of the interaction.",
+    )
+    details = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        write_only=True,
+        help_text="Optional write-only alias for notes.",
+    )
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            data = data.copy()
+            if "type" in data and isinstance(data["type"], str):
+                data["type"] = data["type"].strip().upper()
+        return super().to_internal_value(data)
+
+    def validate_occurred_at(self, value):
+        if value and value > timezone.now() + datetime.timedelta(minutes=5):
+            raise serializers.ValidationError("occurred_at cannot be in the future.")
+        return value
+
+    def validate(self, attrs):
+        if "details" in attrs:
+            details_val = attrs.pop("details")
+            if not attrs.get("notes"):
+                attrs["notes"] = details_val
+        return attrs
+
+
+class OpportunityContactAttemptDetailSerializer(serializers.ModelSerializer):
+    """
+    Read representation for an Opportunity contact attempt.
+    All fields are strictly read-only.
+    """
+
+    opportunity_id = serializers.UUIDField(source="opportunity.id", read_only=True)
+    recorded_by = serializers.IntegerField(source="recorded_by.id", read_only=True, allow_null=True)
+    recorded_by_email = serializers.EmailField(source="recorded_by.email", read_only=True, allow_null=True)
+
+    class Meta:
+        model = OpportunityContactAttempt
+        fields = [
+            "id",
+            "opportunity_id",
+            "type",
+            "occurred_at",
+            "recorded_by",
+            "recorded_by_email",
+            "notes",
+            "created_at",
+        ]
+        read_only_fields = fields

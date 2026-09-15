@@ -1,5 +1,6 @@
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import Http404
 from drf_spectacular.utils import (
@@ -12,11 +13,14 @@ from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from opportunities.api.permissions import IsOperatorOrProductAdmin
 from opportunities.api.serializers import (
     ExternalCounterpartySerializer,
     OpportunityContactActionSerializer,
+    OpportunityContactAttemptCreateSerializer,
+    OpportunityContactAttemptDetailSerializer,
     OpportunityCreateSerializer,
     OpportunityDetailSerializer,
     OpportunityExpireActionSerializer,
@@ -29,6 +33,7 @@ from opportunities.api.serializers import (
     OpportunityUpdateSerializer,
 )
 from opportunities.exceptions import (
+    ContactAttemptNotFoundError,
     InvalidTransitionError,
     InvalidVersionError,
     OpportunityNotFoundError,
@@ -37,7 +42,13 @@ from opportunities.exceptions import (
     StaleVersionError,
 )
 from opportunities.models import ExternalCounterparty, Opportunity, OpportunitySource
-from opportunities.services import create_opportunity, update_opportunity
+from opportunities.services import (
+    create_opportunity,
+    get_contact_attempt,
+    list_contact_attempts,
+    record_contact_attempt,
+    update_opportunity,
+)
 from opportunities.services_lifecycle import OpportunityLifecycleService
 
 
@@ -623,3 +634,145 @@ class OpportunityViewSet(
             OpportunityExpireActionSerializer,
             OpportunityLifecycleService.expire,
         )
+
+
+def _resolve_opportunity_for_attempts(opportunity_id: str) -> Opportunity:
+    try:
+        val = uuid.UUID(str(opportunity_id))
+        opp = Opportunity.objects.filter(id=val).first()
+    except (ValueError, AttributeError):
+        opp = Opportunity.objects.filter(identifier=str(opportunity_id).strip()).first()
+
+    if opp is None:
+        raise Http404(f"No Opportunity found matching '{opportunity_id}'.")
+    return opp
+
+
+class OpportunityContactAttemptListCreateView(APIView):
+    """
+    Chronological operational contact attempt history for an Opportunity.
+    Append-only: creates and lists contact attempts (Call, Message, Email, Meeting, Note).
+    Strictly restricted to Operator and Product Admin roles.
+    """
+
+    permission_classes = [IsOperatorOrProductAdmin]
+
+    @extend_schema(
+        summary="List opportunity contact attempts",
+        description=(
+            "Retrieve chronological contact attempts for a specific opportunity in deterministic order "
+            "(most recent interaction first). Strictly restricted to Operator and Product Admin roles."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+        ],
+        responses={
+            200: OpportunityContactAttemptDetailSerializer(many=True),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+        },
+    )
+    def get(self, request, opportunity_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        attempts = list_contact_attempts(opp.id)
+        serializer = OpportunityContactAttemptDetailSerializer(attempts, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Record contact attempt",
+        description=(
+            "Record a new interaction (Call, Message, Email, Meeting, Note) for an opportunity. "
+            "Append-only: recorder is derived from authenticated user. Does not alter opportunity "
+            "lifecycle status or version."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+        ],
+        request=OpportunityContactAttemptCreateSerializer,
+        responses={
+            201: OpportunityContactAttemptDetailSerializer,
+            400: OpenApiResponse(description="Validation error (e.g. invalid type, future timestamp)"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+        },
+    )
+    def post(self, request, opportunity_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        serializer = OpportunityContactAttemptCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated = serializer.validated_data
+
+        try:
+            attempt = record_contact_attempt(
+                opp.id,
+                type=validated["type"],
+                occurred_at=validated.get("occurred_at"),
+                notes=validated.get("notes", ""),
+                actor=request.user,
+            )
+        except ValidationError as exc:
+            return Response(
+                exc.message_dict if hasattr(exc, "message_dict") else {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        response_serializer = OpportunityContactAttemptDetailSerializer(attempt)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class OpportunityContactAttemptDetailView(APIView):
+    """
+    Retrieve single contact attempt scoped to parent Opportunity.
+    Append-only: PUT, PATCH, DELETE are not allowed.
+    """
+
+    permission_classes = [IsOperatorOrProductAdmin]
+
+    @extend_schema(
+        summary="Retrieve contact attempt detail",
+        description=(
+            "Retrieve a single contact attempt by UUID scoped to the specified opportunity. "
+            "Strictly restricted to Operator and Product Admin roles."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="opportunity_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Opportunity UUID or canonical identifier (e.g. OPP-2026-000124).",
+            ),
+            OpenApiParameter(
+                name="attempt_id",
+                type=str,
+                location=OpenApiParameter.PATH,
+                description="Contact attempt UUID.",
+            ),
+        ],
+        responses={
+            200: OpportunityContactAttemptDetailSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Contact attempt or Opportunity not found"),
+        },
+    )
+    def get(self, request, opportunity_id, attempt_id):
+        opp = _resolve_opportunity_for_attempts(opportunity_id)
+        try:
+            attempt = get_contact_attempt(opp.id, attempt_id)
+        except ContactAttemptNotFoundError as exc:
+            raise Http404(str(exc))
+
+        serializer = OpportunityContactAttemptDetailSerializer(attempt)
+        return Response(serializer.data, status=status.HTTP_200_OK)

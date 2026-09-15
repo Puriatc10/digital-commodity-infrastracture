@@ -84,6 +84,8 @@ SPECTACULAR_SETTINGS = {
         "SupplyListingStatusEnum": "trade_hub.models.SupplyListingStatus",
         "OpportunityDirectionEnum": "opportunities.models.OpportunityDirection",
         "OpportunityStatusEnum": "opportunities.models.OpportunityStatus",
+        "ContactAttemptTypeEnum": "opportunities.models.ContactAttemptType",
+        "DocumentTypeEnum": "documents.models.DocumentType",
     },
 }
 
