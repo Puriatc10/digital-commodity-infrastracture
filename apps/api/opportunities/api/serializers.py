@@ -3,8 +3,26 @@ from decimal import Decimal
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from opportunities.models import ExternalCounterparty, Opportunity, OpportunityDirection
+from opportunities.models import (
+    ExternalCounterparty,
+    Opportunity,
+    OpportunityDirection,
+    OpportunitySource,
+)
 
+
+def normalize_opportunity_source(value: str) -> str:
+    """Normalizes input source string to canonical OpportunitySource enum value."""
+    cleaned = value.strip().lower().replace("-", "_").replace(" ", "_")
+    mapping = {
+        "broker_referral": OpportunitySource.BROKER_REFERRAL,
+        "operator_sourcing": OpportunitySource.OPERATOR_SOURCING,
+        "buyer_referral": OpportunitySource.BUYER_REFERRAL,
+        "supplier_referral": OpportunitySource.SUPPLIER_REFERRAL,
+        "existing_relationship": OpportunitySource.EXISTING_RELATIONSHIP,
+        "inbound_lead": OpportunitySource.INBOUND_LEAD,
+    }
+    return mapping.get(cleaned, value.strip())
 
 
 class ExternalCounterpartySerializer(serializers.ModelSerializer):
@@ -138,6 +156,16 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
     organization = OpportunityOrganizationProjectionSerializer(read_only=True)
     external_counterparty = OpportunityExternalCounterpartyProjectionSerializer(read_only=True)
     commodity = OpportunityCommodityProjectionSerializer(read_only=True)
+    source = serializers.ChoiceField(
+        choices=OpportunitySource.choices,
+        read_only=True,
+        help_text="Authoritative origin source of the opportunity lead.",
+    )
+    broker = OpportunityOrganizationProjectionSerializer(
+        read_only=True,
+        allow_null=True,
+        help_text="Safe projection of attributed broker organization (present for Broker Referral).",
+    )
 
     class Meta:
         model = Opportunity
@@ -149,6 +177,8 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             "organization",
             "external_counterparty",
             "commodity",
+            "source",
+            "broker",
             "quantity",
             "unit",
             "indicative_price",
@@ -189,11 +219,34 @@ class OpportunityCreateSerializer(serializers.Serializer):
         required=True,
         help_text="Trade direction: Supply or Demand.",
     )
+    source = serializers.ChoiceField(
+        choices=OpportunitySource.choices,
+        required=False,
+        default=OpportunitySource.OPERATOR_SOURCING,
+        help_text="Authoritative origin source of the opportunity lead.",
+    )
+    broker_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="UUID of attributed broker organization (required if source is Broker Referral).",
+    )
 
     def to_internal_value(self, data):
-        if isinstance(data, dict) and "direction" in data and isinstance(data["direction"], str):
+        if isinstance(data, dict):
             data = data.copy()
-            data["direction"] = data["direction"].strip().capitalize()
+            if "direction" in data and isinstance(data["direction"], str):
+                data["direction"] = data["direction"].strip().capitalize()
+            if "source" in data and isinstance(data["source"], str):
+                normalized = normalize_opportunity_source(data["source"])
+                if normalized:
+                    data["source"] = normalized
+            if "broker" in data and "broker_id" not in data:
+                broker_val = data["broker"]
+                if isinstance(broker_val, dict) and "id" in broker_val:
+                    data["broker_id"] = broker_val["id"]
+                elif isinstance(broker_val, str):
+                    data["broker_id"] = broker_val
         return super().to_internal_value(data)
 
     organization_id = serializers.UUIDField(
@@ -311,6 +364,31 @@ class OpportunityCreateSerializer(serializers.Serializer):
             if not ExternalCounterparty.objects.filter(id=ext_id).exists():
                 raise serializers.ValidationError({"external_counterparty_id": "External counterparty does not exist."})
 
+        source = attrs.get("source", OpportunitySource.OPERATOR_SOURCING)
+        broker_id = attrs.get("broker_id")
+
+        if source == OpportunitySource.BROKER_REFERRAL:
+            if not broker_id:
+                raise serializers.ValidationError(
+                    {"broker_id": "Broker organization is required when source is Broker Referral."}
+                )
+            from organizations.models import Organization, OrganizationCapability
+
+            if not Organization.objects.filter(id=broker_id).exists():
+                raise serializers.ValidationError({"broker_id": "Attributed broker organization does not exist."})
+            if not OrganizationCapability.objects.filter(
+                organization_id=broker_id,
+                capability=OrganizationCapability.CapabilityType.BROKER,
+            ).exists():
+                raise serializers.ValidationError(
+                    {"broker_id": "Attributed organization must possess Broker capability."}
+                )
+        else:
+            if broker_id:
+                raise serializers.ValidationError(
+                    {"broker_id": "Broker organization must not be set when source is not Broker Referral."}
+                )
+
         cmd_id = attrs.get("commodity_id")
         if cmd_id:
             from commodities.models import CommodityDefinition
@@ -331,7 +409,7 @@ class OpportunityCreateSerializer(serializers.Serializer):
 class OpportunityUpdateSerializer(serializers.Serializer):
     """
     Payload for updating an Opportunity.
-    Permits updating editable commercial/delivery/counterparty fields while
+    Permits updating editable commercial/delivery/counterparty/source fields while
     strictly guarding status, created_by, timestamps, etc.
     """
 
@@ -340,11 +418,32 @@ class OpportunityUpdateSerializer(serializers.Serializer):
         required=False,
         help_text="Trade direction: Supply or Demand.",
     )
+    source = serializers.ChoiceField(
+        choices=OpportunitySource.choices,
+        required=False,
+        help_text="Authoritative origin source of the opportunity lead.",
+    )
+    broker_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="UUID of attributed broker organization.",
+    )
 
     def to_internal_value(self, data):
-        if isinstance(data, dict) and "direction" in data and isinstance(data["direction"], str):
+        if isinstance(data, dict):
             data = data.copy()
-            data["direction"] = data["direction"].strip().capitalize()
+            if "direction" in data and isinstance(data["direction"], str):
+                data["direction"] = data["direction"].strip().capitalize()
+            if "source" in data and isinstance(data["source"], str):
+                normalized = normalize_opportunity_source(data["source"])
+                if normalized:
+                    data["source"] = normalized
+            if "broker" in data and "broker_id" not in data:
+                broker_val = data["broker"]
+                if isinstance(broker_val, dict) and "id" in broker_val:
+                    data["broker_id"] = broker_val["id"]
+                elif isinstance(broker_val, str):
+                    data["broker_id"] = broker_val
         return super().to_internal_value(data)
 
     organization_id = serializers.UUIDField(
@@ -456,6 +555,36 @@ class OpportunityUpdateSerializer(serializers.Serializer):
         if "external_counterparty_id" in attrs and attrs["external_counterparty_id"] is not None:
             if not ExternalCounterparty.objects.filter(id=attrs["external_counterparty_id"]).exists():
                 raise serializers.ValidationError({"external_counterparty_id": "External counterparty does not exist."})
+
+        # Source and broker consistency
+        new_source = attrs.get("source", instance.source if instance else OpportunitySource.OPERATOR_SOURCING)
+
+        if "broker_id" in attrs:
+            new_broker_id = attrs["broker_id"]
+        else:
+            new_broker_id = instance.broker_id if instance else None
+
+        if new_source == OpportunitySource.BROKER_REFERRAL:
+            if not new_broker_id:
+                raise serializers.ValidationError(
+                    {"broker_id": "Broker organization is required when source is Broker Referral."}
+                )
+            from organizations.models import Organization, OrganizationCapability
+
+            if not Organization.objects.filter(id=new_broker_id).exists():
+                raise serializers.ValidationError({"broker_id": "Attributed broker organization does not exist."})
+            if not OrganizationCapability.objects.filter(
+                organization_id=new_broker_id,
+                capability=OrganizationCapability.CapabilityType.BROKER,
+            ).exists():
+                raise serializers.ValidationError(
+                    {"broker_id": "Attributed organization must possess Broker capability."}
+                )
+        else:
+            if new_broker_id:
+                raise serializers.ValidationError(
+                    {"broker_id": "Broker organization must not be set when source is not Broker Referral."}
+                )
 
         if "commodity_id" in attrs and attrs["commodity_id"] is not None:
             from commodities.models import CommodityDefinition
