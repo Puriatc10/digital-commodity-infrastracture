@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class ExternalCounterparty(models.Model):
@@ -464,3 +465,99 @@ class Opportunity(models.Model):
         counterparty = self.organization.name if self.organization else str(self.external_counterparty)
         ref = self.identifier or str(self.id)
         return f"Opportunity {ref} [{self.direction}] - {counterparty}"
+
+
+class ContactAttemptType(models.TextChoices):
+    CALL = "CALL", "Call"
+    MESSAGE = "MESSAGE", "Message"
+    EMAIL = "EMAIL", "Email"
+    MEETING = "MEETING", "Meeting"
+    NOTE = "NOTE", "Note"
+
+
+class OpportunityContactAttempt(models.Model):
+    """
+    Append-only interaction log for an Opportunity (Spec §22, Roadmap T0606).
+
+    Records individual contact attempts or operational notes:
+    - CALL
+    - MESSAGE
+    - EMAIL
+    - MEETING
+    - NOTE
+
+    Invariants:
+    - Strictly append-only: no updates or deletions are exposed.
+    - Server-derived recorder: `recorded_by` originates from the authenticated actor.
+    - Historical past interactions are permitted; future timestamps are constrained.
+    - Does NOT mutate parent Opportunity lifecycle status or version.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    opportunity = models.ForeignKey(
+        Opportunity,
+        on_delete=models.CASCADE,
+        related_name="contact_attempts",
+        help_text="Parent opportunity for this contact attempt.",
+    )
+    type = models.CharField(
+        max_length=20,
+        choices=ContactAttemptType.choices,
+        help_text="Type of contact attempt: CALL, MESSAGE, EMAIL, MEETING, NOTE.",
+    )
+    occurred_at = models.DateTimeField(
+        default=timezone.now,
+        help_text="Timestamp when the interaction took place (supports past interactions).",
+    )
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_contact_attempts",
+        help_text="Operator who recorded this contact attempt.",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Operational notes or details regarding the interaction.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-occurred_at", "-created_at", "-id"]
+        verbose_name = "Opportunity Contact Attempt"
+        verbose_name_plural = "Opportunity Contact Attempts"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(type__in=ContactAttemptType.values),
+                name="check_valid_contact_attempt_type",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["opportunity", "-occurred_at", "-created_at"], name="idx_opp_cnt_opp_occ_desc"),
+            models.Index(fields=["type"], name="idx_opp_cnt_type"),
+            models.Index(fields=["-created_at"], name="idx_opp_cnt_created_at_desc"),
+        ]
+
+    def clean(self):
+        super().clean()
+        errors = {}
+
+        if self.type not in ContactAttemptType.values:
+            errors["type"] = f"Type must be one of: {', '.join(ContactAttemptType.values)}."
+
+        if self.occurred_at and self.occurred_at > timezone.now() + timezone.timedelta(minutes=5):
+            errors["occurred_at"] = "occurred_at cannot be in the future."
+
+        if errors:
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.type} on Opportunity {self.opportunity_id} at {self.occurred_at}"

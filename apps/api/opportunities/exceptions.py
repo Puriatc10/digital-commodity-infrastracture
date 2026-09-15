@@ -44,3 +44,9 @@ class ReservedTransitionError(OpportunityDomainError):
     """
 
     pass
+
+
+class ContactAttemptNotFoundError(OpportunityDomainError, ObjectDoesNotExist):
+    """Raised when a Contact Attempt cannot be found."""
+
+    pass

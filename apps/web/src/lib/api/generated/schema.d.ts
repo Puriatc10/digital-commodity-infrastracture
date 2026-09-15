@@ -468,6 +468,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/opportunities/opportunities/{opportunity_id}/contact-attempts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List opportunity contact attempts
+         * @description Retrieve chronological contact attempts for a specific opportunity in deterministic order (most recent interaction first). Strictly restricted to Operator and Product Admin roles.
+         */
+        get: operations["opportunities_opportunities_contact_attempts_list"];
+        put?: never;
+        /**
+         * Record contact attempt
+         * @description Record a new interaction (Call, Message, Email, Meeting, Note) for an opportunity. Append-only: recorder is derived from authenticated user. Does not alter opportunity lifecycle status or version.
+         */
+        post: operations["opportunities_opportunities_contact_attempts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/contact-attempts/{attempt_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve contact attempt detail
+         * @description Retrieve a single contact attempt by UUID scoped to the specified opportunity. Strictly restricted to Operator and Product Admin roles.
+         */
+        get: operations["opportunities_opportunities_contact_attempts_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organizations/": {
         parameters: {
             query?: never;
@@ -1146,6 +1190,15 @@ export interface components {
          * @enum {string}
          */
         CommoditySchemaVersionStatusEnum: "draft" | "published" | "retired";
+        /**
+         * @description * `CALL` - Call
+         *     * `MESSAGE` - Message
+         *     * `EMAIL` - Email
+         *     * `MEETING` - Meeting
+         *     * `NOTE` - Note
+         * @enum {string}
+         */
+        ContactAttemptTypeEnum: "CALL" | "MESSAGE" | "EMAIL" | "MEETING" | "NOTE";
         CsrfViewResponse: {
             detail: string;
         };
@@ -1171,6 +1224,16 @@ export interface components {
             readonly commodities: string[];
             readonly verification_status: string;
         };
+        /**
+         * @description * `company_registration` - Company Registration
+         *     * `tax_id` - Tax ID
+         *     * `trade_license` - Trade License
+         *     * `bank_details` - Bank Details
+         *     * `authorized_representative` - Authorized Representative
+         *     * `certifications` - Certifications
+         * @enum {string}
+         */
+        DocumentTypeEnum: "company_registration" | "tax_id" | "trade_license" | "bank_details" | "authorized_representative" | "certifications";
         /** @description Structured representation of a dynamic specification validation error. */
         DynamicFieldError: {
             /** @description Specification attribute key. */
@@ -1276,6 +1339,66 @@ export interface components {
         OpportunityContactAction: {
             /** @description Current expected aggregate version for optimistic concurrency control. */
             expected_version: number;
+        };
+        /**
+         * @description Payload for recording a new Opportunity contact attempt.
+         *     Strictly guards server-derived fields: recorded_by, opportunity_id, id, created_at.
+         */
+        OpportunityContactAttemptCreate: {
+            /**
+             * @description Type of contact attempt: CALL, MESSAGE, EMAIL, MEETING, NOTE.
+             *
+             *     * `CALL` - Call
+             *     * `MESSAGE` - Message
+             *     * `EMAIL` - Email
+             *     * `MEETING` - Meeting
+             *     * `NOTE` - Note
+             */
+            type: components["schemas"]["ContactAttemptTypeEnum"];
+            /**
+             * Format: date-time
+             * @description Timestamp when the interaction took place (defaults to now).
+             */
+            occurred_at?: string;
+            /**
+             * @description Operational notes or details of the interaction.
+             * @default
+             */
+            notes: string;
+            /** @description Optional write-only alias for notes. */
+            details?: string;
+        };
+        /**
+         * @description Read representation for an Opportunity contact attempt.
+         *     All fields are strictly read-only.
+         */
+        OpportunityContactAttemptDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly opportunity_id: string;
+            /**
+             * @description Type of contact attempt: CALL, MESSAGE, EMAIL, MEETING, NOTE.
+             *
+             *     * `CALL` - Call
+             *     * `MESSAGE` - Message
+             *     * `EMAIL` - Email
+             *     * `MEETING` - Meeting
+             *     * `NOTE` - Note
+             */
+            readonly type: components["schemas"]["ContactAttemptTypeEnum"];
+            /**
+             * Format: date-time
+             * @description Timestamp when the interaction took place (supports past interactions).
+             */
+            readonly occurred_at: string;
+            readonly recorded_by: number | null;
+            /** Format: email */
+            readonly recorded_by_email: string | null;
+            /** @description Operational notes or details regarding the interaction. */
+            readonly notes: string;
+            /** Format: date-time */
+            readonly created_at: string;
         };
         /**
          * @description Payload for capturing a new Opportunity.
@@ -2900,23 +3023,13 @@ export interface components {
              */
             visibility?: components["schemas"]["RFQVisibilityEnum"];
         };
-        /**
-         * @description * `company_registration` - Company Registration
-         *     * `tax_id` - Tax ID
-         *     * `trade_license` - Trade License
-         *     * `bank_details` - Bank Details
-         *     * `authorized_representative` - Authorized Representative
-         *     * `certifications` - Certifications
-         * @enum {string}
-         */
-        TypeEnum: "company_registration" | "tax_id" | "trade_license" | "bank_details" | "authorized_representative" | "certifications";
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
             allowed_units?: string[];
         };
         UploadDocument: {
-            type: components["schemas"]["TypeEnum"];
+            type: components["schemas"]["DocumentTypeEnum"];
             /**
              * Format: binary
              * @description Binary document file (PDF, JPEG, PNG, max 10MB)
@@ -2958,7 +3071,7 @@ export interface components {
             readonly id: string;
             /** Format: uuid */
             organization: string;
-            type: components["schemas"]["TypeEnum"];
+            type: components["schemas"]["DocumentTypeEnum"];
             file_name: string;
             readonly mime_type: string;
             readonly size_bytes: number;
@@ -4438,6 +4551,148 @@ export interface operations {
             };
             /** @description Conflict — stale expected_version */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_contact_attempts_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityContactAttemptDetail"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_contact_attempts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityContactAttemptCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityContactAttemptDetail"];
+                };
+            };
+            /** @description Validation error (e.g. invalid type, future timestamp) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_contact_attempts_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Contact attempt UUID. */
+                attempt_id: string;
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityContactAttemptDetail"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Contact attempt or Opportunity not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
