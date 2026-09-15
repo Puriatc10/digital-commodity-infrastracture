@@ -458,19 +458,24 @@ class OpportunityLifecycleService:
                 f"Cannot convert Opportunity in status '{opp.status}'. Only Qualified or Matching opportunities can be converted."
             )
 
+        update_fields = [
+            "status",
+            "converted_at",
+            "status_before_hold",
+            "version",
+            "updated_at",
+        ]
+        from trade_hub.models import RFQ
+
+        if isinstance(conversion_target, RFQ):
+            opp.converted_rfq = conversion_target
+            update_fields.append("converted_rfq")
+
         opp.status = OpportunityStatus.CONVERTED
         opp.converted_at = timezone.now()
         opp.status_before_hold = ""
         opp.version += 1
-        opp.save(
-            update_fields=[
-                "status",
-                "converted_at",
-                "status_before_hold",
-                "version",
-                "updated_at",
-            ]
-        )
+        opp.save(update_fields=update_fields)
         return opp
 
 

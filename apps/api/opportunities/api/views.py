@@ -22,6 +22,8 @@ from opportunities.api.serializers import (
     OpportunityContactActionSerializer,
     OpportunityContactAttemptCreateSerializer,
     OpportunityContactAttemptDetailSerializer,
+    OpportunityConvertToRFQActionSerializer,
+    OpportunityConvertToRFQResponseSerializer,
     OpportunityCreateSerializer,
     OpportunityDetailSerializer,
     OpportunityExpireActionSerializer,
@@ -41,6 +43,8 @@ from opportunities.exceptions import (
     ContactAttemptNotFoundError,
     InvalidTransitionError,
     InvalidVersionError,
+    OpportunityAlreadyConvertedError,
+    OpportunityConversionError,
     OpportunityNotFoundError,
     OpportunityPermissionDeniedError,
     OpportunityQualificationError,
@@ -67,7 +71,9 @@ from opportunities.services import (
     update_opportunity,
     update_opportunity_task,
 )
+from opportunities.services_conversion import convert_opportunity_to_rfq
 from opportunities.services_lifecycle import OpportunityLifecycleService
+from trade_hub.api.serializers_rfq import RFQBuilderResponseSerializer
 
 
 
@@ -696,6 +702,87 @@ class OpportunityViewSet(
             OpportunityExpireActionSerializer,
             OpportunityLifecycleService.expire,
         )
+
+    @extend_schema(
+        summary="Convert Demand Opportunity to RFQ",
+        description="Authoritatively convert an eligible Qualified Demand Opportunity into a real Draft RFQ.",
+        request=OpportunityConvertToRFQActionSerializer,
+        responses={
+            201: OpportunityConvertToRFQResponseSerializer,
+            400: OpenApiResponse(description="Validation error or invalid state/direction"),
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden — Operator or Admin role required"),
+            404: OpenApiResponse(description="Opportunity not found"),
+            409: OpenApiResponse(description="Conflict — Stale version or already converted"),
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="convert-to-rfq")
+    def convert_to_rfq(self, request, id=None):
+        instance = self.get_object()
+        serializer = OpportunityConvertToRFQActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        expected_version = serializer.validated_data["expected_version"]
+
+        try:
+            opp, rfq = convert_opportunity_to_rfq(
+                instance.id,
+                expected_version=expected_version,
+                actor=request.user,
+                data=serializer.validated_data,
+            )
+        except StaleVersionError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except OpportunityAlreadyConvertedError as exc:
+            return Response(
+                {"detail": str(exc), "code": "already_converted"},
+                status=status.HTTP_409_CONFLICT,
+            )
+        except (
+            OpportunityConversionError,
+            InvalidTransitionError,
+            InvalidVersionError,
+            ReservedTransitionError,
+        ) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as exc:
+            detail = (
+                exc.message_dict
+                if hasattr(exc, "message_dict")
+                else exc.messages
+                if hasattr(exc, "messages")
+                else str(exc)
+            )
+            return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
+        except OpportunityNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except OpportunityPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as exc:
+            from trade_hub.exceptions import (
+                PublicationValidationError,
+                RFQPermissionDeniedError,
+                SpecificationValidationError,
+            )
+
+            if isinstance(
+                exc, (SpecificationValidationError, PublicationValidationError)
+            ):
+                errors = getattr(exc, "errors", [])
+                return Response(
+                    {"detail": str(exc), "errors": errors},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if isinstance(exc, RFQPermissionDeniedError):
+                return Response(
+                    {"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST
+                )
+            raise
+
+        response_data = {
+            "opportunity": OpportunityDetailSerializer(opp).data,
+            "rfq": RFQBuilderResponseSerializer(rfq).data,
+        }
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 def _resolve_opportunity_for_attempts(opportunity_id: str) -> Opportunity:

@@ -328,6 +328,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/opportunities/opportunities/{id}/convert-to-rfq/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert Demand Opportunity to RFQ
+         * @description Authoritatively convert an eligible Qualified Demand Opportunity into a real Draft RFQ.
+         */
+        post: operations["opportunities_opportunities_convert_to_rfq_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/opportunities/opportunities/{id}/expire/": {
         parameters: {
             query?: never;
@@ -1493,6 +1513,62 @@ export interface components {
             readonly created_at: string;
         };
         /**
+         * @description Action payload to authoritatively convert an eligible Demand Opportunity into a Draft RFQ.
+         *     Guards strictly against mass-assignment of status, version, timestamps, or unverified ownership.
+         */
+        OpportunityConvertToRFQAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the referenced commodity schema version (required if not stored on Opportunity).
+             */
+            schema_version_id?: string | null;
+            /** @description Dynamic technical specifications JSON payload validated against schema version. */
+            specifications?: unknown;
+            /**
+             * Format: uuid
+             * @description UUID of the internal Buyer Organization (required if Opportunity references an External Counterparty).
+             */
+            buyer_organization_id?: string | null;
+            /**
+             * @description Requested destination country or port (defaults to Opportunity geography).
+             * @default
+             */
+            destination: string;
+            /**
+             * @description Requested origin country or port.
+             * @default
+             */
+            origin: string;
+            /**
+             * @description Incoterm code (e.g. FOB, CIF, CFR).
+             * @default
+             */
+            incoterm: string;
+            /**
+             * @description Additional procurement notes to append to RFQ notes.
+             * @default
+             */
+            notes: string;
+            /**
+             * @description Participation visibility tier for the new RFQ.
+             *
+             *     * `private` - Private
+             *     * `network` - Network
+             *     * `public` - Public
+             * @default private
+             */
+            visibility: components["schemas"]["RFQVisibilityEnum"];
+        };
+        /** @description Structured response payload returned upon successful conversion to RFQ. */
+        OpportunityConvertToRFQResponse: {
+            /** @description The updated Opportunity aggregate in Converted status. */
+            readonly opportunity: components["schemas"]["OpportunityDetail"];
+            /** @description The newly created Draft RFQ aggregate. */
+            readonly rfq: components["schemas"]["RFQBuilderResponse"];
+        };
+        /**
          * @description Payload for capturing a new Opportunity.
          *     Explicit writable fields with strict mass-assignment prevention.
          */
@@ -1609,6 +1685,13 @@ export interface components {
             readonly external_counterparty: components["schemas"]["OpportunityExternalCounterpartyProjection"];
             readonly commodity: components["schemas"]["OpportunityCommodityProjection"];
             /**
+             * Format: uuid
+             * @description UUID of the referenced commodity schema version if bound.
+             */
+            readonly schema_version_id: string | null;
+            /** @description Dynamic specifications JSON payload if recorded. */
+            readonly specifications: unknown;
+            /**
              * @description Authoritative origin source of the opportunity lead.
              *
              *     * `broker_referral` - Broker Referral
@@ -1667,6 +1750,11 @@ export interface components {
             readonly status: components["schemas"]["OpportunityStatusEnum"];
             /** @description Optimistic concurrency aggregate version counter. */
             readonly version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the converted RFQ if converted.
+             */
+            readonly converted_rfq_id: string | null;
             /**
              * Format: date-time
              * @description Timestamp when the opportunity was marked as contacted.
@@ -2413,6 +2501,9 @@ export interface components {
             /** Format: uuid */
             readonly schema_version_id: string;
             readonly schema_version_number: number;
+            /** Format: uuid */
+            readonly source_opportunity_id: string | null;
+            readonly source_opportunity_identifier: string | null;
             /** @description Dynamic technical specifications validated against the referenced schema version. */
             readonly specifications: unknown;
             /**
@@ -2879,12 +2970,12 @@ export interface components {
             visibility?: components["schemas"]["RFQVisibilityEnum"];
         };
         /**
-         * @description * `public` - Public
+         * @description * `private` - Private
          *     * `network` - Network
-         *     * `private` - Private
+         *     * `public` - Public
          * @enum {string}
          */
-        RFQVisibilityEnum: "public" | "network" | "private";
+        RFQVisibilityEnum: "private" | "network" | "public";
         /**
          * @description * `broker_referral` - Broker Referral
          *     * `operator_sourcing` - Operator Sourcing
@@ -4349,6 +4440,67 @@ export interface operations {
                 content?: never;
             };
             /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_convert_to_rfq_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityConvertToRFQAction"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityConvertToRFQResponse"];
+                };
+            };
+            /** @description Validation error or invalid state/direction */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — Stale version or already converted */
             409: {
                 headers: {
                     [name: string]: unknown;

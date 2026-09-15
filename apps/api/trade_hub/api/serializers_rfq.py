@@ -340,6 +340,12 @@ class RFQBuilderResponseSerializer(serializers.ModelSerializer):
     schema_version_number = serializers.IntegerField(
         source="schema_version.version", read_only=True
     )
+    source_opportunity_id = serializers.UUIDField(
+        source="source_opportunity.id", read_only=True, allow_null=True, default=None
+    )
+    source_opportunity_identifier = serializers.CharField(
+        source="source_opportunity.identifier", read_only=True, allow_null=True, default=None
+    )
 
     class Meta:
         model = RFQ
@@ -352,6 +358,8 @@ class RFQBuilderResponseSerializer(serializers.ModelSerializer):
             "commodity_name_en",
             "schema_version_id",
             "schema_version_number",
+            "source_opportunity_id",
+            "source_opportunity_identifier",
             "specifications",
             "quantity",
             "unit",
