@@ -512,6 +512,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/opportunities/opportunities/{opportunity_id}/tasks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List opportunity follow-up tasks
+         * @description Retrieve follow-up tasks for an opportunity in deterministic order (due_at ASC, created_at ASC, id ASC). Supports filtering by status, assigned_to, and overdue. Strictly restricted to Operator and Product Admin roles.
+         */
+        get: operations["opportunities_opportunities_tasks_list"];
+        put?: never;
+        /**
+         * Create opportunity follow-up task
+         * @description Create a new operational follow-up task scoped to the Opportunity. Creator is derived server-side from the authenticated user. If assigned_to is provided, user must be an active Operator or Admin.
+         */
+        post: operations["opportunities_opportunities_tasks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/tasks/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve opportunity follow-up task detail
+         * @description Retrieve a single follow-up task by UUID scoped to the parent Opportunity. Strictly restricted to Operator and Product Admin roles.
+         */
+        get: operations["opportunities_opportunities_tasks_retrieve"];
+        /**
+         * Update opportunity follow-up task (full)
+         * @description Update mutable attributes (title, description, due_at, assigned_to) of an OPEN follow-up task. Cannot modify status, completed_at, created_by, or parent Opportunity. Completed or cancelled tasks cannot be updated.
+         */
+        put: operations["opportunities_opportunities_tasks_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update opportunity follow-up task
+         * @description Update mutable attributes (title, description, due_at, assigned_to) of an OPEN follow-up task. Cannot modify status, completed_at, created_by, or parent Opportunity. Completed or cancelled tasks cannot be updated.
+         */
+        patch: operations["opportunities_opportunities_tasks_partial_update"];
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/tasks/{task_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel opportunity follow-up task
+         * @description Explicit transition action to mark an OPEN follow-up task as CANCELLED. Does not delete the task. Fails predictably if already completed or cancelled. Concurrency-safe via row-level locking.
+         */
+        post: operations["opportunities_opportunities_tasks_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/tasks/{task_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete opportunity follow-up task
+         * @description Explicit transition action to mark an OPEN follow-up task as COMPLETED. Sets completed_at server-side. Fails predictably if already completed or cancelled. Concurrency-safe via row-level locking.
+         */
+        post: operations["opportunities_opportunities_tasks_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organizations/": {
         parameters: {
             query?: never;
@@ -1703,6 +1795,94 @@ export interface components {
          */
         OpportunityStatusEnum: "Captured" | "Contacted" | "Qualified" | "Matching" | "Converted" | "On Hold" | "Rejected" | "Lost" | "Expired";
         /**
+         * @description Payload for creating an Opportunity follow-up task.
+         *     Strictly prevents mass-assignment of system/lifecycle fields:
+         *     created_by, status, completed_at, id, opportunity_id, timestamps.
+         */
+        OpportunityTaskCreate: {
+            /** @description Brief summary or action required for the follow-up task. */
+            title: string;
+            /**
+             * @description Detailed instructions or operational context for the follow-up task.
+             * @default
+             */
+            description: string;
+            /**
+             * Format: date-time
+             * @description Due date and time for the follow-up task.
+             */
+            due_at: string;
+            /** @description User ID of the assigned Operator or Admin. */
+            assigned_to?: number | null;
+        };
+        /**
+         * @description Read representation for an Opportunity follow-up task.
+         *     All fields are strictly read-only.
+         */
+        OpportunityTaskDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly opportunity_id: string;
+            /** @description Brief summary or action required for the follow-up task. */
+            readonly title: string;
+            /** @description Detailed instructions or operational context for the follow-up task. */
+            readonly description: string;
+            /**
+             * Format: date-time
+             * @description Due date and time for the follow-up task.
+             */
+            readonly due_at: string;
+            /**
+             * @description Current lifecycle state of the task.
+             *
+             *     * `OPEN` - Open
+             *     * `COMPLETED` - Completed
+             *     * `CANCELLED` - Cancelled
+             */
+            readonly status: components["schemas"]["OpportunityTaskDetailStatusEnum"];
+            readonly is_overdue: boolean;
+            readonly assigned_to: number | null;
+            /** Format: email */
+            readonly assigned_to_email: string | null;
+            readonly created_by: number | null;
+            /** Format: email */
+            readonly created_by_email: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the task was marked as completed.
+             */
+            readonly completed_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `COMPLETED` - Completed
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        OpportunityTaskDetailStatusEnum: "OPEN" | "COMPLETED" | "CANCELLED";
+        /**
+         * @description Payload for updating mutable attributes of an OPEN Opportunity follow-up task.
+         *     Protects status, completed_at, created_by, opportunity, id, timestamps against modification.
+         */
+        OpportunityTaskUpdate: {
+            /** @description Updated task title. */
+            title?: string;
+            /** @description Updated task description. */
+            description?: string;
+            /**
+             * Format: date-time
+             * @description Updated due date and time.
+             */
+            due_at?: string;
+            /** @description User ID of the assigned Operator or Admin (or null to unassign). */
+            assigned_to?: number | null;
+        };
+        /**
          * @description Payload for updating an Opportunity.
          *     Permits updating editable commercial/delivery/counterparty/source fields while
          *     strictly guarding status, created_by, timestamps, etc.
@@ -1903,6 +2083,23 @@ export interface components {
             readonly created_at?: string;
             /** Format: date-time */
             readonly updated_at?: string;
+        };
+        /**
+         * @description Payload for updating mutable attributes of an OPEN Opportunity follow-up task.
+         *     Protects status, completed_at, created_by, opportunity, id, timestamps against modification.
+         */
+        PatchedOpportunityTaskUpdate: {
+            /** @description Updated task title. */
+            title?: string;
+            /** @description Updated task description. */
+            description?: string;
+            /**
+             * Format: date-time
+             * @description Updated due date and time.
+             */
+            due_at?: string;
+            /** @description User ID of the assigned Operator or Admin (or null to unassign). */
+            assigned_to?: number | null;
         };
         /**
          * @description Payload for updating an Opportunity.
@@ -3828,12 +4025,16 @@ export interface operations {
     opportunities_opportunities_list: {
         parameters: {
             query?: {
+                /** @description Filter opportunities that have at least one open follow-up task assigned to the current operator. */
+                assigned_to_me?: boolean;
                 /** @description Filter by attributed broker organization UUID. */
                 broker?: string;
                 /** @description Filter by commodity code (e.g. bitumen). */
                 commodity?: string;
                 /** @description Filter by direction (Supply or Demand). */
                 direction?: string;
+                /** @description Filter opportunities that have at least one open follow-up task that is due or overdue. */
+                follow_up_required?: boolean;
                 /** @description Filter by exact human-readable identifier (e.g. OPP-2026-000124). */
                 identifier?: string;
                 /** @description یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده. */
@@ -4692,6 +4893,371 @@ export interface operations {
                 content?: never;
             };
             /** @description Contact attempt or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by assigned user ID (or 'me' for authenticated user). */
+                assigned_to?: string;
+                /** @description Filter overdue open tasks (true/false). */
+                overdue?: boolean;
+                /** @description Filter by task status: OPEN, COMPLETED, CANCELLED. */
+                status?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityTaskCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OpportunityTaskUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Validation error (e.g. ineligible assignee, task not OPEN) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOpportunityTaskUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Validation error (e.g. ineligible assignee, task not OPEN) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Invalid transition (e.g. task is already completed or cancelled) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Invalid transition (e.g. task is already completed or cancelled) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
             404: {
                 headers: {
                     [name: string]: unknown;

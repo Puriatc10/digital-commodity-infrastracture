@@ -9,7 +9,9 @@ from django.utils import timezone
 
 from opportunities.exceptions import (
     ContactAttemptNotFoundError,
+    InvalidTransitionError,
     OpportunityNotFoundError,
+    OpportunityTaskNotFoundError,
 )
 from opportunities.models import (
     ContactAttemptType,
@@ -17,6 +19,8 @@ from opportunities.models import (
     OpportunityContactAttempt,
     OpportunityIdentifierSequence,
     OpportunitySource,
+    OpportunityTask,
+    OpportunityTaskStatus,
 )
 from opportunities.services_lifecycle import (
     TERMINAL_STATUSES,
@@ -55,7 +59,16 @@ __all__ = [
     "record_contact_attempt",
     "list_contact_attempts",
     "get_contact_attempt",
+    "create_opportunity_task",
+    "update_opportunity_task",
+    "complete_opportunity_task",
+    "cancel_opportunity_task",
+    "list_opportunity_tasks",
+    "get_opportunity_task",
+    "get_tasks_assigned_to_user",
+    "get_follow_up_required_tasks",
 ]
+
 
 
 def format_opportunity_identifier(year: int, sequence: int) -> str:
@@ -415,3 +428,340 @@ def get_contact_attempt(opportunity_or_id: Any, attempt_id: Any) -> OpportunityC
             f"Contact attempt '{attempt_id}' not found on Opportunity '{opp_id}'."
         )
     return attempt
+
+
+_UNSET = object()
+
+
+def create_opportunity_task(
+    opportunity_or_id: Any,
+    *,
+    title: str,
+    due_at: datetime.datetime,
+    description: str = "",
+    assigned_to_id: Any = None,
+    actor: Any = None,
+) -> OpportunityTask:
+    """
+    Creates an operational follow-up task scoped to an Opportunity (Spec §22, Roadmap T0607).
+
+    Guarantees:
+    - Verifies parent Opportunity exists.
+    - Validates title is non-empty.
+    - Validates due_at is provided.
+    - If assigned_to_id is provided, validates user is an active Operator or Admin.
+    - Server-derives created_by from the authenticated actor.
+    - Initializes task in OPEN status with completed_at=None.
+    - Strictly does NOT mutate parent Opportunity lifecycle state or create contact attempts.
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    try:
+        opp = Opportunity.objects.get(pk=opp_id)
+    except Opportunity.DoesNotExist as exc:
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.") from exc
+
+    if not title or not title.strip():
+        raise ValidationError({"title": "Title is required."})
+
+    if not due_at:
+        raise ValidationError({"due_at": "Due date and time is required."})
+
+    if assigned_to_id is not None:
+        from identity.models import SystemRoleAssignment, User
+
+        if not User.objects.filter(id=assigned_to_id, is_active=True).exists():
+            raise ValidationError({"assigned_to": "Assigned user does not exist or is inactive."})
+
+        is_eligible = SystemRoleAssignment.objects.filter(
+            user_id=assigned_to_id,
+            role__in=[
+                SystemRoleAssignment.SystemRole.OPERATOR,
+                SystemRoleAssignment.SystemRole.ADMIN,
+            ],
+        ).exists()
+        if not is_eligible:
+            raise ValidationError({"assigned_to": "Assigned user must be an active internal Operator or Admin."})
+
+    creator = actor if actor and getattr(actor, "is_authenticated", False) else None
+
+    task = OpportunityTask(
+        opportunity=opp,
+        title=title.strip(),
+        description=(description or "").strip(),
+        due_at=due_at,
+        status=OpportunityTaskStatus.OPEN,
+        assigned_to_id=assigned_to_id,
+        created_by=creator,
+        completed_at=None,
+    )
+    task.full_clean()
+    task.save()
+    return task
+
+
+def update_opportunity_task(
+    opportunity_or_id: Any,
+    task_id: Any,
+    *,
+    title: Any = _UNSET,
+    description: Any = _UNSET,
+    due_at: Any = _UNSET,
+    assigned_to_id: Any = _UNSET,
+    actor: Any = None,
+) -> OpportunityTask:
+    """
+    Updates mutable attributes of an OPEN Opportunity Task.
+
+    Guarantees:
+    - Scoped strictly to parent Opportunity (prevents IDOR).
+    - Can ONLY update tasks in OPEN status. Rejects updating COMPLETED or CANCELLED tasks.
+    - Protects status, completed_at, created_by, and opportunity foreign key against modification.
+    - Validates assigned_to_id (if updated) is an eligible Operator or Admin.
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    if not Opportunity.objects.filter(pk=opp_id).exists():
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.")
+
+    try:
+        parsed_task_id = uuid.UUID(str(task_id))
+    except (ValueError, AttributeError):
+        raise OpportunityTaskNotFoundError(f"Opportunity task '{task_id}' not found.")
+
+    task = OpportunityTask.objects.filter(opportunity_id=opp_id, pk=parsed_task_id).first()
+    if task is None:
+        raise OpportunityTaskNotFoundError(
+            f"Opportunity task '{task_id}' not found on Opportunity '{opp_id}'."
+        )
+
+    if task.status != OpportunityTaskStatus.OPEN:
+        raise ValidationError(
+            {"status": f"Cannot update task in status '{task.status}'. Only OPEN tasks can be updated."}
+        )
+
+    if title is not _UNSET:
+        if not title or not str(title).strip():
+            raise ValidationError({"title": "Title is required."})
+        task.title = str(title).strip()
+
+    if description is not _UNSET:
+        task.description = (description or "").strip()
+
+    if due_at is not _UNSET:
+        if not due_at:
+            raise ValidationError({"due_at": "Due date and time is required."})
+        task.due_at = due_at
+
+    if assigned_to_id is not _UNSET:
+        if assigned_to_id is not None:
+            from identity.models import SystemRoleAssignment, User
+
+            if not User.objects.filter(id=assigned_to_id, is_active=True).exists():
+                raise ValidationError({"assigned_to": "Assigned user does not exist or is inactive."})
+
+            is_eligible = SystemRoleAssignment.objects.filter(
+                user_id=assigned_to_id,
+                role__in=[
+                    SystemRoleAssignment.SystemRole.OPERATOR,
+                    SystemRoleAssignment.SystemRole.ADMIN,
+                ],
+            ).exists()
+            if not is_eligible:
+                raise ValidationError({"assigned_to": "Assigned user must be an active internal Operator or Admin."})
+        task.assigned_to_id = assigned_to_id
+
+    task.full_clean()
+    task.save()
+    return task
+
+
+def complete_opportunity_task(
+    opportunity_or_id: Any,
+    task_id: Any,
+    *,
+    actor: Any = None,
+) -> OpportunityTask:
+    """
+    Transitions an OPEN Opportunity Task to COMPLETED.
+
+    Guarantees:
+    - Uses PostgreSQL row-level lock (`select_for_update()`) in atomic transaction.
+    - Verifies parent Opportunity scoping (prevents IDOR).
+    - Rejects transition if task is not in OPEN status:
+      - If already COMPLETED: raises InvalidTransitionError.
+      - If CANCELLED: raises InvalidTransitionError.
+    - Sets completed_at to timezone.now() server-side.
+    - Does NOT alter parent Opportunity lifecycle state or create contact attempts.
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    if not Opportunity.objects.filter(pk=opp_id).exists():
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.")
+
+    try:
+        parsed_task_id = uuid.UUID(str(task_id))
+    except (ValueError, AttributeError):
+        raise OpportunityTaskNotFoundError(f"Opportunity task '{task_id}' not found.")
+
+    with transaction.atomic():
+        task = (
+            OpportunityTask.objects
+            .select_for_update()
+            .filter(opportunity_id=opp_id, pk=parsed_task_id)
+            .first()
+        )
+        if task is None:
+            raise OpportunityTaskNotFoundError(
+                f"Opportunity task '{task_id}' not found on Opportunity '{opp_id}'."
+            )
+
+        if task.status != OpportunityTaskStatus.OPEN:
+            raise InvalidTransitionError(
+                f"Cannot complete task in status '{task.status}'. Only OPEN tasks can be completed."
+            )
+
+        task.status = OpportunityTaskStatus.COMPLETED
+        task.completed_at = timezone.now()
+        task.save(update_fields=["status", "completed_at", "updated_at"])
+        return task
+
+
+def cancel_opportunity_task(
+    opportunity_or_id: Any,
+    task_id: Any,
+    *,
+    actor: Any = None,
+) -> OpportunityTask:
+    """
+    Transitions an OPEN Opportunity Task to CANCELLED.
+
+    Guarantees:
+    - Uses PostgreSQL row-level lock (`select_for_update()`) in atomic transaction.
+    - Verifies parent Opportunity scoping (prevents IDOR).
+    - Rejects transition if task is not in OPEN status:
+      - If already CANCELLED: raises InvalidTransitionError.
+      - If COMPLETED: raises InvalidTransitionError.
+    - Does not delete the task.
+    - Leaves completed_at null.
+    - Does NOT alter parent Opportunity lifecycle state or create contact attempts.
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    if not Opportunity.objects.filter(pk=opp_id).exists():
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.")
+
+    try:
+        parsed_task_id = uuid.UUID(str(task_id))
+    except (ValueError, AttributeError):
+        raise OpportunityTaskNotFoundError(f"Opportunity task '{task_id}' not found.")
+
+    with transaction.atomic():
+        task = (
+            OpportunityTask.objects
+            .select_for_update()
+            .filter(opportunity_id=opp_id, pk=parsed_task_id)
+            .first()
+        )
+        if task is None:
+            raise OpportunityTaskNotFoundError(
+                f"Opportunity task '{task_id}' not found on Opportunity '{opp_id}'."
+            )
+
+        if task.status != OpportunityTaskStatus.OPEN:
+            raise InvalidTransitionError(
+                f"Cannot cancel task in status '{task.status}'. Only OPEN tasks can be cancelled."
+            )
+
+        task.status = OpportunityTaskStatus.CANCELLED
+        task.save(update_fields=["status", "updated_at"])
+        return task
+
+
+def list_opportunity_tasks(
+    opportunity_or_id: Any,
+    *,
+    status: Any = None,
+    assigned_to_id: Any = None,
+    overdue: Any = None,
+):
+    """
+    Retrieves tasks for an Opportunity in deterministic order:
+    Primary: due_at ASC
+    Secondary: created_at ASC
+    Tertiary: id ASC
+
+    Supports filtering by status, assigned_to_id, and overdue.
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    if not Opportunity.objects.filter(pk=opp_id).exists():
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.")
+
+    qs = (
+        OpportunityTask.objects.filter(opportunity_id=opp_id)
+        .select_related("assigned_to", "created_by", "opportunity")
+        .order_by("due_at", "created_at", "id")
+    )
+
+    if status:
+        normalized_status = status.strip().upper() if isinstance(status, str) else status
+        qs = qs.filter(status=normalized_status)
+
+    if assigned_to_id is not None:
+        qs = qs.filter(assigned_to_id=assigned_to_id)
+
+    if overdue is True:
+        qs = qs.filter(status=OpportunityTaskStatus.OPEN, due_at__lt=timezone.now())
+    elif overdue is False:
+        qs = qs.exclude(status=OpportunityTaskStatus.OPEN, due_at__lt=timezone.now())
+
+    return qs
+
+
+def get_opportunity_task(opportunity_or_id: Any, task_id: Any) -> OpportunityTask:
+    """
+    Retrieves a single task strictly scoped to the parent Opportunity.
+    Prevents IDOR by verifying that the task belongs to the target Opportunity.
+    """
+    opp_id = _extract_opportunity_id(opportunity_or_id)
+    if not Opportunity.objects.filter(pk=opp_id).exists():
+        raise OpportunityNotFoundError(f"Opportunity with id '{opp_id}' does not exist.")
+
+    try:
+        parsed_task_id = uuid.UUID(str(task_id))
+    except (ValueError, AttributeError):
+        raise OpportunityTaskNotFoundError(f"Opportunity task '{task_id}' not found.")
+
+    task = (
+        OpportunityTask.objects.filter(opportunity_id=opp_id, pk=parsed_task_id)
+        .select_related("assigned_to", "created_by", "opportunity")
+        .first()
+    )
+    if task is None:
+        raise OpportunityTaskNotFoundError(
+            f"Opportunity task '{task_id}' not found on Opportunity '{opp_id}'."
+        )
+    return task
+
+
+def get_tasks_assigned_to_user(user: Any, status: str = OpportunityTaskStatus.OPEN):
+    """
+    Helper for T0612 Opportunity Desk 'Assigned to me' view.
+    Retrieves open tasks assigned to the specified user.
+    """
+    user_id = getattr(user, "id", user)
+    return (
+        OpportunityTask.objects.filter(assigned_to_id=user_id, status=status)
+        .select_related("opportunity", "assigned_to", "created_by")
+        .order_by("due_at", "created_at", "id")
+    )
+
+
+def get_follow_up_required_tasks(now: datetime.datetime = None):
+    """
+    Helper for T0612 Opportunity Desk 'Follow-up required' view.
+    Retrieves OPEN tasks that are due or overdue.
+    """
+    if now is None:
+        now = timezone.now()
+    return (
+        OpportunityTask.objects.filter(status=OpportunityTaskStatus.OPEN, due_at__lte=now)
+        .select_related("opportunity", "assigned_to", "created_by")
+        .order_by("due_at", "created_at", "id")
+    )
