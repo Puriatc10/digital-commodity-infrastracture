@@ -189,6 +189,19 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             "geography",
             "notes",
             "status",
+            "version",
+            "contacted_at",
+            "qualified_at",
+            "converted_at",
+            "held_at",
+            "hold_reason",
+            "status_before_hold",
+            "rejected_at",
+            "rejection_reason",
+            "lost_at",
+            "lost_reason",
+            "expired_at",
+            "expiration_reason",
             "created_by",
             "created_at",
             "updated_at",
@@ -413,6 +426,11 @@ class OpportunityUpdateSerializer(serializers.Serializer):
     strictly guarding status, created_by, timestamps, etc.
     """
 
+    expected_version = serializers.IntegerField(
+        required=False,
+        min_value=1,
+        help_text="Expected aggregate version for optimistic concurrency control.",
+    )
     direction = serializers.ChoiceField(
         choices=OpportunityDirection.choices,
         required=False,
@@ -600,3 +618,94 @@ class OpportunityUpdateSerializer(serializers.Serializer):
             )
 
         return attrs
+
+
+# -------------------------------------------------------------------------
+# Lifecycle Action Serializers (T0603)
+# -------------------------------------------------------------------------
+
+class OpportunityLifecycleBaseActionSerializer(serializers.Serializer):
+    """Base action payload requiring expected_version for optimistic concurrency control."""
+
+    expected_version = serializers.IntegerField(
+        required=True,
+        min_value=1,
+        help_text="Current expected aggregate version for optimistic concurrency control.",
+    )
+
+
+class OpportunityLifecycleReasonActionSerializer(OpportunityLifecycleBaseActionSerializer):
+    """Action payload requiring expected_version and a mandatory non-empty reason."""
+
+    reason = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        trim_whitespace=True,
+        help_text="Mandatory operational reason for this lifecycle action.",
+    )
+
+    def validate_reason(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Reason must not be blank.")
+        return cleaned
+
+
+class OpportunityLifecycleOptionalReasonActionSerializer(OpportunityLifecycleBaseActionSerializer):
+    """Action payload with expected_version and an optional reason."""
+
+    reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        trim_whitespace=True,
+        default="",
+        help_text="Optional operational reason or notes.",
+    )
+
+
+class OpportunityContactActionSerializer(OpportunityLifecycleBaseActionSerializer):
+    """Payload to transition Opportunity from Captured to Contacted."""
+
+    pass
+
+
+class OpportunityQualifyActionSerializer(OpportunityLifecycleBaseActionSerializer):
+    """Payload to qualify an Opportunity."""
+
+    pass
+
+
+class OpportunityMatchActionSerializer(OpportunityLifecycleBaseActionSerializer):
+    """Payload to transition a qualified Opportunity into Matching."""
+
+    pass
+
+
+class OpportunityHoldActionSerializer(OpportunityLifecycleReasonActionSerializer):
+    """Payload to put an active Opportunity on hold."""
+
+    pass
+
+
+class OpportunityResumeActionSerializer(OpportunityLifecycleBaseActionSerializer):
+    """Payload to resume an Opportunity from hold back to its pre-hold status."""
+
+    pass
+
+
+class OpportunityRejectActionSerializer(OpportunityLifecycleReasonActionSerializer):
+    """Payload to reject an Opportunity."""
+
+    pass
+
+
+class OpportunityLostActionSerializer(OpportunityLifecycleReasonActionSerializer):
+    """Payload to mark an Opportunity as lost."""
+
+    pass
+
+
+class OpportunityExpireActionSerializer(OpportunityLifecycleOptionalReasonActionSerializer):
+    """Payload to expire an Opportunity."""
+
+    pass

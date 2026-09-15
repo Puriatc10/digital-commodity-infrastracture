@@ -308,6 +308,166 @@ export interface paths {
         patch: operations["opportunities_opportunities_partial_update"];
         trace?: never;
     };
+    "/api/opportunities/opportunities/{id}/contact/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark opportunity as contacted
+         * @description Transition an Opportunity from Captured to Contacted. Requires expected_version for optimistic concurrency control.
+         */
+        post: operations["opportunities_opportunities_contact_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/expire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Expire opportunity
+         * @description Transition an Opportunity to Expired (terminal). Requires expected_version.
+         */
+        post: operations["opportunities_opportunities_expire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/hold/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put opportunity on hold
+         * @description Transition an active Opportunity to On Hold. Requires expected_version and mandatory non-empty reason.
+         */
+        post: operations["opportunities_opportunities_hold_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/lost/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark opportunity as lost
+         * @description Transition an Opportunity to Lost (terminal). Requires expected_version and mandatory non-empty reason.
+         */
+        post: operations["opportunities_opportunities_lost_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/match/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move opportunity to matching
+         * @description Transition a Qualified Opportunity into Matching. Requires expected_version for optimistic concurrency control.
+         */
+        post: operations["opportunities_opportunities_match_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/qualify/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Qualify opportunity
+         * @description Transition an Opportunity to Qualified. Requires expected_version for optimistic concurrency control.
+         */
+        post: operations["opportunities_opportunities_qualify_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject opportunity
+         * @description Transition an Opportunity to Rejected (terminal). Requires expected_version and mandatory non-empty reason.
+         */
+        post: operations["opportunities_opportunities_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/resume/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume opportunity from hold
+         * @description Resume an Opportunity from On Hold back to its pre-hold status. Requires expected_version.
+         */
+        post: operations["opportunities_opportunities_resume_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organizations/": {
         parameters: {
             query?: never;
@@ -1112,6 +1272,11 @@ export interface components {
             readonly name_fa: string;
             readonly name_en: string;
         };
+        /** @description Payload to transition Opportunity from Captured to Contacted. */
+        OpportunityContactAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+        };
         /**
          * @description Payload for capturing a new Opportunity.
          *     Explicit writable fields with strict mass-assignment prevention.
@@ -1270,8 +1435,63 @@ export interface components {
              * @description Foundational lifecycle state.
              *
              *     * `Captured` - Captured
+             *     * `Contacted` - Contacted
+             *     * `Qualified` - Qualified
+             *     * `Matching` - Matching
+             *     * `Converted` - Converted
+             *     * `On Hold` - On Hold
+             *     * `Rejected` - Rejected
+             *     * `Lost` - Lost
+             *     * `Expired` - Expired
              */
             readonly status: components["schemas"]["OpportunityStatusEnum"];
+            /** @description Optimistic concurrency aggregate version counter. */
+            readonly version: number;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was marked as contacted.
+             */
+            readonly contacted_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was qualified.
+             */
+            readonly qualified_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was converted.
+             */
+            readonly converted_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was put on hold.
+             */
+            readonly held_at: string | null;
+            /** @description Operational reason provided when putting the opportunity on hold. */
+            readonly hold_reason: string;
+            /** @description Persisted status prior to entering On Hold. */
+            readonly status_before_hold: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was rejected.
+             */
+            readonly rejected_at: string | null;
+            /** @description Reason provided when rejecting the opportunity. */
+            readonly rejection_reason: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was marked lost.
+             */
+            readonly lost_at: string | null;
+            /** @description Reason provided when marking the opportunity as lost. */
+            readonly lost_reason: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity expired.
+             */
+            readonly expired_at: string | null;
+            /** @description Operational reason or notes regarding expiration. */
+            readonly expiration_reason: string;
             /** @description Operator who recorded this opportunity. */
             readonly created_by: number | null;
             /** Format: date-time */
@@ -1285,6 +1505,16 @@ export interface components {
          * @enum {string}
          */
         OpportunityDirectionEnum: "Supply" | "Demand";
+        /** @description Payload to expire an Opportunity. */
+        OpportunityExpireAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional operational reason or notes.
+             * @default
+             */
+            reason: string;
+        };
         /** @description Safe projection of ExternalCounterparty details for Opportunity consumers. */
         OpportunityExternalCounterpartyProjection: {
             /** Format: uuid */
@@ -1293,6 +1523,25 @@ export interface components {
             readonly contact_name: string;
             readonly geography: string;
         };
+        /** @description Payload to put an active Opportunity on hold. */
+        OpportunityHoldAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory operational reason for this lifecycle action. */
+            reason: string;
+        };
+        /** @description Payload to mark an Opportunity as lost. */
+        OpportunityLostAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory operational reason for this lifecycle action. */
+            reason: string;
+        };
+        /** @description Payload to transition a qualified Opportunity into Matching. */
+        OpportunityMatchAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+        };
         /** @description Safe projection of internal Organization details for Opportunity consumers. */
         OpportunityOrganizationProjection: {
             /** Format: uuid */
@@ -1300,17 +1549,44 @@ export interface components {
             readonly name: string;
             readonly country: string;
         };
+        /** @description Payload to qualify an Opportunity. */
+        OpportunityQualifyAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /** @description Payload to reject an Opportunity. */
+        OpportunityRejectAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory operational reason for this lifecycle action. */
+            reason: string;
+        };
+        /** @description Payload to resume an Opportunity from hold back to its pre-hold status. */
+        OpportunityResumeAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+        };
         /**
          * @description * `Captured` - Captured
+         *     * `Contacted` - Contacted
+         *     * `Qualified` - Qualified
+         *     * `Matching` - Matching
+         *     * `Converted` - Converted
+         *     * `On Hold` - On Hold
+         *     * `Rejected` - Rejected
+         *     * `Lost` - Lost
+         *     * `Expired` - Expired
          * @enum {string}
          */
-        OpportunityStatusEnum: "Captured";
+        OpportunityStatusEnum: "Captured" | "Contacted" | "Qualified" | "Matching" | "Converted" | "On Hold" | "Rejected" | "Lost" | "Expired";
         /**
          * @description Payload for updating an Opportunity.
          *     Permits updating editable commercial/delivery/counterparty/source fields while
          *     strictly guarding status, created_by, timestamps, etc.
          */
         OpportunityUpdate: {
+            /** @description Expected aggregate version for optimistic concurrency control. */
+            expected_version?: number;
             /**
              * @description Trade direction: Supply or Demand.
              *
@@ -1511,6 +1787,8 @@ export interface components {
          *     strictly guarding status, created_by, timestamps, etc.
          */
         PatchedOpportunityUpdate: {
+            /** @description Expected aggregate version for optimistic concurrency control. */
+            expected_version?: number;
             /**
              * @description Trade direction: Supply or Demand.
              *
@@ -3672,6 +3950,494 @@ export interface operations {
             };
             /** @description Opportunity not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_contact_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityContactAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_expire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityExpireAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_hold_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityHoldAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or missing reason */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_lost_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityLostAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or missing reason */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_match_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityMatchAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_qualify_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityQualifyAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityRejectAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or missing reason */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_resume_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityResumeAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
