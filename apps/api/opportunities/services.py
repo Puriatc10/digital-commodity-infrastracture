@@ -3,13 +3,16 @@ from decimal import Decimal
 from typing import Any
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from opportunities.models import (
     Opportunity,
     OpportunityIdentifierSequence,
+    OpportunitySource,
 )
+from organizations.models import Organization, OrganizationCapability
 
 
 def format_opportunity_identifier(year: int, sequence: int) -> str:
@@ -94,6 +97,65 @@ def allocate_opportunity_identifier(
     return format_opportunity_identifier(year, seq)
 
 
+def validate_opportunity_source_and_broker(
+    *,
+    source: str,
+    broker_id: uuid.UUID | str | None = None,
+) -> None:
+    """
+    Centralized domain validation for Opportunity source and Broker attribution.
+
+    Invariants:
+    1. Source must be one of the six approved enum values.
+    2. When source == BROKER_REFERRAL:
+       - broker_id is mandatory.
+       - Referenced Organization must exist.
+       - Referenced Organization must possess the Broker capability.
+    3. When source != BROKER_REFERRAL:
+       - broker_id must be None (stale broker attribution is strictly prohibited).
+    """
+    errors: dict[str, str] = {}
+
+    if source not in OpportunitySource.values:
+        errors["source"] = f"Source must be one of: {', '.join(OpportunitySource.values)}."
+        raise ValidationError(errors)
+
+    if source == OpportunitySource.BROKER_REFERRAL:
+        if not broker_id:
+            errors["broker"] = "Broker organization is required when source is Broker Referral."
+        else:
+            if not Organization.objects.filter(id=broker_id).exists():
+                errors["broker"] = "Attributed broker organization does not exist."
+            elif not OrganizationCapability.objects.filter(
+                organization_id=broker_id,
+                capability=OrganizationCapability.CapabilityType.BROKER,
+            ).exists():
+                errors["broker"] = "Attributed organization must possess Broker capability."
+    else:
+        if broker_id:
+            errors["broker"] = "Broker organization must not be set when source is not Broker Referral."
+
+    if errors:
+        raise ValidationError(errors)
+
+
+def check_opportunity_mutation_allowed(
+    opportunity: Opportunity,
+    field_name: str,
+) -> None:
+    """
+    Guards Opportunity field mutation based on lifecycle state.
+
+    Currently (T0601/T0605), all opportunities are in the 'Captured' state,
+    where corrections and commercial adjustments are allowed.
+    T0603 will extend this hook with transition restrictions once qualification
+    or conversion states are reached.
+    """
+    # Immutable identifier invariant
+    if field_name == "identifier":
+        raise ValidationError({"identifier": "Opportunity identifier is immutable once created."})
+
+
 @transaction.atomic
 def create_opportunity(
     *,
@@ -110,6 +172,8 @@ def create_opportunity(
     payment_terms: str = "",
     geography: str = "",
     notes: str = "",
+    source: str = OpportunitySource.OPERATOR_SOURCING,
+    broker_id: uuid.UUID | str | None = None,
     created_by: Any = None,
     as_of: datetime.datetime | None = None,
 ) -> Opportunity:
@@ -118,14 +182,18 @@ def create_opportunity(
 
     Transaction semantics:
         BEGIN
+        -> validate source and broker attribution consistency
         -> allocate unique year/sequence safely (PostgreSQL select_for_update)
         -> construct identifier (OPP-{YEAR}-{SEQUENCE})
         -> create Opportunity
+        -> full_clean & save
         -> COMMIT
 
     Guarantees that identifier generation occurs inside the authoritative
     creation boundary and produces an immutable record.
     """
+    validate_opportunity_source_and_broker(source=source, broker_id=broker_id)
+
     identifier = allocate_opportunity_identifier(as_of=as_of)
 
     opportunity = Opportunity(
@@ -143,8 +211,53 @@ def create_opportunity(
         payment_terms=payment_terms,
         geography=geography,
         notes=notes,
+        source=source,
+        broker_id=broker_id,
         created_by=created_by,
     )
+    opportunity.full_clean()
+    opportunity.save()
+    return opportunity
+
+
+@transaction.atomic
+def update_opportunity(
+    opportunity: Opportunity,
+    *,
+    data: dict[str, Any],
+) -> Opportunity:
+    """
+    Authoritative Opportunity mutation service.
+
+    Centralizes field-level mutation policy, source/broker validation,
+    and lifecycle checks.
+    """
+    for field in data.keys():
+        check_opportunity_mutation_allowed(opportunity, field)
+
+    new_source = data.get("source", opportunity.source)
+    if "broker_id" in data:
+        new_broker_id = data["broker_id"]
+    elif "broker" in data:
+        broker_val = data["broker"]
+        new_broker_id = broker_val.id if hasattr(broker_val, "id") else broker_val
+    else:
+        new_broker_id = opportunity.broker_id
+
+    validate_opportunity_source_and_broker(source=new_source, broker_id=new_broker_id)
+
+    for field, value in data.items():
+        if field == "broker_id":
+            opportunity.broker_id = value
+        elif field == "organization_id":
+            opportunity.organization_id = value
+        elif field == "external_counterparty_id":
+            opportunity.external_counterparty_id = value
+        elif field == "commodity_id":
+            opportunity.commodity_id = value
+        else:
+            setattr(opportunity, field, value)
+
     opportunity.full_clean()
     opportunity.save()
     return opportunity

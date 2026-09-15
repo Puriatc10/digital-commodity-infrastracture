@@ -114,6 +114,15 @@ class OpportunityStatus(models.TextChoices):
     CAPTURED = "Captured", "Captured"
 
 
+class OpportunitySource(models.TextChoices):
+    BROKER_REFERRAL = "broker_referral", "Broker Referral"
+    OPERATOR_SOURCING = "operator_sourcing", "Operator Sourcing"
+    BUYER_REFERRAL = "buyer_referral", "Buyer Referral"
+    SUPPLIER_REFERRAL = "supplier_referral", "Supplier Referral"
+    EXISTING_RELATIONSHIP = "existing_relationship", "Existing Relationship"
+    INBOUND_LEAD = "inbound_lead", "Inbound Lead"
+
+
 class Opportunity(models.Model):
     """
     Foundational Opportunity aggregate for Market Discovery / Opportunity Desk.
@@ -222,6 +231,22 @@ class Opportunity(models.Model):
         help_text="Internal operational notes.",
     )
 
+    # Source Provenance & Broker Attribution (Spec §18, Roadmap T0605)
+    source = models.CharField(
+        max_length=32,
+        choices=OpportunitySource.choices,
+        default=OpportunitySource.OPERATOR_SOURCING,
+        help_text="Authoritative origin source of the opportunity lead.",
+    )
+    broker = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="brokered_opportunities",
+        help_text="Attributed broker organization for broker referrals.",
+    )
+
     # Foundational Lifecycle State (T0603 owns transitions; default Captured)
     status = models.CharField(
         max_length=30,
@@ -278,10 +303,23 @@ class Opportunity(models.Model):
                 ),
                 name="check_valid_opportunity_delivery_window",
             ),
+            models.CheckConstraint(
+                condition=models.Q(source__in=OpportunitySource.values),
+                name="check_valid_opportunity_source",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(source=OpportunitySource.BROKER_REFERRAL) & models.Q(broker__isnull=False))
+                    | (~models.Q(source=OpportunitySource.BROKER_REFERRAL) & models.Q(broker__isnull=True))
+                ),
+                name="check_opportunity_broker_source_consistency",
+            ),
         ]
         indexes = [
             models.Index(fields=["direction"], name="idx_opp_direction"),
             models.Index(fields=["status"], name="idx_opp_status"),
+            models.Index(fields=["source"], name="idx_opp_source"),
+            models.Index(fields=["broker"], name="idx_opp_broker"),
             models.Index(fields=["organization"], name="idx_opp_organization"),
             models.Index(fields=["external_counterparty"], name="idx_opp_ext_counterparty"),
             models.Index(fields=["commodity"], name="idx_opp_commodity"),
@@ -301,6 +339,23 @@ class Opportunity(models.Model):
 
         if self.direction not in [OpportunityDirection.SUPPLY, OpportunityDirection.DEMAND]:
             errors["direction"] = "Direction must be either 'Supply' or 'Demand'."
+
+        if self.source not in OpportunitySource.values:
+            errors["source"] = f"Source must be one of: {', '.join(OpportunitySource.values)}."
+        elif self.source == OpportunitySource.BROKER_REFERRAL:
+            if not self.broker_id:
+                errors["broker"] = "Broker organization is required when source is Broker Referral."
+            else:
+                from organizations.models import OrganizationCapability
+
+                if not OrganizationCapability.objects.filter(
+                    organization_id=self.broker_id,
+                    capability=OrganizationCapability.CapabilityType.BROKER,
+                ).exists():
+                    errors["broker"] = "Attributed organization must possess Broker capability."
+        else:
+            if self.broker_id:
+                errors["broker"] = "Broker organization must not be set when source is not Broker Referral."
 
         if self.organization_id and self.external_counterparty_id:
             errors["counterparty"] = "Opportunity cannot reference both an internal Organization and an ExternalCounterparty."

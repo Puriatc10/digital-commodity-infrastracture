@@ -1125,6 +1125,23 @@ export interface components {
              */
             direction: components["schemas"]["OpportunityDirectionEnum"];
             /**
+             * @description Authoritative origin source of the opportunity lead.
+             *
+             *     * `broker_referral` - Broker Referral
+             *     * `operator_sourcing` - Operator Sourcing
+             *     * `buyer_referral` - Buyer Referral
+             *     * `supplier_referral` - Supplier Referral
+             *     * `existing_relationship` - Existing Relationship
+             *     * `inbound_lead` - Inbound Lead
+             * @default operator_sourcing
+             */
+            source: components["schemas"]["SourceEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of attributed broker organization (required if source is Broker Referral).
+             */
+            broker_id?: string | null;
+            /**
              * Format: uuid
              * @description UUID of internal registered organization (mutually exclusive with external_counterparty_id).
              */
@@ -1207,6 +1224,19 @@ export interface components {
             readonly external_counterparty: components["schemas"]["OpportunityExternalCounterpartyProjection"];
             readonly commodity: components["schemas"]["OpportunityCommodityProjection"];
             /**
+             * @description Authoritative origin source of the opportunity lead.
+             *
+             *     * `broker_referral` - Broker Referral
+             *     * `operator_sourcing` - Operator Sourcing
+             *     * `buyer_referral` - Buyer Referral
+             *     * `supplier_referral` - Supplier Referral
+             *     * `existing_relationship` - Existing Relationship
+             *     * `inbound_lead` - Inbound Lead
+             */
+            readonly source: components["schemas"]["SourceEnum"];
+            /** @description Safe projection of attributed broker organization (present for Broker Referral). */
+            readonly broker: components["schemas"]["OpportunityOrganizationProjection"] | null;
+            /**
              * Format: decimal
              * @description Lead quantity (must be positive if specified).
              */
@@ -1277,7 +1307,7 @@ export interface components {
         OpportunityStatusEnum: "Captured";
         /**
          * @description Payload for updating an Opportunity.
-         *     Permits updating editable commercial/delivery/counterparty fields while
+         *     Permits updating editable commercial/delivery/counterparty/source fields while
          *     strictly guarding status, created_by, timestamps, etc.
          */
         OpportunityUpdate: {
@@ -1288,6 +1318,22 @@ export interface components {
              *     * `Demand` - Demand
              */
             direction?: components["schemas"]["OpportunityDirectionEnum"];
+            /**
+             * @description Authoritative origin source of the opportunity lead.
+             *
+             *     * `broker_referral` - Broker Referral
+             *     * `operator_sourcing` - Operator Sourcing
+             *     * `buyer_referral` - Buyer Referral
+             *     * `supplier_referral` - Supplier Referral
+             *     * `existing_relationship` - Existing Relationship
+             *     * `inbound_lead` - Inbound Lead
+             */
+            source?: components["schemas"]["SourceEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of attributed broker organization.
+             */
+            broker_id?: string | null;
             /**
              * Format: uuid
              * @description UUID of internal registered organization.
@@ -1461,7 +1507,7 @@ export interface components {
         };
         /**
          * @description Payload for updating an Opportunity.
-         *     Permits updating editable commercial/delivery/counterparty fields while
+         *     Permits updating editable commercial/delivery/counterparty/source fields while
          *     strictly guarding status, created_by, timestamps, etc.
          */
         PatchedOpportunityUpdate: {
@@ -1472,6 +1518,22 @@ export interface components {
              *     * `Demand` - Demand
              */
             direction?: components["schemas"]["OpportunityDirectionEnum"];
+            /**
+             * @description Authoritative origin source of the opportunity lead.
+             *
+             *     * `broker_referral` - Broker Referral
+             *     * `operator_sourcing` - Operator Sourcing
+             *     * `buyer_referral` - Buyer Referral
+             *     * `supplier_referral` - Supplier Referral
+             *     * `existing_relationship` - Existing Relationship
+             *     * `inbound_lead` - Inbound Lead
+             */
+            source?: components["schemas"]["SourceEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of attributed broker organization.
+             */
+            broker_id?: string | null;
             /**
              * Format: uuid
              * @description UUID of internal registered organization.
@@ -2200,6 +2262,16 @@ export interface components {
          * @enum {string}
          */
         RFQVisibilityEnum: "public" | "network" | "private";
+        /**
+         * @description * `broker_referral` - Broker Referral
+         *     * `operator_sourcing` - Operator Sourcing
+         *     * `buyer_referral` - Buyer Referral
+         *     * `supplier_referral` - Supplier Referral
+         *     * `existing_relationship` - Existing Relationship
+         *     * `inbound_lead` - Inbound Lead
+         * @enum {string}
+         */
+        SourceEnum: "broker_referral" | "operator_sourcing" | "buyer_referral" | "supplier_referral" | "existing_relationship" | "inbound_lead";
         /** @description Payload for activating a Draft Supply Listing. */
         SupplyListingActivateAction: {
             /** @description Current aggregate version counter for optimistic concurrency control. */
@@ -3365,6 +3437,8 @@ export interface operations {
     opportunities_opportunities_list: {
         parameters: {
             query?: {
+                /** @description Filter by attributed broker organization UUID. */
+                broker?: string;
                 /** @description Filter by commodity code (e.g. bitumen). */
                 commodity?: string;
                 /** @description Filter by direction (Supply or Demand). */
@@ -3375,6 +3449,8 @@ export interface operations {
                 page?: number;
                 /** @description تعداد نتایج برای نمایش در هر صفحه. */
                 page_size?: number;
+                /** @description Filter by opportunity origin source (e.g. broker_referral, operator_sourcing). */
+                source?: string;
                 /** @description Filter by opportunity status (e.g. Captured). */
                 status?: string;
             };

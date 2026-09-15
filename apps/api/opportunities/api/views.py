@@ -19,8 +19,8 @@ from opportunities.api.serializers import (
     OpportunityDetailSerializer,
     OpportunityUpdateSerializer,
 )
-from opportunities.models import ExternalCounterparty, Opportunity
-from opportunities.services import create_opportunity
+from opportunities.models import ExternalCounterparty, Opportunity, OpportunitySource
+from opportunities.services import create_opportunity, update_opportunity
 
 
 
@@ -205,6 +205,20 @@ class OpportunityPagination(PageNumberPagination):
                 required=False,
                 description="Filter by exact human-readable identifier (e.g. OPP-2026-000124).",
             ),
+            OpenApiParameter(
+                name="source",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by opportunity origin source (e.g. broker_referral, operator_sourcing).",
+            ),
+            OpenApiParameter(
+                name="broker",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by attributed broker organization UUID.",
+            ),
         ],
         responses={
             200: OpportunityDetailSerializer(many=True),
@@ -277,7 +291,7 @@ class OpportunityViewSet(
 
     queryset = (
         Opportunity.objects.all()
-        .select_related("organization", "external_counterparty", "commodity", "created_by")
+        .select_related("organization", "external_counterparty", "commodity", "broker", "created_by")
     )
     permission_classes = [IsOperatorOrProductAdmin]
     pagination_class = OpportunityPagination
@@ -308,6 +322,14 @@ class OpportunityViewSet(
         identifier = self.request.query_params.get("identifier", "").strip()
         if identifier:
             queryset = queryset.filter(identifier=identifier)
+
+        source = self.request.query_params.get("source", "").strip()
+        if source:
+            queryset = queryset.filter(source__iexact=source)
+
+        broker = self.request.query_params.get("broker", "").strip()
+        if broker:
+            queryset = queryset.filter(broker_id=broker)
 
         return queryset
 
@@ -347,6 +369,8 @@ class OpportunityViewSet(
             payment_terms=validated.get("payment_terms", ""),
             geography=validated.get("geography", ""),
             notes=validated.get("notes", ""),
+            source=validated.get("source", OpportunitySource.OPERATOR_SOURCING),
+            broker_id=validated.get("broker_id"),
             created_by=user,
         )
 
@@ -360,9 +384,7 @@ class OpportunityViewSet(
         serializer.is_valid(raise_exception=True)
         validated = serializer.validated_data
 
-        for field, value in validated.items():
-            setattr(instance, field, value)
+        instance = update_opportunity(instance, data=validated)
 
-        instance.save()
         response_serializer = OpportunityDetailSerializer(instance)
         return Response(response_serializer.data)
