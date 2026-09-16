@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='opportunity',
-            index=models.Index(fields=['converted_supply_listing'], name='idx_opp_converted_supply_listing'),
+            index=models.Index(fields=['converted_supply_listing'], name='idx_opp_converted_supply'),
         ),
         migrations.AddConstraint(
             model_name='opportunity',

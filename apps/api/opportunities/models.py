@@ -468,7 +468,7 @@ class Opportunity(models.Model):
             models.Index(fields=["external_counterparty"], name="idx_opp_ext_counterparty"),
             models.Index(fields=["commodity"], name="idx_opp_commodity"),
             models.Index(fields=["converted_rfq"], name="idx_opp_converted_rfq"),
-            models.Index(fields=["converted_supply_listing"], name="idx_opp_converted_supply_listing"),
+            models.Index(fields=["converted_supply_listing"], name="idx_opp_converted_supply"),
             models.Index(fields=["schema_version"], name="idx_opp_schema_version"),
             models.Index(fields=["-created_at"], name="idx_opp_created_at_desc"),
         ]
