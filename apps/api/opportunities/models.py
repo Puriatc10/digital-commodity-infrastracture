@@ -199,7 +199,7 @@ class Opportunity(models.Model):
         help_text="Dynamic technical specifications validated against the referenced schema version.",
     )
 
-    # Conversion Target Links (Spec §19, Roadmap T0609)
+    # Conversion Target Links (Spec §19, Roadmap T0609 / T0610)
     converted_rfq = models.OneToOneField(
         "trade_hub.RFQ",
         on_delete=models.PROTECT,
@@ -207,6 +207,14 @@ class Opportunity(models.Model):
         blank=True,
         related_name="source_opportunity",
         help_text="Authoritative RFQ created from this Opportunity upon conversion.",
+    )
+    converted_supply_listing = models.OneToOneField(
+        "trade_hub.SupplyListing",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="source_opportunity",
+        help_text="Authoritative Supply Listing created from this Opportunity upon conversion.",
     )
 
     # Commercial & Quantity Terms
@@ -428,6 +436,28 @@ class Opportunity(models.Model):
                 ),
                 name="check_demand_converted_has_rfq",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(converted_supply_listing__isnull=True)
+                    | models.Q(status=OpportunityStatus.CONVERTED)
+                ),
+                name="check_supply_listing_only_when_converted",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(direction=OpportunityDirection.SUPPLY, status=OpportunityStatus.CONVERTED)
+                    | models.Q(converted_supply_listing__isnull=False)
+                ),
+                name="check_supply_converted_has_listing",
+            ),
+            # Cross-conversion integrity: cannot have both RFQ and SupplyListing links simultaneously
+            models.CheckConstraint(
+                condition=(
+                    models.Q(converted_rfq__isnull=True)
+                    | models.Q(converted_supply_listing__isnull=True)
+                ),
+                name="check_no_dual_conversion_targets",
+            ),
         ]
         indexes = [
             models.Index(fields=["direction"], name="idx_opp_direction"),
@@ -438,6 +468,7 @@ class Opportunity(models.Model):
             models.Index(fields=["external_counterparty"], name="idx_opp_ext_counterparty"),
             models.Index(fields=["commodity"], name="idx_opp_commodity"),
             models.Index(fields=["converted_rfq"], name="idx_opp_converted_rfq"),
+            models.Index(fields=["converted_supply_listing"], name="idx_opp_converted_supply_listing"),
             models.Index(fields=["schema_version"], name="idx_opp_schema_version"),
             models.Index(fields=["-created_at"], name="idx_opp_created_at_desc"),
         ]
@@ -493,16 +524,31 @@ class Opportunity(models.Model):
 
         # Converted RFQ immutability and state consistency
         if not self._state.adding and self.pk:
-            orig = Opportunity.objects.filter(pk=self.pk).values("converted_rfq_id").first()
+            orig = Opportunity.objects.filter(pk=self.pk).values(
+                "converted_rfq_id", "converted_supply_listing_id"
+            ).first()
             if orig and orig["converted_rfq_id"] and self.converted_rfq_id != orig["converted_rfq_id"]:
                 errors["converted_rfq"] = "Converted RFQ link is immutable once set."
+            if orig and orig["converted_supply_listing_id"] and self.converted_supply_listing_id != orig["converted_supply_listing_id"]:
+                errors["converted_supply_listing"] = "Converted Supply Listing link is immutable once set."
 
         if self.converted_rfq_id and self.status != OpportunityStatus.CONVERTED:
             errors["converted_rfq"] = "Opportunity cannot reference a converted RFQ unless in Converted status."
 
+        if self.converted_supply_listing_id and self.status != OpportunityStatus.CONVERTED:
+            errors["converted_supply_listing"] = "Opportunity cannot reference a converted Supply Listing unless in Converted status."
+
         if self.status == OpportunityStatus.CONVERTED and self.direction == OpportunityDirection.DEMAND:
             if not self.converted_rfq_id:
                 errors["converted_rfq"] = "Converted demand opportunity must reference a converted RFQ."
+
+        if self.status == OpportunityStatus.CONVERTED and self.direction == OpportunityDirection.SUPPLY:
+            if not self.converted_supply_listing_id:
+                errors["converted_supply_listing"] = "Converted supply opportunity must reference a converted Supply Listing."
+
+        # Cross-conversion integrity: cannot have both RFQ and SupplyListing
+        if self.converted_rfq_id and self.converted_supply_listing_id:
+            errors["converted_rfq"] = "An Opportunity cannot be converted to both an RFQ and a Supply Listing."
 
         # Schema version commodity consistency
         if self.schema_version_id and self.commodity_id:
@@ -521,6 +567,13 @@ class Opportunity(models.Model):
             raise ProtectedError(
                 "Cannot delete an Opportunity that has been converted to an RFQ.",
                 [self.converted_rfq],
+            )
+        if self.converted_supply_listing_id is not None:
+            from django.db.models import ProtectedError
+
+            raise ProtectedError(
+                "Cannot delete an Opportunity that has been converted to a Supply Listing.",
+                [self.converted_supply_listing],
             )
         return super().delete(*args, **kwargs)
 

@@ -202,6 +202,14 @@ class SupplyListing(models.Model):
     def supplier(self, value):
         self.organization = value
 
+    @property
+    def source_opportunity_safe(self):
+        """Safely returns the originating Opportunity if converted, or None."""
+        try:
+            return self.source_opportunity
+        except Exception:
+            return None
+
     def clean(self):
         super().clean()
         errors = {}

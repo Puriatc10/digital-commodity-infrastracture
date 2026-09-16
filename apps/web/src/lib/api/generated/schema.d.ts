@@ -348,6 +348,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/opportunities/opportunities/{id}/convert-to-supply-listing/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert Qualified Supply Opportunity into Draft Supply Listing
+         * @description Authoritatively converts an eligible Qualified Supply Opportunity into a real Draft Supply Listing Aggregate via the Epic 5 Supply domain service. Guarantees single atomic PostgreSQL transaction, exclusive row lock, preservation of schema version and dynamic specifications, supplier capability validation, and durable bidirectional relational traceability.
+         */
+        post: operations["opportunities_opportunities_convert_to_supply_listing_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/opportunities/opportunities/{id}/expire/": {
         parameters: {
             query?: never;
@@ -1569,6 +1589,77 @@ export interface components {
             readonly rfq: components["schemas"]["RFQBuilderResponse"];
         };
         /**
+         * @description Action payload to authoritatively convert an eligible Supply Opportunity into a Draft Supply Listing.
+         *     Guards strictly against mass-assignment of status, version, timestamps, or unverified ownership.
+         */
+        OpportunityConvertToSupplyListingAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the referenced commodity schema version (required if not stored on Opportunity).
+             */
+            schema_version_id?: string | null;
+            /** @description Dynamic technical specifications JSON payload validated against schema version. */
+            specifications?: unknown;
+            /**
+             * Format: uuid
+             * @description UUID of the internal Supplier Organization (required if Opportunity references an External Counterparty).
+             */
+            supplier_organization_id?: string | null;
+            /**
+             * @description Requested origin country, facility, or port (defaults to Opportunity geography).
+             * @default
+             */
+            origin: string;
+            /**
+             * @description Requested destination country or port if restricted.
+             * @default
+             */
+            destination: string;
+            /**
+             * @description Incoterm code (e.g. FOB, CIF, CFR).
+             * @default
+             */
+            incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest availability date (defaults to Opportunity delivery window start).
+             */
+            availability_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest availability date (defaults to Opportunity delivery window end).
+             */
+            availability_window_end?: string | null;
+            /**
+             * @description Quality, testing, or specification notes.
+             * @default
+             */
+            quality_notes: string;
+            /**
+             * @description Additional commercial notes to append to Supply Listing notes.
+             * @default
+             */
+            notes: string;
+            /**
+             * @description Participation visibility tier for the new Supply Listing.
+             *
+             *     * `private` - Private
+             *     * `network` - Network
+             *     * `public` - Public
+             * @default public
+             */
+            visibility: components["schemas"]["RFQVisibilityEnum"];
+        };
+        /** @description Structured response payload returned upon successful conversion to Supply Listing. */
+        OpportunityConvertToSupplyListingResponse: {
+            /** @description The updated Opportunity aggregate in Converted status. */
+            readonly opportunity: components["schemas"]["OpportunityDetail"];
+            /** @description The newly created Draft Supply Listing aggregate. */
+            readonly supply_listing: components["schemas"]["SupplyListingSupplierResponse"];
+        };
+        /**
          * @description Payload for capturing a new Opportunity.
          *     Explicit writable fields with strict mass-assignment prevention.
          */
@@ -1755,6 +1846,11 @@ export interface components {
              * @description UUID of the converted RFQ if converted.
              */
             readonly converted_rfq_id: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of the converted Supply Listing if converted.
+             */
+            readonly converted_supply_listing_id: string | null;
             /**
              * Format: date-time
              * @description Timestamp when the opportunity was marked as contacted.
@@ -4470,6 +4566,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OpportunityConvertToRFQResponse"];
+                };
+            };
+            /** @description Validation error or invalid state/direction */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — Stale version or already converted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_convert_to_supply_listing_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityConvertToSupplyListingAction"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityConvertToSupplyListingResponse"];
                 };
             };
             /** @description Validation error or invalid state/direction */

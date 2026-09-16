@@ -16,6 +16,7 @@ from opportunities.models import (
     OpportunityTask,
 )
 from trade_hub.api.serializers_rfq import RFQBuilderResponseSerializer
+from trade_hub.api.serializers_supply import SupplyListingSupplierResponseSerializer
 
 
 
@@ -204,6 +205,12 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
         allow_null=True,
         help_text="UUID of the converted RFQ if converted.",
     )
+    converted_supply_listing_id = serializers.UUIDField(
+        source="converted_supply_listing.id",
+        read_only=True,
+        allow_null=True,
+        help_text="UUID of the converted Supply Listing if converted.",
+    )
     schema_version_id = serializers.UUIDField(
         source="schema_version.id",
         read_only=True,
@@ -243,6 +250,7 @@ class OpportunityDetailSerializer(serializers.ModelSerializer):
             "status",
             "version",
             "converted_rfq_id",
+            "converted_supply_listing_id",
             "contacted_at",
             "qualified_at",
             "converted_at",
@@ -855,6 +863,95 @@ class OpportunityConvertToRFQResponseSerializer(serializers.Serializer):
     rfq = RFQBuilderResponseSerializer(
         read_only=True,
         help_text="The newly created Draft RFQ aggregate.",
+    )
+
+
+class OpportunityConvertToSupplyListingActionSerializer(OpportunityLifecycleBaseActionSerializer):
+    """
+    Action payload to authoritatively convert an eligible Supply Opportunity into a Draft Supply Listing.
+    Guards strictly against mass-assignment of status, version, timestamps, or unverified ownership.
+    """
+
+    schema_version_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="UUID of the referenced commodity schema version (required if not stored on Opportunity).",
+    )
+    specifications = serializers.JSONField(
+        required=False,
+        default=dict,
+        help_text="Dynamic technical specifications JSON payload validated against schema version.",
+    )
+    supplier_organization_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="UUID of the internal Supplier Organization (required if Opportunity references an External Counterparty).",
+    )
+    origin = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Requested origin country, facility, or port (defaults to Opportunity geography).",
+    )
+    destination = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Requested destination country or port if restricted.",
+    )
+    incoterm = serializers.CharField(
+        max_length=10,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Incoterm code (e.g. FOB, CIF, CFR).",
+    )
+    availability_window_start = serializers.DateField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Earliest availability date (defaults to Opportunity delivery window start).",
+    )
+    availability_window_end = serializers.DateField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Latest availability date (defaults to Opportunity delivery window end).",
+    )
+    quality_notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Quality, testing, or specification notes.",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Additional commercial notes to append to Supply Listing notes.",
+    )
+    visibility = serializers.ChoiceField(
+        choices=[("private", "Private"), ("network", "Network"), ("public", "Public")],
+        required=False,
+        default="public",
+        help_text="Participation visibility tier for the new Supply Listing.",
+    )
+
+
+class OpportunityConvertToSupplyListingResponseSerializer(serializers.Serializer):
+    """Structured response payload returned upon successful conversion to Supply Listing."""
+
+    opportunity = OpportunityDetailSerializer(
+        read_only=True,
+        help_text="The updated Opportunity aggregate in Converted status.",
+    )
+    supply_listing = SupplyListingSupplierResponseSerializer(
+        read_only=True,
+        help_text="The newly created Draft Supply Listing aggregate.",
     )
 
 
