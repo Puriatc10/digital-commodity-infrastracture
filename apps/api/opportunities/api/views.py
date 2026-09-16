@@ -77,7 +77,10 @@ from opportunities.services_conversion import (
     convert_opportunity_to_rfq,
     convert_opportunity_to_supply_listing,
 )
-from opportunities.services_lifecycle import OpportunityLifecycleService
+from opportunities.services_lifecycle import (
+    OpportunityLifecycleService,
+    TERMINAL_STATUSES,
+)
 from trade_hub.api.serializers_rfq import RFQBuilderResponseSerializer
 from trade_hub.api.serializers_supply import SupplyListingSupplierResponseSerializer
 
@@ -249,7 +252,7 @@ class OpportunityPagination(PageNumberPagination):
                 type=str,
                 location=OpenApiParameter.QUERY,
                 required=False,
-                description="Filter by opportunity status (e.g. Captured).",
+                description="Filter by opportunity status (e.g. Captured, or 'active' for active non-terminal opportunities).",
             ),
             OpenApiParameter(
                 name="commodity",
@@ -404,7 +407,10 @@ class OpportunityViewSet(
 
         status_param = self.request.query_params.get("status", "").strip()
         if status_param:
-            queryset = queryset.filter(status__iexact=status_param)
+            if status_param.lower() == "active":
+                queryset = queryset.exclude(status__in=TERMINAL_STATUSES)
+            else:
+                queryset = queryset.filter(status__iexact=status_param)
 
         commodity = self.request.query_params.get("commodity", "").strip()
         if commodity:

@@ -886,6 +886,25 @@ class OpportunityTaskTests(TestCase):
         self.assertIn(str(self.opp.id), returned_ids)
         self.assertNotIn(str(self.other_opp.id), returned_ids)
 
+    def test_t0612_inbox_active_opportunity_filter(self):
+        """Opportunity listing with ?status=active returns only active (non-terminal) opportunities."""
+        from opportunities.models import OpportunityStatus
+
+        # self.opp is Captured (active)
+        # Mark other_opp as Lost (terminal)
+        self.other_opp.status = OpportunityStatus.LOST
+        self.other_opp.lost_reason = "Lost to competitor"
+        self.other_opp.save(update_fields=["status", "lost_reason"])
+
+        self.client.force_authenticate(user=self.operator)
+        resp = self.client.get("/api/opportunities/opportunities/?status=active")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+        results = resp.data["results"] if "results" in resp.data else resp.data
+        returned_ids = [r["id"] for r in results]
+        self.assertIn(str(self.opp.id), returned_ids)
+        self.assertNotIn(str(self.other_opp.id), returned_ids)
+
     def test_t0612_service_get_tasks_assigned_to_user(self):
         """Service function get_tasks_assigned_to_user returns open tasks assigned to user."""
         t1 = create_opportunity_task(
