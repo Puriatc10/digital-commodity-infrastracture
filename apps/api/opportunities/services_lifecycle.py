@@ -465,11 +465,18 @@ class OpportunityLifecycleService:
             "version",
             "updated_at",
         ]
-        from trade_hub.models import RFQ
+        from trade_hub.models import RFQ, SupplyListing
 
         if isinstance(conversion_target, RFQ):
             opp.converted_rfq = conversion_target
             update_fields.append("converted_rfq")
+        elif isinstance(conversion_target, SupplyListing):
+            opp.converted_supply_listing = conversion_target
+            update_fields.append("converted_supply_listing")
+        else:
+            raise ReservedTransitionError(
+                f"Conversion target must be an RFQ or SupplyListing instance, got {type(conversion_target).__name__}."
+            )
 
         opp.status = OpportunityStatus.CONVERTED
         opp.converted_at = timezone.now()
