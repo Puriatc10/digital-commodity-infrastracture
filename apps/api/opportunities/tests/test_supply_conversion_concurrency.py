@@ -410,15 +410,10 @@ class OpportunitySupplyConversionConcurrencyTests(TransactionTestCase):
         different Supplier Organizations (Org A vs Org B) must result in at most one
         authoritative Supply Listing.
         """
-        opp = create_opportunity(
-            direction=OpportunityDirection.SUPPLY,
+        opp = self._create_and_qualify_opportunity(
+            organization_id=None,
             external_counterparty_id=self.ext_counterparty.id,
-            commodity_id=self.commodity.id,
-            quantity=Decimal("1000.000"),
-            unit="MT",
-            source=OpportunitySource.OPERATOR_SOURCING,
         )
-        opp = qualify_opportunity(opp.id, expected_version=1, actor=self.operator)
         self.assertEqual(opp.version, 2)
 
         barrier = threading.Barrier(2)

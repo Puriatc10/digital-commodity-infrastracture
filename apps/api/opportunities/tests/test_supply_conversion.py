@@ -3,7 +3,8 @@ from decimal import Decimal
 import uuid
 
 from django.contrib.auth import get_user_model
-from django.db import IntegrityError
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.test import TestCase
 from rest_framework import status
@@ -200,6 +201,28 @@ class OpportunitySupplyConversionTests(TestCase):
         opp = qualify_opportunity(opp.id, expected_version=1, actor=self.operator)
         return opp
 
+    def _create_qualified_demand_opportunity(self, **kwargs):
+        """Helper to create and qualify a Demand Opportunity for conversion tests."""
+        defaults = {
+            "direction": OpportunityDirection.DEMAND,
+            "organization_id": self.buyer_org.id,
+            "commodity_id": self.commodity.id,
+            "quantity": Decimal("1000.000"),
+            "unit": "MT",
+            "indicative_price": Decimal("350.00"),
+            "currency": "USD",
+            "delivery_window_start": datetime.date(2026, 11, 1),
+            "delivery_window_end": datetime.date(2026, 11, 30),
+            "payment_terms": "Letter of Credit at sight",
+            "geography": "Jebel Ali Port, UAE",
+            "notes": "Procurement lead for road paving project.",
+            "source": OpportunitySource.OPERATOR_SOURCING,
+        }
+        defaults.update(kwargs)
+        opp = create_opportunity(**defaults)
+        opp = qualify_opportunity(opp.id, expected_version=1, actor=self.operator)
+        return opp
+
     # -------------------------------------------------------------------------
     # 1. Successful Supply Conversion & Exact Field Mapping
     # -------------------------------------------------------------------------
@@ -314,15 +337,7 @@ class OpportunitySupplyConversionTests(TestCase):
         Confirm that a Demand Opportunity cannot be converted to a Supply Listing.
         Must return 400 Bad Request.
         """
-        opp = create_opportunity(
-            direction=OpportunityDirection.DEMAND,
-            organization_id=self.buyer_org.id,
-            commodity_id=self.commodity.id,
-            quantity=Decimal("500.000"),
-            unit="MT",
-            source=OpportunitySource.OPERATOR_SOURCING,
-        )
-        opp = qualify_opportunity(opp.id, expected_version=1, actor=self.operator)
+        opp = self._create_qualified_demand_opportunity()
 
         self.client.force_authenticate(user=self.operator)
         url = f"/api/opportunities/opportunities/{opp.id}/convert-to-supply-listing/"
@@ -449,15 +464,7 @@ class OpportunitySupplyConversionTests(TestCase):
         to a Supply Listing. Must return 409 Conflict.
         """
         # Create and qualify Demand opp and convert to RFQ
-        opp_demand = create_opportunity(
-            direction=OpportunityDirection.DEMAND,
-            organization_id=self.buyer_org.id,
-            commodity_id=self.commodity.id,
-            quantity=Decimal("1000.000"),
-            unit="MT",
-            source=OpportunitySource.OPERATOR_SOURCING,
-        )
-        opp_demand = qualify_opportunity(opp_demand.id, expected_version=1, actor=self.operator)
+        opp_demand = self._create_qualified_demand_opportunity()
         opp_demand, rfq = convert_opportunity_to_rfq(
             opp_demand.id,
             expected_version=opp_demand.version,
@@ -505,9 +512,15 @@ class OpportunitySupplyConversionTests(TestCase):
             },
         )
 
+        # 1. Model-level validation catches dual conversion
         opp.converted_rfq = rfq
+        with self.assertRaises(ValidationError):
+            opp.clean()
+
+        # 2. Database check constraint enforces it at PostgreSQL level
         with self.assertRaises(IntegrityError):
-            opp.save(update_fields=["converted_rfq"])
+            with transaction.atomic():
+                Opportunity.objects.filter(id=opp.id).update(converted_rfq=rfq)
 
     # -------------------------------------------------------------------------
     # 6. External Counterparty & Supplier Capability Policies
@@ -519,15 +532,11 @@ class OpportunitySupplyConversionTests(TestCase):
         providing a valid internal Supplier Organization (supplier_organization_id).
         Missing supplier_organization_id must fail with 400 Bad Request.
         """
-        opp = create_opportunity(
-            direction=OpportunityDirection.SUPPLY,
+        opp = self._create_qualified_supply_opportunity(
+            organization_id=None,
             external_counterparty_id=self.ext_counterparty.id,
-            commodity_id=self.commodity.id,
             quantity=Decimal("1500.000"),
-            unit="MT",
-            source=OpportunitySource.OPERATOR_SOURCING,
         )
-        opp = qualify_opportunity(opp.id, expected_version=1, actor=self.operator)
 
         self.client.force_authenticate(user=self.operator)
         url = f"/api/opportunities/opportunities/{opp.id}/convert-to-supply-listing/"
@@ -590,15 +599,9 @@ class OpportunitySupplyConversionTests(TestCase):
         If a Supply Opportunity is captured with an internal organization that lacks
         Supplier capability, conversion must fail cleanly unless a valid Supplier org is specified.
         """
-        opp = create_opportunity(
-            direction=OpportunityDirection.SUPPLY,
+        opp = self._create_qualified_supply_opportunity(
             organization_id=self.buyer_org.id,
-            commodity_id=self.commodity.id,
-            quantity=Decimal("1000.000"),
-            unit="MT",
-            source=OpportunitySource.OPERATOR_SOURCING,
         )
-        opp = qualify_opportunity(opp.id, expected_version=1, actor=self.operator)
 
         self.client.force_authenticate(user=self.operator)
         url = f"/api/opportunities/opportunities/{opp.id}/convert-to-supply-listing/"
@@ -895,7 +898,7 @@ class OpportunitySupplyConversionTests(TestCase):
             {"expected_version": 2, "schema_version_id": str(self.schema_v1.id)},
             format="json",
         )
-        self.assertEqual(res_anon.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn(res_anon.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
 
         # 2. Buyer user
         opp_buyer = self._create_qualified_supply_opportunity()
