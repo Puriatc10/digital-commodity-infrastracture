@@ -35,6 +35,7 @@ class BrokerCandidateProvider:
                 commodities__commodity=context.commodity_id,
             )
             .exclude(id=context.rfq_owner_organization_id)
+            .select_related("verification")
             .prefetch_related("capabilities", "commodities", "operating_areas__area")
             .distinct()
             .order_by("id")
@@ -45,6 +46,10 @@ class BrokerCandidateProvider:
             # Deterministic capability and commodity sorting
             caps = sorted({c.capability for c in org.capabilities.all()})
             comm_ids = sorted({str(c.commodity_id) for c in org.commodities.all()})
+
+            # Broker organization verification status (absent record maps to unverified)
+            org_ver = getattr(org, "verification", None)
+            org_verification_status = org_ver.status if org_ver else "unverified"
 
             # Explicit operating areas only; no HQ or registered country inference
             sorted_operating_areas = sorted(
@@ -71,6 +76,7 @@ class BrokerCandidateProvider:
             evidence = {
                 "organization_id": str(org.id),
                 "organization_name": org.name,
+                "verification_status": org_verification_status,
                 "capabilities": caps,
                 "supported_commodity_ids": comm_ids,
                 "quantity": None,

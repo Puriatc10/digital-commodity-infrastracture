@@ -2,7 +2,7 @@ from dataclasses import asdict, dataclass
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from matching.enums import SignalOutcome
+from matching.enums import SignalDimension, SignalOutcome
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class RuleResult:
     reason_code: str = ""
     expected: Optional[Dict[str, Any]] = None
     actual: Optional[Dict[str, Any]] = None
+    dimension: Optional[str] = None
 
     def __post_init__(self):
         if self.outcome not in SignalOutcome.values:
@@ -29,6 +30,10 @@ class RuleResult:
         if self.raw_score is not None:
             if not (Decimal("0.0000") <= self.raw_score <= Decimal("1.0000")):
                 raise ValueError(f"raw_score must be between 0 and 1, got {self.raw_score}.")
+        if self.dimension is not None and self.dimension not in SignalDimension.values:
+            raise ValueError(
+                f"Invalid dimension '{self.dimension}'. Must be one of: {', '.join(SignalDimension.values)}."
+            )
 
     @property
     def is_eligible(self) -> bool:

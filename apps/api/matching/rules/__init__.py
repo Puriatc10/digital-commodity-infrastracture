@@ -24,10 +24,18 @@ from matching.rules.specification import (
     materialize_attribute_snapshots,
     materialize_specification_rules,
 )
+from matching.rules.trust import (
+    DEFAULT_VERIFICATION_RULES,
+    TrustReasonCode,
+    VerificationRuleSnapshot,
+    evaluate_trust,
+    materialize_verification_rules,
+)
 
 __all__ = [
     "AttributeDefinitionSnapshot",
     "CandidateGeographySnapshot",
+    "DEFAULT_VERIFICATION_RULES",
     "GeographicEvidenceRole",
     "GeographyConstraintMode",
     "GeographyConstraintSnapshot",
@@ -36,6 +44,8 @@ __all__ = [
     "SpecificationReasonCode",
     "SpecificationRuleSnapshot",
     "TargetGeographySnapshot",
+    "TrustReasonCode",
+    "VerificationRuleSnapshot",
     "check_attribute_snapshot_compatibility",
     "evaluate_availability",
     "evaluate_candidate_specifications",
@@ -46,7 +56,10 @@ __all__ = [
     "evaluate_quantity",
     "evaluate_self_match",
     "evaluate_specifications",
+    "evaluate_trust",
     "materialize_attribute_snapshots",
     "materialize_specification_rules",
+    "materialize_verification_rules",
 ]
+
 
