@@ -134,6 +134,61 @@ class CommoditySchemaVersion(models.Model):
         return f"{self.commodity.code} v{self.version} ({self.get_status_display()})"
 
 
+class CommodityAttributeSemanticIdentity(models.Model):
+    """
+    Explicit, stable semantic identity for commodity technical attributes.
+
+    Decouples attribute meaning from mutable presentation metadata (labels),
+    schema keys, and data types. Enables safe cross-schema comparison
+    across distinct CommoditySchemaVersions.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    commodity = models.ForeignKey(
+        CommodityDefinition,
+        on_delete=models.CASCADE,
+        related_name="semantic_identities",
+        help_text="The commodity definition this semantic identity belongs to.",
+    )
+    code = models.CharField(
+        max_length=100,
+        help_text="Explicit canonical identifier for this semantic identity within the commodity.",
+    )
+    name_fa = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Persian description of the semantic concept.",
+    )
+    name_en = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="English description of the semantic concept.",
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Optional technical description of the semantic concept and measurement criteria.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["commodity", "code"],
+                name="unique_commodity_semantic_identity_code",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["commodity", "code"], name="idx_attr_semantic_id_code"),
+        ]
+        ordering = ["commodity", "code"]
+
+    def __str__(self):
+        return f"{self.commodity.code}:{self.code}"
+
+
 class CommodityAttributeDefinition(models.Model):
     class DataType(models.TextChoices):
         STRING = "string", "String"
@@ -144,6 +199,14 @@ class CommodityAttributeDefinition(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     schema_version = models.ForeignKey(CommoditySchemaVersion, on_delete=models.CASCADE, related_name="attributes")
+    semantic_identity = models.ForeignKey(
+        CommodityAttributeSemanticIdentity,
+        on_delete=models.CASCADE,
+        related_name="attribute_definitions",
+        null=True,
+        blank=True,
+        help_text="Explicit semantic identity for cross-schema matching.",
+    )
 
     key = models.CharField(max_length=100, help_text="Canonical machine-readable key")
     label_fa = models.CharField(max_length=255, help_text="Persian label")
@@ -163,13 +226,33 @@ class CommodityAttributeDefinition(models.Model):
 
     def clean(self):
         super().clean()
-        original_id = CommodityAttributeDefinition.objects.filter(pk=self.pk).values_list("schema_version_id", flat=True).first()
-        parents = CommoditySchemaVersion.objects.filter(pk__in=[original_id, self.schema_version_id])
+        original = CommodityAttributeDefinition.objects.filter(pk=self.pk).select_related("schema_version").first()
+        original_id = original.schema_version_id if original else None
+        parents = CommoditySchemaVersion.objects.filter(pk__in=[p for p in [original_id, self.schema_version_id] if p])
         if parents.exclude(status=CommoditySchemaVersion.SchemaStatus.DRAFT).exists():
             raise ValidationError("Cannot change attributes of a published or retired schema.")
 
+        if self.semantic_identity_id:
+            schema = CommoditySchemaVersion.objects.filter(pk=self.schema_version_id).first()
+            if schema and self.semantic_identity.commodity_id != schema.commodity_id:
+                raise ValidationError({"semantic_identity": "Semantic identity must belong to the same commodity as the schema version."})
+
+        if original and original.schema_version.status != CommoditySchemaVersion.SchemaStatus.DRAFT:
+            if original.semantic_identity_id != self.semantic_identity_id:
+                raise ValidationError({"semantic_identity": "Cannot modify semantic identity of a published or retired schema attribute."})
+
     @transaction.atomic
     def save(self, *args, **kwargs):
+        if not self.semantic_identity_id and self.schema_version_id:
+            schema = CommoditySchemaVersion.objects.filter(pk=self.schema_version_id).select_related("commodity").first()
+            if schema:
+                code = f"{self.key}_{uuid.uuid4().hex[:8]}"
+                self.semantic_identity = CommodityAttributeSemanticIdentity.objects.create(
+                    commodity=schema.commodity,
+                    code=code,
+                    name_fa=self.label_fa or "",
+                    name_en=self.label_en or "",
+                )
         original_id = CommodityAttributeDefinition.objects.filter(pk=self.pk).values_list("schema_version_id", flat=True).first()
         lock_commodities(CommoditySchemaVersion.objects.filter(pk__in=[original_id, self.schema_version_id]).values_list("commodity_id", flat=True))
         list(CommoditySchemaVersion.objects.select_for_update().filter(pk__in=[original_id, self.schema_version_id]).order_by("pk"))
@@ -202,6 +285,7 @@ class CommodityAttributeDefinition(models.Model):
 @receiver(pre_delete, sender=CommodityDefinition)
 @receiver(pre_delete, sender=CommoditySchemaVersion)
 @receiver(pre_delete, sender=CommodityAttributeDefinition)
+@receiver(pre_delete, sender=CommodityAttributeSemanticIdentity)
 def protect_historical_deletion(sender, instance, **kwargs):
     # Django's collector calls signals for model, queryset, Admin and cascade deletes.
     if sender is CommodityDefinition:
@@ -210,11 +294,21 @@ def protect_historical_deletion(sender, instance, **kwargs):
     elif sender is CommoditySchemaVersion:
         commodity_id = instance.commodity_id
         schemas = CommoditySchemaVersion.objects.filter(pk=instance.pk)
+    elif sender is CommodityAttributeSemanticIdentity:
+        commodity_id = instance.commodity_id
+        schemas = CommoditySchemaVersion.objects.filter(
+            attributes__semantic_identity_id=instance.pk
+        )
+        if schemas.exclude(status=CommoditySchemaVersion.SchemaStatus.DRAFT).exists():
+            raise ValidationError("Cannot delete published or retired schema history.")
+        if instance.attribute_definitions.exists():
+            raise ValidationError("Cannot delete semantic identity referenced by schema attributes.")
     else:
         schema_id = CommodityAttributeDefinition.objects.filter(pk=instance.pk).values_list("schema_version_id", flat=True).first()
         schemas = CommoditySchemaVersion.objects.filter(pk=schema_id)
         commodity_id = schemas.values_list("commodity_id", flat=True).first()
-    lock_commodities([commodity_id])
+    if commodity_id:
+        lock_commodities([commodity_id])
     list(schemas.select_for_update().order_by("pk"))
     if schemas.exclude(status=CommoditySchemaVersion.SchemaStatus.DRAFT).exists():
         raise ValidationError("Cannot delete published or retired schema history.")

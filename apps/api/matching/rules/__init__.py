@@ -13,19 +13,40 @@ from matching.rules.lifecycle import evaluate_lifecycle
 from matching.rules.quantity import evaluate_quantity
 from matching.rules.result import RuleResult
 from matching.rules.self_match import evaluate_self_match
+from matching.rules.specification import (
+    AttributeDefinitionSnapshot,
+    SpecificationEvaluationResult,
+    SpecificationReasonCode,
+    SpecificationRuleSnapshot,
+    check_attribute_snapshot_compatibility,
+    evaluate_candidate_specifications,
+    evaluate_specifications,
+    materialize_attribute_snapshots,
+    materialize_specification_rules,
+)
 
 __all__ = [
+    "AttributeDefinitionSnapshot",
     "CandidateGeographySnapshot",
     "GeographicEvidenceRole",
     "GeographyConstraintMode",
     "GeographyConstraintSnapshot",
     "RuleResult",
+    "SpecificationEvaluationResult",
+    "SpecificationReasonCode",
+    "SpecificationRuleSnapshot",
     "TargetGeographySnapshot",
+    "check_attribute_snapshot_compatibility",
     "evaluate_availability",
+    "evaluate_candidate_specifications",
     "evaluate_capability",
     "evaluate_commodity",
     "evaluate_geography",
     "evaluate_lifecycle",
     "evaluate_quantity",
     "evaluate_self_match",
+    "evaluate_specifications",
+    "materialize_attribute_snapshots",
+    "materialize_specification_rules",
 ]
+

@@ -10,6 +10,10 @@ from matching.models.candidate import MatchingCandidate
 from matching.models.policy import MatchingPolicy, MatchingPolicyVersion
 from matching.models.run import MatchingRun
 from matching.models.signal import MatchingSignal
+from matching.models.specification_rule import (
+    SpecificationMatchingRule,
+    SpecificationRuleOperator,
+)
 
 __all__ = [
     "CandidateKind",
@@ -23,4 +27,6 @@ __all__ = [
     "PolicyLifecycleStatus",
     "SignalDimension",
     "SignalOutcome",
+    "SpecificationMatchingRule",
+    "SpecificationRuleOperator",
 ]
