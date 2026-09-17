@@ -4255,7 +4255,7 @@ export interface operations {
                 page_size?: number;
                 /** @description Filter by opportunity origin source (e.g. broker_referral, operator_sourcing). */
                 source?: string;
-                /** @description Filter by opportunity status (e.g. Captured). */
+                /** @description Filter by opportunity status (e.g. Captured, or 'active' for active non-terminal opportunities). */
                 status?: string;
             };
             header?: never;

@@ -24,11 +24,13 @@ export function ShellNavigation({
   const tradeHubHref = `/${locale}/trade-hub`;
   const directoryHref = `/${locale}/directory`;
   const queueHref = `/${locale}/operator/verification`;
+  const opportunitiesHref = `/${locale}/opportunities`;
 
   const isHomeActive = pathname === homeHref;
   const isTradeHubActive = pathname.startsWith(tradeHubHref);
   const isDirectoryActive = pathname.startsWith(directoryHref);
   const isQueueActive = pathname.startsWith(queueHref);
+  const isOpportunitiesActive = pathname.startsWith(opportunitiesHref);
 
   const getLinkClasses = (isActive: boolean) =>
     isActive
@@ -65,14 +67,24 @@ export function ShellNavigation({
       </Link>
 
       {isOperatorOrAdmin && (
-        <Link
-          href={queueHref}
-          aria-current={isQueueActive ? "page" : undefined}
-          className={getLinkClasses(isQueueActive)}
-        >
-          {isQueueActive && <span aria-hidden="true" className="size-2 rounded-sm bg-primary" />}
-          {messages.verificationQueue}
-        </Link>
+        <>
+          <Link
+            href={opportunitiesHref}
+            aria-current={isOpportunitiesActive ? "page" : undefined}
+            className={getLinkClasses(isOpportunitiesActive)}
+          >
+            {isOpportunitiesActive && <span aria-hidden="true" className="size-2 rounded-sm bg-primary" />}
+            {messages.opportunityDesk}
+          </Link>
+          <Link
+            href={queueHref}
+            aria-current={isQueueActive ? "page" : undefined}
+            className={getLinkClasses(isQueueActive)}
+          >
+            {isQueueActive && <span aria-hidden="true" className="size-2 rounded-sm bg-primary" />}
+            {messages.verificationQueue}
+          </Link>
+        </>
       )}
     </nav>
   );
