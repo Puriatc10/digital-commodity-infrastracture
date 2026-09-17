@@ -4,6 +4,7 @@ import uuid
 
 from matching.enums import CandidateKind, CandidateLane
 from matching.rules.geography import CandidateGeographySnapshot, GeographicEvidenceRole
+from matching.rules.trust import CandidateTrustSnapshot
 
 
 @dataclass(frozen=True)
@@ -150,3 +151,34 @@ class CandidateSnapshot:
             has_only_free_text=geo.get("has_only_free_text", False),
             organization_hq_only=geo.get("organization_hq_only", False),
         )
+
+    def to_candidate_trust_snapshot(self) -> "CandidateTrustSnapshot":
+        """
+        Extract normalized trust and verification evidence for the T0704 evaluate_trust rule.
+        Guarantees deterministic, audience-safe evaluation without live DB traversal.
+        """
+        if self.candidate_kind == CandidateKind.SUPPLY_OPPORTUNITY:
+            cp = self.evidence.get("counterparty") or {}
+            is_external = bool(cp.get("is_external"))
+            v_status = cp.get("verification_status") if not is_external else None
+            org_id = cp.get("organization_id")
+            broker_attr = self.evidence.get("broker_attribution")
+            return CandidateTrustSnapshot(
+                candidate_kind=self.candidate_kind,
+                is_external=is_external,
+                verification_status=v_status,
+                organization_id=org_id,
+                broker_attribution=broker_attr,
+            )
+
+        # SUPPLY_LISTING, SUPPLIER_ORGANIZATION, BROKER_ORGANIZATION
+        org_id = self.evidence.get("organization_id")
+        v_status = self.evidence.get("verification_status")
+        return CandidateTrustSnapshot(
+            candidate_kind=self.candidate_kind,
+            is_external=False,
+            verification_status=v_status,
+            organization_id=org_id,
+            broker_attribution=None,
+        )
+

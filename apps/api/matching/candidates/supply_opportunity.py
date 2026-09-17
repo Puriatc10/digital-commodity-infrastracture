@@ -55,11 +55,13 @@ class SupplyOpportunityCandidateProvider:
             .exclude(organization_id=context.rfq_owner_organization_id)
             .select_related(
                 "organization",
+                "organization__verification",
                 "external_counterparty",
                 "commodity",
                 "schema_version",
                 "origin_area",
                 "broker",
+                "broker__verification",
             )
             .order_by("id")
         )
@@ -92,21 +94,32 @@ class SupplyOpportunityCandidateProvider:
                     "external_counterparty_id": str(opp.external_counterparty_id),
                     "counterparty_name": opp.external_counterparty.company_name,
                     "organization_id": None,
+                    "verification_status": None,
                 }
             else:
+                opp_ver = (
+                    getattr(opp.organization, "verification", None)
+                    if opp.organization
+                    else None
+                )
+                opp_ver_status = opp_ver.status if opp_ver else "unverified"
                 counterparty_data = {
                     "is_external": False,
                     "external_counterparty_id": None,
                     "organization_id": str(opp.organization_id),
                     "counterparty_name": opp.organization.name if opp.organization else "",
+                    "verification_status": opp_ver_status,
                 }
 
-            # Optional broker attribution (Operator visibility only, no trust scoring in T0706)
+            # Optional broker attribution (Operator visibility only, counterparty trust isolated)
             broker_attribution = None
             if opp.broker_id and opp.broker:
+                broker_ver = getattr(opp.broker, "verification", None)
+                broker_status = broker_ver.status if broker_ver else "unverified"
                 broker_attribution = {
                     "broker_id": str(opp.broker_id),
                     "broker_name": opp.broker.name,
+                    "verification_status": broker_status,
                 }
 
             evidence = {

@@ -14,6 +14,7 @@ from matching.models.specification_rule import (
     SpecificationMatchingRule,
     SpecificationRuleOperator,
 )
+from matching.models.verification_rule import VerificationMatchingRule
 
 __all__ = [
     "CandidateKind",
@@ -29,4 +30,5 @@ __all__ = [
     "SignalOutcome",
     "SpecificationMatchingRule",
     "SpecificationRuleOperator",
+    "VerificationMatchingRule",
 ]

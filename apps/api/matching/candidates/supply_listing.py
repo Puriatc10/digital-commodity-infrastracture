@@ -38,7 +38,13 @@ class SupplyListingCandidateProvider:
                 commodity_id=context.commodity_id,
             )
             .exclude(organization_id=context.rfq_owner_organization_id)
-            .select_related("organization", "commodity", "schema_version", "origin_area")
+            .select_related(
+                "organization",
+                "organization__verification",
+                "commodity",
+                "schema_version",
+                "origin_area",
+            )
             .order_by("id")
         )
 
@@ -62,10 +68,15 @@ class SupplyListingCandidateProvider:
                 "organization_hq_only": False,
             }
 
+            # Verification status from owning organization (absent record maps to unverified)
+            org_ver = getattr(listing.organization, "verification", None)
+            org_verification_status = org_ver.status if org_ver else "unverified"
+
             # Matching-relevant evidence only (no phone/email, internal notes, credentials, or docs)
             evidence = {
                 "organization_id": str(listing.organization_id),
                 "organization_name": listing.organization.name,
+                "verification_status": org_verification_status,
                 "commodity_id": str(listing.commodity_id),
                 "schema_version_id": str(listing.schema_version_id),
                 "schema_version_number": listing.schema_version.version,
