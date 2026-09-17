@@ -281,13 +281,13 @@ describe("T0612 — Opportunity Desk UI", () => {
         expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.follow_up_required, "i") })).toBeInTheDocument();
         expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.converted, "i") })).toBeInTheDocument();
         expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.lost, "i") })).toBeInTheDocument();
-      });
 
-      // Renders Opportunity items
-      expect(screen.getByText("OPP-2026-0001")).toBeInTheDocument();
-      expect(screen.getByText("OPP-2026-0002")).toBeInTheDocument();
-      expect(screen.getAllByText(oppMsg.direction.Demand).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(oppMsg.direction.Supply).length).toBeGreaterThan(0);
+        // Renders Opportunity items
+        expect(screen.getByText("OPP-2026-0001")).toBeInTheDocument();
+        expect(screen.getByText("OPP-2026-0002")).toBeInTheDocument();
+        expect(screen.getAllByText(oppMsg.direction.Demand).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(oppMsg.direction.Supply).length).toBeGreaterThan(0);
+      });
     });
 
     it("switching views triggers backend-driven query parameters", async () => {
@@ -622,13 +622,13 @@ describe("T0612 — Opportunity Desk UI", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole("button", { name: new RegExp(oppMsg.actions.convertToRfq, "i") })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /تبدیل به استعلام خرید/i })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: new RegExp(oppMsg.actions.convertToRfq, "i") }));
+      fireEvent.click(screen.getByRole("button", { name: /تبدیل به استعلام خرید/i }));
 
       await waitFor(() => {
-        expect(screen.getByText(oppMsg.modals.convertRfqTitle)).toBeInTheDocument();
+        expect(screen.getByText(/تبدیل تقاضا به استعلام خرید/i)).toBeInTheDocument();
       });
 
       // Fill external buyer org id
