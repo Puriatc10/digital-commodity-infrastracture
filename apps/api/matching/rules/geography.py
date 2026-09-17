@@ -94,18 +94,23 @@ def _determine_relation(
     c_id, c_code = _get_area_identity(candidate_area)
     t_id, t_code = _get_area_identity(target_area)
 
+    c_id_str = str(c_id) if c_id is not None else None
+    t_id_str = str(t_id) if t_id is not None else None
+
     # 1. Exact match
-    if (c_id and t_id and c_id == t_id) or (c_code and t_code and c_code == t_code):
+    if (c_id and t_id and (c_id == t_id or c_id_str == t_id_str)) or (c_code and t_code and c_code == t_code):
         return _AreaRelation.EXACT
 
     # 2. Candidate ancestors vs Target
     c_ancestor_ids, c_ancestor_codes = _get_ancestor_ids_and_codes(candidate_area, ancestor_lookup)
-    if (t_id and t_id in c_ancestor_ids) or (t_code and t_code in c_ancestor_codes):
+    c_ancestor_ids_str = {str(x) for x in c_ancestor_ids}
+    if (t_id and (t_id in c_ancestor_ids or t_id_str in c_ancestor_ids_str)) or (t_code and t_code in c_ancestor_codes):
         return _AreaRelation.DESCENDANT
 
     # 3. Target ancestors vs Candidate
     t_ancestor_ids, t_ancestor_codes = _get_ancestor_ids_and_codes(target_area, ancestor_lookup)
-    if (c_id and c_id in t_ancestor_ids) or (c_code and c_code in t_ancestor_codes):
+    t_ancestor_ids_str = {str(x) for x in t_ancestor_ids}
+    if (c_id and (c_id in t_ancestor_ids or c_id_str in t_ancestor_ids_str)) or (c_code and c_code in t_ancestor_codes):
         return _AreaRelation.ANCESTOR
 
     return _AreaRelation.DISJOINT
