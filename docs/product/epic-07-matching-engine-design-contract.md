@@ -1,6 +1,9 @@
 # Epic 7 — Matching Engine
 
-## Design Contract, Owner Policies, Architectural Invariants & Review Requirements
+## Design Contract, Owner Policies, Geography Foundation, Architectural Invariants & Review Requirements
+
+**Revision:** 2 — Hierarchical Geography / Domestic Pilot Ready  
+**Status:** Owner-approved design contract for Epic 7 implementation
 
 این سند قرارداد طراحی اپیک ۷ است و باید پیش از شروع پیاده‌سازی تسک‌های این اپیک، منبع حقیقت فنی و محصولی آن در کنار Product Specification، Roadmap، ADRها و قرارداد طراحی اپیک ۳ باشد.
 
@@ -129,7 +132,7 @@ AI matching
 
 # 4. Owner-approved v1 Policies
 
-هشت policy زیر برای نسخه اول قطعی هستند.
+هشت policy زیر برای نسخه اول قطعی هستند و implementation نباید بدون Product Owner decision آن‌ها را تغییر دهد.
 
 ## 4.1 Matching Target
 
@@ -155,16 +158,40 @@ Demand Opportunity
 
 ## 4.2 Geography
 
-Geography فقط در صورت نقض constraint صریح، Hard Failure است.
+Geography در v1 یک hierarchy عمومی platform-level است، نه یک country string و نه logic مخصوص ایران.
+
+حداقل hierarchy:
+
+```text
+Country
+  ↓
+Administrative Area / Province / State
+  ↓
+City
+```
+
+برای Pilot داخلی ایران، province-to-province و city-to-city matching باید first-class باشد.
+
+Policy اصلی:
 
 ```text
 Explicit mandatory geography violation
 → INELIGIBLE
 ```
 
-در غیر این صورت geography یک signal نرم یا Unknown است.
+در غیر این صورت geography می‌تواند:
 
-نباید از country/destination به‌تنهایی logistics intelligence جعلی استخراج شود.
+```text
+SOFT
+UNKNOWN
+NOT_APPLICABLE
+```
+
+باشد.
+
+Matching باید ancestor/descendant containment را بفهمد؛ مثلاً شهریار داخل استان تهران است.
+
+در v1 هیچ route distance، road distance، freight estimate یا PostGIS-based logistics intelligence از geography استنتاج نمی‌شود.
 
 ## 4.3 Partial Quantity
 
@@ -192,7 +219,7 @@ Historical Signals                5
                                  100
 ```
 
-در سطح محصول می‌توان Quantity + Availability را یک بلوک 25 درصدی در نظر گرفت؛ در محاسبه v1 این بلوک به 10 و 15 تفکیک می‌شود.
+Commodity و Capability داخل score نیستند؛ eligibility gate هستند.
 
 ## 4.5 Verification
 
@@ -207,19 +234,17 @@ Unverified             → 0.00
 Suspended              → HARD EXCLUDE
 ```
 
-برای ExternalCounterparty که verification platform-level ندارد:
+برای ExternalCounterparty:
 
 ```text
 Trust = UNKNOWN
 ```
 
-نباید ExternalCounterparty را به‌صورت خودکار معادل Unverified Organization در نظر گرفت.
+ExternalCounterparty نباید به‌صورت خودکار معادل Unverified Organization در نظر گرفته شود.
 
 ## 4.6 Buyer Visibility
 
 Qualified External Opportunity یک internal operational object است.
-
-Buyer نباید اطلاعات داخلی آن را از Matching ببیند.
 
 ```text
 Operator / Product Admin
@@ -229,7 +254,9 @@ Buyer
 → does not receive Qualified Opportunity candidates
 ```
 
-Buyer فقط پس از تبدیل آن lead به یک artifact مناسب Buyer مانند Supply Listing یا Offer می‌تواند با آن supply وارد flow شود.
+Buyer فقط بعد از تبدیل آن lead به artifact مناسب Buyer مانند Supply Listing یا Offer می‌تواند آن supply را در flow خود ببیند.
+
+این exclusion باید در Candidate Provider رخ دهد، نه frontend hiding.
 
 ## 4.7 Cross-schema Matching
 
@@ -868,50 +895,488 @@ Engine نباید تاریخ حدسی تولید کند.
 
 ---
 
-# 24. Geography Matching
+# 24. Hierarchical Geography Matching
 
-Geography در v1 logistics engine نیست.
+Geography در v1 باید برای procurement داخلی و بین‌المللی قابل استفاده باشد، بدون اینکه engine به ایران یا نام شهرها hard-code شود.
 
-## Hard Geography
+## 24.1 Geography Is a Platform Reference Domain
 
-فقط constraintهای صریح مانند موارد زیر Hard هستند:
+Geography یک concern مشترک platform است و بعداً باید در این domainها قابل reuse باشد:
 
 ```text
-required origin
-allowed origin set
-excluded origin
-explicit operating geography requirement
+Organization
+RFQ
+Supply Listing
+Opportunity
+Execution / Logistics
 ```
 
-Violation:
+پیشنهاد implementation:
+
+```text
+apps/api/geography/
+```
+
+یا module هم‌ارز مطابق conventions repository.
+
+Matching consumer این foundation است؛ مالک business meaning آن نیست.
+
+## 24.2 GeographicArea
+
+مدل مفهومی:
+
+```text
+GeographicArea
+```
+
+حداقل fields:
+
+```text
+id
+code
+area_type
+parent
+country_code
+name_fa
+name_en
+is_active
+created_at
+updated_at
+```
+
+Supported types در v1:
+
+```text
+COUNTRY
+ADMINISTRATIVE_AREA
+CITY
+```
+
+`ADMINISTRATIVE_AREA` باید مفاهیمی مثل Province / State / Governorate / Region را پوشش دهد.
+
+Engine نباید واژه «استان» را hard-code کند.
+
+## 24.3 Stable Identity, Not Label Matching
+
+Business logic نباید روی label فارسی/انگلیسی اجرا شود.
+
+غلط:
+
+```python
+if area.name_fa == "تهران":
+    ...
+```
+
+صحیح:
+
+```text
+stable GeographicArea identity
++ parent/ancestor relationship
+```
+
+تا جای ممکن country/admin codes از canonical stable standards استفاده کنند؛ city code باید stable و machine-readable باشد.
+
+## 24.4 Hierarchy Integrity
+
+Hierarchy باید جلوی موارد زیر را بگیرد:
+
+```text
+self-parent
+cycles
+cross-country parent chains
+duplicate canonical codes
+invalid type hierarchy
+```
+
+Constraints cross-row در service/domain layer enforce می‌شوند؛ relational constraints تا جای ممکن در PostgreSQL قرار می‌گیرند.
+
+## 24.5 Domestic Iran Pilot
+
+Design باید استفاده داخلی ایران را first-class پشتیبانی کند.
+
+مثال:
+
+```text
+Iran
+└── Tehran Province
+    ├── Tehran
+    └── Shahriar
+```
+
+و:
+
+```text
+Iran
+└── Hormozgan Province
+    └── Bandar Abbas
+```
+
+Seed پیشنهادی:
+
+```text
+Iran country node
+all Iranian provinces needed for pilot
+pilot cities used in demo/operations
+```
+
+ترجیحاً تمام استان‌های ایران deterministic/idempotent seed شوند و city dataset به‌صورت کنترل‌شده قابل گسترش باشد.
+
+اضافه کردن شهر جدید باید data change باشد، نه engine code change.
+
+## 24.6 Geographic Evidence Roles
+
+Locationها semantics متفاوت دارند و نباید با هم یکی شوند.
+
+حداقل roles:
+
+```text
+SUPPLY_LOCATION
+OPERATING_AREA
+ORIGIN_REQUIREMENT
+DESTINATION
+```
+
+### SUPPLY_LOCATION
+
+مکان گزارش‌شده supply واقعی.
+
+### OPERATING_AREA
+
+ناحیه‌ای که Supplier/Broker explicitly اعلام کرده در آن فعالیت می‌کند.
+
+### ORIGIN_REQUIREMENT
+
+Constraint سمت demand.
+
+### DESTINATION
+
+مقصد RFQ.
+
+Destination به‌تنهایی route compatibility یا freight score تولید نمی‌کند.
+
+## 24.7 Organization Headquarters Is Not Supply Availability
+
+این invariant حیاتی است:
+
+```text
+Organization registered location
+≠ Supply availability
+≠ Operating coverage
+```
+
+Registered country/province نباید silently به supply location یا operating area تبدیل شود.
+
+اگر Potential Supplier/Broker geography ranking لازم است، explicit operating-area data باید وجود داشته باشد؛ در غیر این صورت geography signal:
+
+```text
+UNKNOWN
+```
+
+است.
+
+## 24.8 Point-like vs Coverage Semantics
+
+برای `SUPPLY_LOCATION` relation اصلی:
+
+```text
+candidate location
+is within
+target/constraint area
+```
+
+برای `OPERATING_AREA` relation اصلی:
+
+```text
+candidate coverage area
+covers
+target area
+```
+
+این دو relation یکسان نیستند.
+
+مثال:
+
+```text
+Supply location = Shahriar
+Required area = Tehran Province
+→ PASS
+```
+
+ولی:
+
+```text
+Supply location known only as Tehran Province
+Required area = Tehran City
+→ UNKNOWN
+```
+
+زیرا location broad‌تر از target است و presence در شهر خاص را ثابت نمی‌کند.
+
+در مقابل:
+
+```text
+Operating area = Tehran Province
+Target = Tehran City
+→ PASS / relevant
+```
+
+چون operating area semantics coverage دارد.
+
+## 24.9 Constraint Modes
+
+Matching context حداقل باید این modes را پشتیبانی کند:
+
+```text
+REQUIRED
+ALLOWED
+PREFERRED
+EXCLUDED
+```
+
+### REQUIRED
+
+Known violation:
 
 ```text
 HARD FAIL
 ```
 
-## Soft Geography
-
-Preferenceهای صریح غیرالزامی می‌توانند score تولید کنند.
-
-مثلاً:
-
-```text
-preferred origin match
-→ 1.0
-
-known preference mismatch
-→ 0.0
-```
-
-## Unknown Geography
-
-داشتن destination و country supplier به‌تنهایی مجوز ساختن route score یا freight score نیست.
-
-در نبود semantics صریح:
+Insufficient evidence:
 
 ```text
 UNKNOWN
 ```
+
+### ALLOWED
+
+اگر allow-list تعریف شده باشد، Candidate known outside set:
+
+```text
+HARD FAIL
+```
+
+### PREFERRED
+
+Mismatch:
+
+```text
+SOFT
+```
+
+### EXCLUDED
+
+Candidate داخل excluded subtree:
+
+```text
+HARD FAIL
+```
+
+## 24.10 Multi-area Semantics
+
+وقتی چند area در یک constraint group تعریف می‌شوند، v1 default:
+
+```text
+ANY-OF
+```
+
+است.
+
+مثال:
+
+```text
+Allowed:
+Tehran Province
+Alborz Province
+Qom Province
+```
+
+Candidate داخل هر کدام acceptable است.
+
+## 24.11 Exact / Contained / Covered / Unknown
+
+Engine باید relation را structured نگه دارد.
+
+مثال‌ها:
+
+```text
+Target = Tehran City
+Candidate = Tehran City
+→ EXACT
+```
+
+```text
+Target = Tehran Province
+Candidate = Shahriar
+→ CONTAINED / PASS
+```
+
+```text
+Target = Tehran City
+Point-like Candidate = Tehran Province
+→ UNKNOWN
+```
+
+```text
+Target = Tehran City
+Operating Coverage = Tehran Province
+→ COVERED / PASS
+```
+
+## 24.12 Hard Geography Examples
+
+```text
+Required origin = Tehran Province
+Supply location = Shahriar
+→ PASS
+```
+
+```text
+Required origin = Tehran Province
+Supply location = Isfahan City
+→ HARD FAIL
+```
+
+```text
+Excluded = Hormozgan Province
+Supply location = Bandar Abbas
+→ HARD FAIL
+```
+
+## 24.13 Soft Geography Examples
+
+```text
+Preferred = Tehran Province
+Supply location = Shahriar
+→ raw_score = 1.0
+```
+
+```text
+Preferred = Tehran Province
+Supply location = Isfahan City
+→ raw_score = 0.0
+→ candidate remains eligible
+```
+
+```text
+Preferred = Tehran Province
+Supply location = unknown
+→ UNKNOWN
+```
+
+## 24.14 NOT_APPLICABLE
+
+اگر RFQ هیچ geography requirement/preference مرتبطی ندارد:
+
+```text
+Geography = NOT_APPLICABLE
+```
+
+نه `UNKNOWN`.
+
+Candidate نباید بابت requirementی که وجود ندارد Evidence Coverage از دست بدهد.
+
+## 24.15 No Free-text Geography Matching
+
+اگر record فقط string location داشته باشد:
+
+```text
+"تهران"
+"Tehran"
+"استان تهران"
+```
+
+Matching نباید fuzzy/string matching انجام دهد.
+
+در نبود structured GeographicArea:
+
+```text
+Geography = UNKNOWN
+```
+
+## 24.16 Backward-compatible Integration
+
+اگر RFQ/Supply/Opportunityهای قبلی free-text location دارند:
+
+- fieldهای موجود destructive حذف نشوند؛
+- structured GeographicArea references additive باشند؛
+- old record همچنان render شود؛
+- matching structured data را authoritative بداند؛
+- migration فقط وقتی area equivalence قابل اثبات است backfill کند؛
+- ambiguous strings به UNKNOWN تبدیل شوند، نه guessed mapping.
+
+## 24.17 Matching-relevant Structured References
+
+نام field دقیق باید با codebase هنگام implementation هماهنگ شود، اما semantics حداقل این‌هاست:
+
+```text
+RFQ
+→ origin area / destination area / geography constraints
+
+Supply Listing
+→ supply area
+
+Qualified Supply Opportunity
+→ supply area when known
+
+Supplier/Broker Organization
+→ explicit operating areas when available
+```
+
+## 24.18 OrganizationOperatingArea
+
+برای relevance استان/شهر در Potential Supplier و Broker lanes، relation explicit پیشنهاد می‌شود:
+
+```text
+OrganizationOperatingArea
+```
+
+حداقل:
+
+```text
+organization
+area
+created_at
+```
+
+این relation inventory یا quantity اثبات‌شده نیست.
+
+## 24.19 Geography Read API
+
+حداقل read-only API برای selector/filter لازم است:
+
+```text
+GET /api/geography/areas/
+GET /api/geography/areas/{id}/
+```
+
+Filters می‌توانند شامل:
+
+```text
+country
+parent
+type
+search
+```
+
+باشند.
+
+No public geography write API در Epic 7 لازم نیست.
+
+## 24.20 No GIS / Logistics Inference in v1
+
+ممنوع در Epic 7 v1:
+
+```text
+PostGIS routing
+road distance
+travel time
+freight estimate
+border cost
+port routing
+map-based procurement scoring
+```
+
+اگر later لازم شد، logistics provider جدا می‌تواند signal جدید بسازد.
 
 ---
 
@@ -2289,11 +2754,33 @@ runtime
 
 # 88. Deterministic Seed Policy
 
-Epic 7 باید default Published Matching Policy v1 را به‌شکل deterministic/idempotent ایجاد کند.
+Epic 7 باید seedهای deterministic/idempotent برای این موارد داشته باشد:
 
-Seed نباید Published historical policy را overwrite کند.
+```text
+Published Matching Policy v1
+Geographic reference data required for the pilot
+```
 
-اگر policy v1 وجود دارد و semantics متفاوت است، seed باید conflict را report کند، نه silently mutate کند.
+Matching Policy seed نباید Published historical policy را overwrite کند.
+
+Geography seed باید حداقل:
+
+```text
+Iran country node
+required Iranian provinces
+pilot cities used by demo/operations
+```
+
+را به‌صورت stable code + hierarchy ایجاد کند.
+
+ترجیحاً تمام استان‌های ایران در seed پایه وجود داشته باشند و شهرها incrementally با data اضافه شوند.
+
+Re-running seed:
+
+- duplicate area نسازد؛
+- parent relationship را silently rewrite نکند؛
+- renamed labels را با stable identity مدیریت کند؛
+- conflicting canonical code را explicit report کند.
 
 ---
 
@@ -2302,18 +2789,18 @@ Seed نباید Published historical policy را overwrite کند.
 ترتیب اجرایی پیشنهادی بر اساس dependency واقعی:
 
 ```text
-1. T0701 — Matching Candidate Model / Persistence Foundation
-2. T0706 — Candidate Sources
-3. T0702 — Core Matching Rules
+1. T0701 — Matching Candidate Model / Persistence & Policy Foundation
+2. T0702 — Core Matching Rules + Hierarchical Geography Foundation
+3. T0706 — Candidate Sources / Provider Integration
 4. T0703 — Dynamic Specification Matching
 5. T0704 — Trust / Verification Signals
 6. T0705 — Historical Signals
-7. T0707 — Explainable Scoring
+7. T0707 — Explainable Scoring & Matching Orchestration
 8. T0708 — Matching UI
 9. Epic 7 Adversarial Review Gate
 ```
 
-این ترتیب عمداً با ترتیب عددی کامل یکسان نیست.
+T0702 عمداً قبل از T0706 اجرا می‌شود تا Candidate Providers از ابتدا روی structured geography contract snapshot بسازند و بعداً از string-based geography به مدل جدید migrate نشوند.
 
 ---
 
@@ -2342,26 +2829,11 @@ MatchingPolicyVersion
 
 ---
 
-# 91. T0706 Allocation
+# 91. T0702 Allocation
 
-T0706 Candidate Providers را می‌سازد:
+T0702 مسئول Core Matching Rules و geography foundation است.
 
-```text
-SupplyListingCandidateProvider
-SupplyOpportunityCandidateProvider
-SupplierOrganizationCandidateProvider
-BrokerCandidateProvider
-```
-
-و باید authorization-before-scoring را اثبات کند.
-
-Buyer provider set و Operator provider set باید متفاوت باشند.
-
----
-
-# 92. T0702 Allocation
-
-T0702 Core rules:
+Core rules:
 
 ```text
 commodity
@@ -2373,9 +2845,57 @@ availability
 geography
 ```
 
-را پیاده می‌کند.
+Geography foundation حداقل شامل:
 
-Hard/Soft/Unknown semantics باید behavioral tests داشته باشد.
+```text
+GeographicArea
+hierarchy validation
+ancestor/descendant services
+read-only geography API
+Iran/province/pilot-city seed
+structured geography references required by matching
+OrganizationOperatingArea where needed
+geography rule evaluator
+```
+
+T0702 باید explicit tests برای:
+
+```text
+country → province → city
+REQUIRED / ALLOWED / PREFERRED / EXCLUDED
+point-like vs coverage semantics
+free-text fallback = UNKNOWN
+HQ != supply location
+```
+
+داشته باشد.
+
+No PostGIS، distance engine یا logistics routing.
+
+---
+
+# 92. T0706 Allocation
+
+T0706 Candidate Providers را می‌سازد:
+
+```text
+SupplyListingCandidateProvider
+SupplyOpportunityCandidateProvider
+SupplierOrganizationCandidateProvider
+BrokerCandidateProvider
+```
+
+Providers باید:
+
+- authorization-before-scoring را enforce کنند؛
+- Buyer و Operator candidate universe را جدا کنند؛
+- structured geography references را snapshot کنند؛
+- free-text geography را authoritative نکنند؛
+- Organization registered address را operating area فرض نکنند؛
+- source lifecycle را رعایت کنند؛
+- obvious N+1 ایجاد نکنند.
+
+Buyer provider set و Operator provider set باید behavioral tests متفاوت داشته باشند.
 
 ---
 
@@ -2502,9 +3022,25 @@ SQLite fallback ممنوع است.
 - commodity mismatch hard fail؛
 - partial quantity score؛
 - full quantity required hard fail؛
-- availability full/partial/no overlap؛
-- explicit geography fail؛
-- unknown geography.
+- availability full/partial/no overlap.
+
+## Hierarchical Geography
+
+- country → province → city hierarchy؛
+- stable code uniqueness؛
+- self-parent/cycle rejection؛
+- cross-country invalid parent rejection؛
+- city inside required province → PASS؛
+- city outside required province → HARD FAIL؛
+- broader point-like province vs required city → UNKNOWN؛
+- operating-area province covering target city → PASS؛
+- excluded province containing candidate city → HARD FAIL؛
+- preferred mismatch → soft score only؛
+- no target geography → NOT_APPLICABLE؛
+- missing structured candidate area → UNKNOWN؛
+- no matching by Persian/English label؛
+- registered HQ/country not inferred as supply location؛
+- Iran/province/pilot-city seed idempotency.
 
 ## Verification
 
@@ -2560,6 +3096,9 @@ Real PostgreSQL tests باید prove کنند:
 - Potential Supplier warning؛
 - Broker Relevance label؛
 - structured explanation rendering؛
+- hierarchical geography display such as city + province + country؛
+- geography explanation reason codes؛
+- Potential Supplier operating-area indication without claiming current supply؛
 - Buyer cannot render hidden Opportunity candidate fixture from real contract؛
 - Operator can render qualified opportunity candidate؛
 - stale run state؛
@@ -2597,7 +3136,7 @@ same RFQ
 
 ---
 
-# 103. Hero Example
+# 103. Hero Example — Domestic Pilot
 
 Target:
 
@@ -2607,18 +3146,29 @@ Commodity: Bitumen
 Grade: 60/70
 Quantity: 500 MT
 Delivery: Oct 1–15
+Preferred Supply Area: Tehran Province
+Destination: Tehran City
 ```
 
-Candidate:
+Candidate A:
 
 ```text
 Supply Listing
 Grade: 60/70
 Quantity: 300 MT
 Availability: Oct 1–30
+Supply Area: Shahriar
 Supplier: Basic Verified
-Geography: Unknown
-History provider: Not Applicable
+History Provider: Not Applicable
+```
+
+Geography relation:
+
+```text
+Shahriar
+is within
+Tehran Province
+→ PASS
 ```
 
 Signals:
@@ -2627,7 +3177,7 @@ Signals:
 Specification     PASS      1.00 × 45 = 45.00
 Quantity          PARTIAL   0.60 × 10 =  6.00
 Availability      PASS      1.00 × 15 = 15.00
-Geography         UNKNOWN                 --
+Geography         PASS      1.00 × 10 = 10.00
 Trust             PARTIAL   0.70 × 15 = 10.50
 History           N/A                     --
 ```
@@ -2636,15 +3186,54 @@ Then:
 
 ```text
 Applicable weight A = 95
-Known weight K      = 85
-Contribution C      = 76.5
+Known weight K      = 95
+Contribution C      = 86.5
 
-Fit Score           = 90.00%
-Evidence Coverage   = 89.47%
-Ranking Score       = 80.53%
+Fit Score           = 91.05%
+Evidence Coverage   = 100.00%
+Ranking Score       = 91.05%
 ```
 
-این مثال باید تقریباً به‌صورت executable scoring test وجود داشته باشد.
+Candidate B:
+
+```text
+Supply Listing
+Quantity: 500 MT
+Supply Area: Bandar Abbas
+```
+
+اگر Tehran Province فقط `PREFERRED` باشد:
+
+```text
+candidate remains eligible
+geography raw_score = 0.0
+```
+
+اگر Tehran Province `REQUIRED` باشد:
+
+```text
+HARD FAIL
+```
+
+Candidate C:
+
+```text
+Supplier Organization
+Operating Area: Tehran Province
+Verified
+No current Supply Listing
+```
+
+Expected:
+
+```text
+POTENTIAL_SUPPLIER lane
+Geography relevance = PASS
+Trust = PASS
+No invented quantity/specification/availability
+```
+
+این flow باید در Epic-level integration tests وجود داشته باشد.
 
 ---
 
@@ -2837,8 +3426,20 @@ Codex Epic Review Gate باید فراتر از suite موجود این موار
 
 ## Geography
 
-- hard only when explicit؛
-- no invented distance/logistics score.
+- country/province/city hierarchy works؛
+- stable identity, not localized string comparison؛
+- ancestor/descendant containment works؛
+- required/allowed/preferred/excluded semantics are distinct؛
+- ANY-OF semantics for multi-area groups؛
+- point-like broader area is not falsely treated as exact city evidence؛
+- operating-area coverage semantics work؛
+- HQ/registered location is not supply availability؛
+- Buyer does not gain hidden geography data through matching؛
+- Iran province/city pilot flow works؛
+- seed is idempotent؛
+- hard only when explicit mandatory constraint conflicts؛
+- no invented distance/logistics/freight score؛
+- no PostGIS or route-engine scope creep.
 
 ## Verification
 
