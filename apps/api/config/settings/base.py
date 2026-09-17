@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "documents",
     "trade_hub",
     "opportunities",
+    "matching",
 ]
 
 # drf-spectacular renders the Swagger UI from its packaged template.
