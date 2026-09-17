@@ -146,5 +146,12 @@ class MatchingRun(models.Model):
     def delete(self, *args, **kwargs):
         raise ValidationError("MatchingRun records are historical analytical records and cannot be deleted.")
 
+    @property
+    def is_stale(self) -> bool:
+        """Return True if the target RFQ version has advanced since this run was generated."""
+        if hasattr(self, "rfq") and self.rfq:
+            return self.rfq_version != self.rfq.version
+        return False
+
     def __str__(self):
         return f"MatchingRun {self.id} for RFQ {self.rfq_id} v{self.rfq_version} ({self.audience})"
