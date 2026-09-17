@@ -38,10 +38,12 @@ import {
   Scale,
   Send,
   ShieldCheck,
+  Sparkles,
   Tag,
   Users,
   XCircle,
 } from "lucide-react";
+import { RFQMatchingTab } from "@/components/matching/rfq-matching-tab";
 
 type RFQBuilderResponse = components["schemas"]["RFQBuilderResponse"];
 type RFQPublicResponse = components["schemas"]["RFQPublicResponse"];
@@ -57,7 +59,8 @@ export type WorkspaceTab =
   | "offers"
   | "comparison"
   | "negotiation"
-  | "documents";
+  | "documents"
+  | "matches";
 
 export interface RFQWorkspaceClientProps {
   locale?: EnabledLocale;
@@ -124,6 +127,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
   const isOwnerOrManager = currentOrgRole === "owner" || currentOrgRole === "manager";
   const canManage = isOperatorOrAdmin || (isOwnerOrg && isOwnerOrManager);
   const isExternal = Boolean(rfq && !isOperatorOrAdmin && !isOwnerOrg);
+  const canAccessMatching = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
 
   // Track previous organization ID to invalidate cache on switch
   const previousOrgIdRef = useRef<string | null>(null);
@@ -138,6 +142,8 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
       queryClient.removeQueries({ queryKey: ["rfq-invitations", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-activity", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-invitation-me", rfqId] });
+      queryClient.removeQueries({ queryKey: ["matching-runs", rfqId] });
+      queryClient.removeQueries({ queryKey: ["matching-candidates"] });
       setRfq(null);
       setSchema(null);
       setInvitations([]);
@@ -719,6 +725,21 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
           <FileText className="h-4 w-4" />
           {t.tabs.documents}
         </button>
+
+        {canAccessMatching && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("matches")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === "matches"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Sparkles className="h-4 w-4" />
+            {t.tabs.matches}
+          </button>
+        )}
       </div>
 
       {/* 4. Tab Contents */}
@@ -1229,6 +1250,28 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
             <p className="max-w-md text-sm leading-relaxed">{t.staged.documentsPlaceholder}</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* --- MATCHES TAB --- */}
+      {activeTab === "matches" && (
+        canAccessMatching ? (
+          <RFQMatchingTab
+            rfq={rfq}
+            locale={locale}
+            canManage={canManage}
+            isOperatorOrAdmin={isOperatorOrAdmin}
+            invitations={invitations}
+            onInvitationCreated={triggerRefresh}
+          />
+        ) : (
+          <Card className="border-destructive/40 bg-destructive/5">
+            <CardContent className="p-8 text-center text-destructive">
+              <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+              <p className="font-bold">{t.unauthorizedTitle}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t.unauthorizedDescription}</p>
+            </CardContent>
+          </Card>
+        )
       )}
 
       {/* --- MODAL: CLOSE RFQ CONFIRMATION --- */}
