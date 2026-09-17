@@ -22,6 +22,13 @@ class RFQVisibility(models.TextChoices):
     PRIVATE = "private", "Private"
 
 
+class GeographyConstraintMode(models.TextChoices):
+    REQUIRED = "REQUIRED", "Required"
+    ALLOWED = "ALLOWED", "Allowed"
+    PREFERRED = "PREFERRED", "Preferred"
+    EXCLUDED = "EXCLUDED", "Excluded"
+
+
 class RFQQuerySet(models.QuerySet):
     def visible_to(self, user: Any, organization: Any = None) -> "RFQQuerySet":
         from trade_hub.services.visibility_service import get_visible_rfqs
@@ -129,6 +136,22 @@ class RFQ(models.Model):
         max_length=255,
         blank=True,
         help_text="Requested destination country or port.",
+    )
+    origin_area = models.ForeignKey(
+        "geography.GeographicArea",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rfqs_as_origin",
+        help_text="Structured origin geographic area.",
+    )
+    destination_area = models.ForeignKey(
+        "geography.GeographicArea",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rfqs_as_destination",
+        help_text="Structured destination geographic area.",
     )
     delivery_window_start = models.DateField(
         null=True,
@@ -360,3 +383,46 @@ class RFQ(models.Model):
     def __str__(self):
         commodity_code = getattr(self.commodity, "code", "unknown")
         return f"RFQ {self.id} - {commodity_code} ({self.get_status_display()})"
+
+
+class RFQGeographyConstraint(models.Model):
+    """
+    Structured geographic constraint or preference attached to an RFQ.
+
+    Supports REQUIRED, ALLOWED, PREFERRED, and EXCLUDED modes with multi-area ANY-OF semantics.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    rfq = models.ForeignKey(
+        "trade_hub.RFQ",
+        on_delete=models.CASCADE,
+        related_name="geography_constraints",
+        help_text="Target RFQ.",
+    )
+    mode = models.CharField(
+        max_length=20,
+        choices=GeographyConstraintMode.choices,
+        default=GeographyConstraintMode.REQUIRED,
+        help_text="Constraint mode: REQUIRED, ALLOWED, PREFERRED, or EXCLUDED.",
+    )
+    area = models.ForeignKey(
+        "geography.GeographicArea",
+        on_delete=models.CASCADE,
+        related_name="rfq_constraints",
+        help_text="Referenced geographic area.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["rfq", "mode", "area"],
+                name="unique_rfq_geography_constraint",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["rfq", "mode"], name="idx_rfq_geo_mode"),
+        ]
+
+    def __str__(self):
+        return f"RFQ {self.rfq_id} - {self.mode} {self.area_id}"

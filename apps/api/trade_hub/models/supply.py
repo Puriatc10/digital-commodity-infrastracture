@@ -127,6 +127,14 @@ class SupplyListing(models.Model):
         blank=True,
         help_text="Allowable destination country or port if restricted.",
     )
+    origin_area = models.ForeignKey(
+        "geography.GeographicArea",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="supply_listings",
+        help_text="Structured origin or supply geographic area.",
+    )
     availability_window_start = models.DateField(
         null=True,
         blank=True,
@@ -340,6 +348,11 @@ class SupplyListing(models.Model):
             models.Index(fields=["status", "visibility"], name="idx_supply_status_visibility"),
             models.Index(fields=["-created_at"], name="idx_supply_created_at_desc"),
         ]
+
+    @property
+    def supply_area(self):
+        """Structured geographic area of supply, matching origin_area."""
+        return self.origin_area
 
     def __str__(self):
         commodity_code = getattr(self.commodity, "code", "unknown")
