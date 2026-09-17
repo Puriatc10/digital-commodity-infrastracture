@@ -187,6 +187,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/geography/areas/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active geographic areas
+         * @description Read-only list of geographic areas.
+         *
+         *     Optimized with select_related('parent') to prevent N+1 queries during serialization.
+         *     Supports filtering by country, parent, area type, and search term.
+         */
+        get: operations["geography_areas_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/geography/areas/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve geographic area by ID
+         * @description Read-only retrieval of a single geographic area by ID.
+         */
+        get: operations["geography_areas_read"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1269,6 +1312,13 @@ export interface components {
          * @enum {string}
          */
         ActorTypeEnum: "buyer" | "supplier" | "broker" | "operator" | "system";
+        /**
+         * @description * `COUNTRY` - Country
+         *     * `ADMINISTRATIVE_AREA` - Administrative Area
+         *     * `CITY` - City
+         * @enum {string}
+         */
+        AreaTypeEnum: "COUNTRY" | "ADMINISTRATIVE_AREA" | "CITY";
         ChecklistReview: {
             /** Format: uuid */
             document_id: string;
@@ -1438,6 +1488,55 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        /** @description Full representation of a geographic area including its parent summary. */
+        GeographicArea: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical, stable, machine-readable area code (e.g. 'IR', 'IR-07', 'IR-07-THR'). */
+            readonly code: string;
+            /**
+             * @description Exact structural type: COUNTRY, ADMINISTRATIVE_AREA, or CITY.
+             *
+             *     * `COUNTRY` - Country
+             *     * `ADMINISTRATIVE_AREA` - Administrative Area
+             *     * `CITY` - City
+             */
+            readonly area_type: components["schemas"]["AreaTypeEnum"];
+            /** @description ISO 3166-1 alpha-2 country code (e.g. 'IR'). */
+            readonly country_code: string;
+            /** @description English display name. */
+            readonly name_en: string;
+            /** @description Persian display name. */
+            readonly name_fa: string;
+            /** @description Whether this area is active for selection. */
+            readonly is_active: boolean;
+            readonly parent: components["schemas"]["GeographicAreaSummary"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Concise representation of a geographic area (e.g. for parent linkage). */
+        GeographicAreaSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical, stable, machine-readable area code (e.g. 'IR', 'IR-07', 'IR-07-THR'). */
+            readonly code: string;
+            /**
+             * @description Exact structural type: COUNTRY, ADMINISTRATIVE_AREA, or CITY.
+             *
+             *     * `COUNTRY` - Country
+             *     * `ADMINISTRATIVE_AREA` - Administrative Area
+             *     * `CITY` - City
+             */
+            readonly area_type: components["schemas"]["AreaTypeEnum"];
+            /** @description ISO 3166-1 alpha-2 country code (e.g. 'IR'). */
+            readonly country_code: string;
+            /** @description English display name. */
+            readonly name_en: string;
+            /** @description Persian display name. */
+            readonly name_fa: string;
         };
         HealthResponse: {
             status: string;
@@ -3973,6 +4072,55 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    geography_areas_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by ISO 3166-1 alpha-2 country code (e.g. 'IR'). */
+                country?: string;
+                /** @description Filter by parent ID, parent code, or 'null' for root countries. */
+                parent?: string;
+                /** @description Case-insensitive substring search in code, name_en, or name_fa. */
+                search?: string;
+                /** @description Filter by area type (COUNTRY, ADMINISTRATIVE_AREA, CITY). */
+                type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeographicArea"][];
+                };
+            };
+        };
+    };
+    geography_areas_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeographicArea"];
+                };
             };
         };
     };

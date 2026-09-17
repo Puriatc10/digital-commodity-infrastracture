@@ -266,6 +266,14 @@ class Opportunity(models.Model):
         blank=True,
         help_text="Origin/destination region, country, or port.",
     )
+    origin_area = models.ForeignKey(
+        "geography.GeographicArea",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="opportunities",
+        help_text="Structured origin or supply geographic area.",
+    )
     notes = models.TextField(
         blank=True,
         help_text="Internal operational notes.",
@@ -580,6 +588,11 @@ class Opportunity(models.Model):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
+
+    @property
+    def supply_area(self):
+        """Structured geographic area of supply, matching origin_area."""
+        return self.origin_area
 
     def __str__(self):
         counterparty = self.organization.name if self.organization else str(self.external_counterparty)

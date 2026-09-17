@@ -95,3 +95,39 @@ class OrganizationCommodity(models.Model):
 
     def __str__(self):
         return f"{self.organization.name} - {self.commodity.code}"
+
+
+class OrganizationOperatingArea(models.Model):
+    """
+    Explicit geographic operational coverage declared for an Organization.
+
+    Critical invariant: Organization registered country, headquarters, or address
+    MUST NEVER be inferred as operating area. Only explicit OrganizationOperatingArea
+    records represent operating area coverage.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="operating_areas",
+        help_text="Organization declaring operational coverage in this area.",
+    )
+    area = models.ForeignKey(
+        "geography.GeographicArea",
+        on_delete=models.CASCADE,
+        related_name="operating_organizations",
+        help_text="Geographic area where the organization operates.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "area"],
+                name="unique_organization_operating_area",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.organization.name} - {self.area.code}"
