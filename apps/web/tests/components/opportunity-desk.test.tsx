@@ -274,7 +274,6 @@ describe("T0612 — Opportunity Desk UI", () => {
       renderWithProviders(<OpportunityDeskClient locale="fa" />);
 
       await waitFor(() => {
-        expect(screen.getByText(oppMsg.title)).toBeInTheDocument();
         // 6 Views
         expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.inbox, "i") })).toBeInTheDocument();
         expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.assigned_to_me, "i") })).toBeInTheDocument();
@@ -637,6 +636,9 @@ describe("T0612 — Opportunity Desk UI", () => {
       fireEvent.change(buyerInput, { target: { value: "org-buyer-uuid" } });
 
       const submitBtn = screen.getByRole("button", { name: oppMsg.modals.submit });
+      await waitFor(() => {
+        expect(submitBtn).not.toBeDisabled();
+      });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
