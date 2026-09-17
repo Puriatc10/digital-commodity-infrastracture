@@ -306,12 +306,14 @@ describe("T0507 - RFQ Workspace Component Suite", () => {
     expect(screen.getByText("LC at sight")).toBeInTheDocument();
 
     // Historical schema v1 exact fetch assertion
-    expect(apiClient.GET).toHaveBeenCalledWith(
-      "/api/commodity-schemas/{id}/",
-      expect.objectContaining({
-        params: { path: { id: "schema-v1-id" } },
-      })
-    );
+    await waitFor(() => {
+      expect(apiClient.GET).toHaveBeenCalledWith(
+        "/api/commodity-schemas/{id}/",
+        expect.objectContaining({
+          params: { path: { id: "schema-v1-id" } },
+        })
+      );
+    });
 
     // Direction RTL
     const container = screen.getByRole("heading", { level: 1 }).closest("[dir]");

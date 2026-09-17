@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "commodities",
     "documents",
     "trade_hub",
+    "opportunities",
 ]
 
 # drf-spectacular renders the Swagger UI from its packaged template.
@@ -81,6 +82,10 @@ SPECTACULAR_SETTINGS = {
         "RFQStatusEnum": "trade_hub.models.RFQStatus",
         "RFQVisibilityEnum": "trade_hub.models.RFQVisibility",
         "SupplyListingStatusEnum": "trade_hub.models.SupplyListingStatus",
+        "OpportunityDirectionEnum": "opportunities.models.OpportunityDirection",
+        "OpportunityStatusEnum": "opportunities.models.OpportunityStatus",
+        "ContactAttemptTypeEnum": "opportunities.models.ContactAttemptType",
+        "DocumentTypeEnum": "documents.models.DocumentType",
     },
 }
 

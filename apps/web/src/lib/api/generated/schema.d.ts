@@ -204,6 +204,446 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/opportunities/external-counterparties/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List external counterparties
+         * @description List and search external counterparties recorded by Operators. Supports text search across company name, contact name, email, phone, and geography.
+         */
+        get: operations["opportunities_external_counterparties_list"];
+        put?: never;
+        /**
+         * Record external counterparty
+         * @description Create a new external counterparty record without creating a platform User, Organization, OrganizationMembership, or OrganizationCapability.
+         */
+        post: operations["opportunities_external_counterparties_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/external-counterparties/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve external counterparty details
+         * @description Retrieve the details of a single external counterparty by UUID.
+         */
+        get: operations["opportunities_external_counterparties_retrieve"];
+        /**
+         * Update external counterparty (full)
+         * @description Update all editable fields of an existing external counterparty.
+         */
+        put: operations["opportunities_external_counterparties_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update external counterparty (partial)
+         * @description Partially update editable fields of an existing external counterparty.
+         */
+        patch: operations["opportunities_external_counterparties_partial_update"];
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List opportunities
+         * @description List and filter trade opportunities (Supply and Demand) captured by Operators. Supports filtering by direction, status, and commodity.
+         */
+        get: operations["opportunities_opportunities_list"];
+        put?: never;
+        /**
+         * Capture opportunity
+         * @description Capture a new trade lead (Supply or Demand) linked to either an internal registered Organization or an off-platform ExternalCounterparty.
+         */
+        post: operations["opportunities_opportunities_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve opportunity details
+         * @description Retrieve full details and safe counterparty/commodity projection for a single opportunity by UUID.
+         */
+        get: operations["opportunities_opportunities_retrieve"];
+        /**
+         * Update opportunity (full)
+         * @description Update editable commercial and counterparty fields of an existing opportunity.
+         */
+        put: operations["opportunities_opportunities_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update opportunity (partial)
+         * @description Partially update editable commercial and counterparty fields of an existing opportunity.
+         */
+        patch: operations["opportunities_opportunities_partial_update"];
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/contact/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark opportunity as contacted
+         * @description Transition an Opportunity from Captured to Contacted. Requires expected_version for optimistic concurrency control.
+         */
+        post: operations["opportunities_opportunities_contact_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/convert-to-rfq/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert Demand Opportunity to RFQ
+         * @description Authoritatively convert an eligible Qualified Demand Opportunity into a real Draft RFQ.
+         */
+        post: operations["opportunities_opportunities_convert_to_rfq_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/convert-to-supply-listing/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Convert Qualified Supply Opportunity into Draft Supply Listing
+         * @description Authoritatively converts an eligible Qualified Supply Opportunity into a real Draft Supply Listing Aggregate via the Epic 5 Supply domain service. Guarantees single atomic PostgreSQL transaction, exclusive row lock, preservation of schema version and dynamic specifications, supplier capability validation, and durable bidirectional relational traceability.
+         */
+        post: operations["opportunities_opportunities_convert_to_supply_listing_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/expire/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Expire opportunity
+         * @description Transition an Opportunity to Expired (terminal). Requires expected_version.
+         */
+        post: operations["opportunities_opportunities_expire_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/hold/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Put opportunity on hold
+         * @description Transition an active Opportunity to On Hold. Requires expected_version and mandatory non-empty reason.
+         */
+        post: operations["opportunities_opportunities_hold_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/lost/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark opportunity as lost
+         * @description Transition an Opportunity to Lost (terminal). Requires expected_version and mandatory non-empty reason.
+         */
+        post: operations["opportunities_opportunities_lost_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/match/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move opportunity to matching
+         * @description Transition a Qualified Opportunity into Matching. Requires expected_version for optimistic concurrency control.
+         */
+        post: operations["opportunities_opportunities_match_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/qualify/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Qualify opportunity
+         * @description Transition an Opportunity to Qualified. Requires expected_version for optimistic concurrency control and evaluates persisted aggregate data against the authoritative qualification contract.
+         */
+        post: operations["opportunities_opportunities_qualify_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject opportunity
+         * @description Transition an Opportunity to Rejected (terminal). Requires expected_version and mandatory non-empty reason.
+         */
+        post: operations["opportunities_opportunities_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{id}/resume/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume opportunity from hold
+         * @description Resume an Opportunity from On Hold back to its pre-hold status. Requires expected_version.
+         */
+        post: operations["opportunities_opportunities_resume_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/contact-attempts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List opportunity contact attempts
+         * @description Retrieve chronological contact attempts for a specific opportunity in deterministic order (most recent interaction first). Strictly restricted to Operator and Product Admin roles.
+         */
+        get: operations["opportunities_opportunities_contact_attempts_list"];
+        put?: never;
+        /**
+         * Record contact attempt
+         * @description Record a new interaction (Call, Message, Email, Meeting, Note) for an opportunity. Append-only: recorder is derived from authenticated user. Does not alter opportunity lifecycle status or version.
+         */
+        post: operations["opportunities_opportunities_contact_attempts_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/contact-attempts/{attempt_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve contact attempt detail
+         * @description Retrieve a single contact attempt by UUID scoped to the specified opportunity. Strictly restricted to Operator and Product Admin roles.
+         */
+        get: operations["opportunities_opportunities_contact_attempts_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/tasks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List opportunity follow-up tasks
+         * @description Retrieve follow-up tasks for an opportunity in deterministic order (due_at ASC, created_at ASC, id ASC). Supports filtering by status, assigned_to, and overdue. Strictly restricted to Operator and Product Admin roles.
+         */
+        get: operations["opportunities_opportunities_tasks_list"];
+        put?: never;
+        /**
+         * Create opportunity follow-up task
+         * @description Create a new operational follow-up task scoped to the Opportunity. Creator is derived server-side from the authenticated user. If assigned_to is provided, user must be an active Operator or Admin.
+         */
+        post: operations["opportunities_opportunities_tasks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/tasks/{task_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve opportunity follow-up task detail
+         * @description Retrieve a single follow-up task by UUID scoped to the parent Opportunity. Strictly restricted to Operator and Product Admin roles.
+         */
+        get: operations["opportunities_opportunities_tasks_retrieve"];
+        /**
+         * Update opportunity follow-up task (full)
+         * @description Update mutable attributes (title, description, due_at, assigned_to) of an OPEN follow-up task. Cannot modify status, completed_at, created_by, or parent Opportunity. Completed or cancelled tasks cannot be updated.
+         */
+        put: operations["opportunities_opportunities_tasks_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update opportunity follow-up task
+         * @description Update mutable attributes (title, description, due_at, assigned_to) of an OPEN follow-up task. Cannot modify status, completed_at, created_by, or parent Opportunity. Completed or cancelled tasks cannot be updated.
+         */
+        patch: operations["opportunities_opportunities_tasks_partial_update"];
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/tasks/{task_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel opportunity follow-up task
+         * @description Explicit transition action to mark an OPEN follow-up task as CANCELLED. Does not delete the task. Fails predictably if already completed or cancelled. Concurrency-safe via row-level locking.
+         */
+        post: operations["opportunities_opportunities_tasks_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/opportunities/opportunities/{opportunity_id}/tasks/{task_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete opportunity follow-up task
+         * @description Explicit transition action to mark an OPEN follow-up task as COMPLETED. Sets completed_at server-side. Fails predictably if already completed or cancelled. Concurrency-safe via row-level locking.
+         */
+        post: operations["opportunities_opportunities_tasks_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organizations/": {
         parameters: {
             query?: never;
@@ -882,6 +1322,15 @@ export interface components {
          * @enum {string}
          */
         CommoditySchemaVersionStatusEnum: "draft" | "published" | "retired";
+        /**
+         * @description * `CALL` - Call
+         *     * `MESSAGE` - Message
+         *     * `EMAIL` - Email
+         *     * `MEETING` - Meeting
+         *     * `NOTE` - Note
+         * @enum {string}
+         */
+        ContactAttemptTypeEnum: "CALL" | "MESSAGE" | "EMAIL" | "MEETING" | "NOTE";
         CsrfViewResponse: {
             detail: string;
         };
@@ -907,6 +1356,16 @@ export interface components {
             readonly commodities: string[];
             readonly verification_status: string;
         };
+        /**
+         * @description * `company_registration` - Company Registration
+         *     * `tax_id` - Tax ID
+         *     * `trade_license` - Trade License
+         *     * `bank_details` - Bank Details
+         *     * `authorized_representative` - Authorized Representative
+         *     * `certifications` - Certifications
+         * @enum {string}
+         */
+        DocumentTypeEnum: "company_registration" | "tax_id" | "trade_license" | "bank_details" | "authorized_representative" | "certifications";
         /** @description Structured representation of a dynamic specification validation error. */
         DynamicFieldError: {
             /** @description Specification attribute key. */
@@ -937,6 +1396,49 @@ export interface components {
          * @enum {string}
          */
         EventTypeEnum: "rfq_created" | "rfq_published" | "participant_invited" | "participant_viewed" | "participant_declined" | "participant_responded" | "rfq_closed" | "rfq_cancelled";
+        /**
+         * @description Explicit serializer for ExternalCounterparty.
+         *
+         *     Guards against mass assignment:
+         *     - Primary key (id), timestamps (created_at, updated_at), and
+         *       internal actor (created_by) are strictly read-only.
+         *     - Rejects empty or whitespace-only company_name.
+         *     - Validates email format if provided.
+         */
+        ExternalCounterparty: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Display or legal entity name of the external counterparty. */
+            company_name: string;
+            /**
+             * @description Name of the contact person or representative.
+             * @default
+             */
+            contact_name: string;
+            /**
+             * @description Phone number for operational contact.
+             * @default
+             */
+            phone: string;
+            /** @description Email address for operational contact. */
+            email?: string;
+            /**
+             * @description Country, port, or regional jurisdiction.
+             * @default
+             */
+            geography: string;
+            /**
+             * @description Operational notes recorded by the Operator.
+             * @default
+             */
+            notes: string;
+            /** @description Operator who recorded this external counterparty (null if unassigned/system). */
+            readonly created_by: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         HealthResponse: {
             status: string;
         };
@@ -957,6 +1459,706 @@ export interface components {
         };
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description Safe projection of CommodityDefinition for Opportunity consumers. */
+        OpportunityCommodityProjection: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            readonly name_fa: string;
+            readonly name_en: string;
+        };
+        /** @description Payload to transition Opportunity from Captured to Contacted. */
+        OpportunityContactAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /**
+         * @description Payload for recording a new Opportunity contact attempt.
+         *     Strictly guards server-derived fields: recorded_by, opportunity_id, id, created_at.
+         */
+        OpportunityContactAttemptCreate: {
+            /**
+             * @description Type of contact attempt: CALL, MESSAGE, EMAIL, MEETING, NOTE.
+             *
+             *     * `CALL` - Call
+             *     * `MESSAGE` - Message
+             *     * `EMAIL` - Email
+             *     * `MEETING` - Meeting
+             *     * `NOTE` - Note
+             */
+            type: components["schemas"]["ContactAttemptTypeEnum"];
+            /**
+             * Format: date-time
+             * @description Timestamp when the interaction took place (defaults to now).
+             */
+            occurred_at?: string;
+            /**
+             * @description Operational notes or details of the interaction.
+             * @default
+             */
+            notes: string;
+            /** @description Optional write-only alias for notes. */
+            details?: string;
+        };
+        /**
+         * @description Read representation for an Opportunity contact attempt.
+         *     All fields are strictly read-only.
+         */
+        OpportunityContactAttemptDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly opportunity_id: string;
+            /**
+             * @description Type of contact attempt: CALL, MESSAGE, EMAIL, MEETING, NOTE.
+             *
+             *     * `CALL` - Call
+             *     * `MESSAGE` - Message
+             *     * `EMAIL` - Email
+             *     * `MEETING` - Meeting
+             *     * `NOTE` - Note
+             */
+            readonly type: components["schemas"]["ContactAttemptTypeEnum"];
+            /**
+             * Format: date-time
+             * @description Timestamp when the interaction took place (supports past interactions).
+             */
+            readonly occurred_at: string;
+            readonly recorded_by: number | null;
+            /** Format: email */
+            readonly recorded_by_email: string | null;
+            /** @description Operational notes or details regarding the interaction. */
+            readonly notes: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description Action payload to authoritatively convert an eligible Demand Opportunity into a Draft RFQ.
+         *     Guards strictly against mass-assignment of status, version, timestamps, or unverified ownership.
+         */
+        OpportunityConvertToRFQAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the referenced commodity schema version (required if not stored on Opportunity).
+             */
+            schema_version_id?: string | null;
+            /** @description Dynamic technical specifications JSON payload validated against schema version. */
+            specifications?: unknown;
+            /**
+             * Format: uuid
+             * @description UUID of the internal Buyer Organization (required if Opportunity references an External Counterparty).
+             */
+            buyer_organization_id?: string | null;
+            /**
+             * @description Requested destination country or port (defaults to Opportunity geography).
+             * @default
+             */
+            destination: string;
+            /**
+             * @description Requested origin country or port.
+             * @default
+             */
+            origin: string;
+            /**
+             * @description Incoterm code (e.g. FOB, CIF, CFR).
+             * @default
+             */
+            incoterm: string;
+            /**
+             * @description Additional procurement notes to append to RFQ notes.
+             * @default
+             */
+            notes: string;
+            /**
+             * @description Participation visibility tier for the new RFQ.
+             *
+             *     * `private` - Private
+             *     * `network` - Network
+             *     * `public` - Public
+             * @default private
+             */
+            visibility: components["schemas"]["RFQVisibilityEnum"];
+        };
+        /** @description Structured response payload returned upon successful conversion to RFQ. */
+        OpportunityConvertToRFQResponse: {
+            /** @description The updated Opportunity aggregate in Converted status. */
+            readonly opportunity: components["schemas"]["OpportunityDetail"];
+            /** @description The newly created Draft RFQ aggregate. */
+            readonly rfq: components["schemas"]["RFQBuilderResponse"];
+        };
+        /**
+         * @description Action payload to authoritatively convert an eligible Supply Opportunity into a Draft Supply Listing.
+         *     Guards strictly against mass-assignment of status, version, timestamps, or unverified ownership.
+         */
+        OpportunityConvertToSupplyListingAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the referenced commodity schema version (required if not stored on Opportunity).
+             */
+            schema_version_id?: string | null;
+            /** @description Dynamic technical specifications JSON payload validated against schema version. */
+            specifications?: unknown;
+            /**
+             * Format: uuid
+             * @description UUID of the internal Supplier Organization (required if Opportunity references an External Counterparty).
+             */
+            supplier_organization_id?: string | null;
+            /**
+             * @description Requested origin country, facility, or port (defaults to Opportunity geography).
+             * @default
+             */
+            origin: string;
+            /**
+             * @description Requested destination country or port if restricted.
+             * @default
+             */
+            destination: string;
+            /**
+             * @description Incoterm code (e.g. FOB, CIF, CFR).
+             * @default
+             */
+            incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest availability date (defaults to Opportunity delivery window start).
+             */
+            availability_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest availability date (defaults to Opportunity delivery window end).
+             */
+            availability_window_end?: string | null;
+            /**
+             * @description Quality, testing, or specification notes.
+             * @default
+             */
+            quality_notes: string;
+            /**
+             * @description Additional commercial notes to append to Supply Listing notes.
+             * @default
+             */
+            notes: string;
+            /**
+             * @description Participation visibility tier for the new Supply Listing.
+             *
+             *     * `private` - Private
+             *     * `network` - Network
+             *     * `public` - Public
+             * @default public
+             */
+            visibility: components["schemas"]["RFQVisibilityEnum"];
+        };
+        /** @description Structured response payload returned upon successful conversion to Supply Listing. */
+        OpportunityConvertToSupplyListingResponse: {
+            /** @description The updated Opportunity aggregate in Converted status. */
+            readonly opportunity: components["schemas"]["OpportunityDetail"];
+            /** @description The newly created Draft Supply Listing aggregate. */
+            readonly supply_listing: components["schemas"]["SupplyListingSupplierResponse"];
+        };
+        /**
+         * @description Payload for capturing a new Opportunity.
+         *     Explicit writable fields with strict mass-assignment prevention.
+         */
+        OpportunityCreate: {
+            /**
+             * @description Trade direction: Supply or Demand.
+             *
+             *     * `Supply` - Supply
+             *     * `Demand` - Demand
+             */
+            direction: components["schemas"]["OpportunityDirectionEnum"];
+            /**
+             * @description Authoritative origin source of the opportunity lead.
+             *
+             *     * `broker_referral` - Broker Referral
+             *     * `operator_sourcing` - Operator Sourcing
+             *     * `buyer_referral` - Buyer Referral
+             *     * `supplier_referral` - Supplier Referral
+             *     * `existing_relationship` - Existing Relationship
+             *     * `inbound_lead` - Inbound Lead
+             * @default operator_sourcing
+             */
+            source: components["schemas"]["SourceEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of attributed broker organization (required if source is Broker Referral).
+             */
+            broker_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of internal registered organization (mutually exclusive with external_counterparty_id).
+             */
+            organization_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of off-platform external counterparty (mutually exclusive with organization_id).
+             */
+            external_counterparty_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Optional UUID of referenced commodity definition.
+             */
+            commodity_id?: string | null;
+            /**
+             * Format: decimal
+             * @description Lead quantity (must be positive).
+             */
+            quantity?: string | null;
+            /**
+             * @description Unit of measurement.
+             * @default MT
+             */
+            unit: string;
+            /**
+             * Format: decimal
+             * @description Optional indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /**
+             * @description ISO 4217 currency code.
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Format: date
+             * @description Earliest expected delivery date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest expected delivery date.
+             */
+            delivery_window_end?: string | null;
+            /**
+             * @description Indicative payment terms.
+             * @default
+             */
+            payment_terms: string;
+            /**
+             * @description Origin/destination region, country, or port.
+             * @default
+             */
+            geography: string;
+            /**
+             * @description Internal operational notes.
+             * @default
+             */
+            notes: string;
+        };
+        /**
+         * @description Read projection for Opportunity records.
+         *     Provides safe representations of linked counterparty and commodity entities,
+         *     lifecycle state, and qualification readiness indicators.
+         */
+        OpportunityDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Human-readable immutable opportunity identifier (e.g. OPP-2026-000124). */
+            readonly identifier: string;
+            /**
+             * @description Trade direction: Supply or Demand.
+             *
+             *     * `Supply` - Supply
+             *     * `Demand` - Demand
+             */
+            readonly direction: components["schemas"]["OpportunityDirectionEnum"];
+            /** @description Type of counterparty: 'organization' or 'external_counterparty'. */
+            readonly counterparty_type: string;
+            /** @description Readiness flag indicating if this Opportunity can be qualified in its current state. */
+            readonly can_qualify: boolean;
+            /** @description List of qualification issues blocking qualification (empty if ready or qualifiable). */
+            readonly qualification_issues: components["schemas"]["QualificationIssue"][];
+            readonly organization: components["schemas"]["OpportunityOrganizationProjection"];
+            readonly external_counterparty: components["schemas"]["OpportunityExternalCounterpartyProjection"];
+            readonly commodity: components["schemas"]["OpportunityCommodityProjection"];
+            /**
+             * Format: uuid
+             * @description UUID of the referenced commodity schema version if bound.
+             */
+            readonly schema_version_id: string | null;
+            /** @description Dynamic specifications JSON payload if recorded. */
+            readonly specifications: unknown;
+            /**
+             * @description Authoritative origin source of the opportunity lead.
+             *
+             *     * `broker_referral` - Broker Referral
+             *     * `operator_sourcing` - Operator Sourcing
+             *     * `buyer_referral` - Buyer Referral
+             *     * `supplier_referral` - Supplier Referral
+             *     * `existing_relationship` - Existing Relationship
+             *     * `inbound_lead` - Inbound Lead
+             */
+            readonly source: components["schemas"]["SourceEnum"];
+            /** @description Safe projection of attributed broker organization (present for Broker Referral). */
+            readonly broker: components["schemas"]["OpportunityOrganizationProjection"] | null;
+            /**
+             * Format: decimal
+             * @description Lead quantity (must be positive if specified).
+             */
+            readonly quantity: string | null;
+            /** @description Unit of measurement. */
+            readonly unit: string;
+            /**
+             * Format: decimal
+             * @description Indicative or target unit price.
+             */
+            readonly indicative_price: string | null;
+            /** @description ISO 4217 currency code. */
+            readonly currency: string;
+            /**
+             * Format: date
+             * @description Earliest expected delivery date.
+             */
+            readonly delivery_window_start: string | null;
+            /**
+             * Format: date
+             * @description Latest expected delivery date.
+             */
+            readonly delivery_window_end: string | null;
+            /** @description Indicative payment terms. */
+            readonly payment_terms: string;
+            /** @description Origin/destination region, country, or port. */
+            readonly geography: string;
+            /** @description Internal operational notes. */
+            readonly notes: string;
+            /**
+             * @description Foundational lifecycle state.
+             *
+             *     * `Captured` - Captured
+             *     * `Contacted` - Contacted
+             *     * `Qualified` - Qualified
+             *     * `Matching` - Matching
+             *     * `Converted` - Converted
+             *     * `On Hold` - On Hold
+             *     * `Rejected` - Rejected
+             *     * `Lost` - Lost
+             *     * `Expired` - Expired
+             */
+            readonly status: components["schemas"]["OpportunityStatusEnum"];
+            /** @description Optimistic concurrency aggregate version counter. */
+            readonly version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the converted RFQ if converted.
+             */
+            readonly converted_rfq_id: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of the converted Supply Listing if converted.
+             */
+            readonly converted_supply_listing_id: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was marked as contacted.
+             */
+            readonly contacted_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was qualified.
+             */
+            readonly qualified_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was converted.
+             */
+            readonly converted_at: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was put on hold.
+             */
+            readonly held_at: string | null;
+            /** @description Operational reason provided when putting the opportunity on hold. */
+            readonly hold_reason: string;
+            /** @description Persisted status prior to entering On Hold. */
+            readonly status_before_hold: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was rejected.
+             */
+            readonly rejected_at: string | null;
+            /** @description Reason provided when rejecting the opportunity. */
+            readonly rejection_reason: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity was marked lost.
+             */
+            readonly lost_at: string | null;
+            /** @description Reason provided when marking the opportunity as lost. */
+            readonly lost_reason: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the opportunity expired.
+             */
+            readonly expired_at: string | null;
+            /** @description Operational reason or notes regarding expiration. */
+            readonly expiration_reason: string;
+            /** @description Operator who recorded this opportunity. */
+            readonly created_by: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `Supply` - Supply
+         *     * `Demand` - Demand
+         * @enum {string}
+         */
+        OpportunityDirectionEnum: "Supply" | "Demand";
+        /** @description Payload to expire an Opportunity. */
+        OpportunityExpireAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional operational reason or notes.
+             * @default
+             */
+            reason: string;
+        };
+        /** @description Safe projection of ExternalCounterparty details for Opportunity consumers. */
+        OpportunityExternalCounterpartyProjection: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly company_name: string;
+            readonly contact_name: string;
+            readonly geography: string;
+        };
+        /** @description Payload to put an active Opportunity on hold. */
+        OpportunityHoldAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory operational reason for this lifecycle action. */
+            reason: string;
+        };
+        /** @description Payload to mark an Opportunity as lost. */
+        OpportunityLostAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory operational reason for this lifecycle action. */
+            reason: string;
+        };
+        /** @description Payload to transition a qualified Opportunity into Matching. */
+        OpportunityMatchAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /** @description Safe projection of internal Organization details for Opportunity consumers. */
+        OpportunityOrganizationProjection: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly name: string;
+            readonly country: string;
+        };
+        /** @description Structured machine-readable error payload returned on qualification failure. */
+        OpportunityQualificationErrorResponse: {
+            /** @description Summary explanation of the qualification failure. */
+            readonly detail: string;
+            /** @description Always false for failed qualification evaluations. */
+            readonly qualifiable: boolean;
+            /** @description List of mandatory fields missing from the Opportunity. */
+            readonly missing_requirements: components["schemas"]["QualificationIssue"][];
+            /** @description List of fields present with invalid values. */
+            readonly invalid_requirements: components["schemas"]["QualificationIssue"][];
+        };
+        /** @description Payload to qualify an Opportunity. */
+        OpportunityQualifyAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /** @description Payload to reject an Opportunity. */
+        OpportunityRejectAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory operational reason for this lifecycle action. */
+            reason: string;
+        };
+        /** @description Payload to resume an Opportunity from hold back to its pre-hold status. */
+        OpportunityResumeAction: {
+            /** @description Current expected aggregate version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /**
+         * @description * `Captured` - Captured
+         *     * `Contacted` - Contacted
+         *     * `Qualified` - Qualified
+         *     * `Matching` - Matching
+         *     * `Converted` - Converted
+         *     * `On Hold` - On Hold
+         *     * `Rejected` - Rejected
+         *     * `Lost` - Lost
+         *     * `Expired` - Expired
+         * @enum {string}
+         */
+        OpportunityStatusEnum: "Captured" | "Contacted" | "Qualified" | "Matching" | "Converted" | "On Hold" | "Rejected" | "Lost" | "Expired";
+        /**
+         * @description Payload for creating an Opportunity follow-up task.
+         *     Strictly prevents mass-assignment of system/lifecycle fields:
+         *     created_by, status, completed_at, id, opportunity_id, timestamps.
+         */
+        OpportunityTaskCreate: {
+            /** @description Brief summary or action required for the follow-up task. */
+            title: string;
+            /**
+             * @description Detailed instructions or operational context for the follow-up task.
+             * @default
+             */
+            description: string;
+            /**
+             * Format: date-time
+             * @description Due date and time for the follow-up task.
+             */
+            due_at: string;
+            /** @description User ID of the assigned Operator or Admin. */
+            assigned_to?: number | null;
+        };
+        /**
+         * @description Read representation for an Opportunity follow-up task.
+         *     All fields are strictly read-only.
+         */
+        OpportunityTaskDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly opportunity_id: string;
+            /** @description Brief summary or action required for the follow-up task. */
+            readonly title: string;
+            /** @description Detailed instructions or operational context for the follow-up task. */
+            readonly description: string;
+            /**
+             * Format: date-time
+             * @description Due date and time for the follow-up task.
+             */
+            readonly due_at: string;
+            /**
+             * @description Current lifecycle state of the task.
+             *
+             *     * `OPEN` - Open
+             *     * `COMPLETED` - Completed
+             *     * `CANCELLED` - Cancelled
+             */
+            readonly status: components["schemas"]["OpportunityTaskDetailStatusEnum"];
+            readonly is_overdue: boolean;
+            readonly assigned_to: number | null;
+            /** Format: email */
+            readonly assigned_to_email: string | null;
+            readonly created_by: number | null;
+            /** Format: email */
+            readonly created_by_email: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the task was marked as completed.
+             */
+            readonly completed_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `COMPLETED` - Completed
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        OpportunityTaskDetailStatusEnum: "OPEN" | "COMPLETED" | "CANCELLED";
+        /**
+         * @description Payload for updating mutable attributes of an OPEN Opportunity follow-up task.
+         *     Protects status, completed_at, created_by, opportunity, id, timestamps against modification.
+         */
+        OpportunityTaskUpdate: {
+            /** @description Updated task title. */
+            title?: string;
+            /** @description Updated task description. */
+            description?: string;
+            /**
+             * Format: date-time
+             * @description Updated due date and time.
+             */
+            due_at?: string;
+            /** @description User ID of the assigned Operator or Admin (or null to unassign). */
+            assigned_to?: number | null;
+        };
+        /**
+         * @description Payload for updating an Opportunity.
+         *     Permits updating editable commercial/delivery/counterparty/source fields while
+         *     strictly guarding status, created_by, timestamps, etc.
+         */
+        OpportunityUpdate: {
+            /** @description Expected aggregate version for optimistic concurrency control. */
+            expected_version?: number;
+            /**
+             * @description Trade direction: Supply or Demand.
+             *
+             *     * `Supply` - Supply
+             *     * `Demand` - Demand
+             */
+            direction?: components["schemas"]["OpportunityDirectionEnum"];
+            /**
+             * @description Authoritative origin source of the opportunity lead.
+             *
+             *     * `broker_referral` - Broker Referral
+             *     * `operator_sourcing` - Operator Sourcing
+             *     * `buyer_referral` - Buyer Referral
+             *     * `supplier_referral` - Supplier Referral
+             *     * `existing_relationship` - Existing Relationship
+             *     * `inbound_lead` - Inbound Lead
+             */
+            source?: components["schemas"]["SourceEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of attributed broker organization.
+             */
+            broker_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of internal registered organization.
+             */
+            organization_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of off-platform external counterparty.
+             */
+            external_counterparty_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of referenced commodity definition.
+             */
+            commodity_id?: string | null;
+            /**
+             * Format: decimal
+             * @description Lead quantity (must be positive).
+             */
+            quantity?: string | null;
+            /** @description Unit of measurement. */
+            unit?: string;
+            /**
+             * Format: decimal
+             * @description Indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /** @description ISO 4217 currency code. */
+            currency?: string;
+            /**
+             * Format: date
+             * @description Earliest expected delivery date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest expected delivery date.
+             */
+            delivery_window_end?: string | null;
+            /** @description Indicative payment terms. */
+            payment_terms?: string;
+            /** @description Origin/destination region, country, or port. */
+            geography?: string;
+            /** @description Internal operational notes. */
+            notes?: string;
+        };
         Organization: {
             /** Format: uuid */
             readonly id: string;
@@ -1009,6 +2211,173 @@ export interface components {
          * @enum {string}
          */
         OutcomeEnum: "accepted" | "rejected";
+        PaginatedExternalCounterpartyList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["ExternalCounterparty"][];
+        };
+        PaginatedOpportunityDetailList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["OpportunityDetail"][];
+        };
+        /**
+         * @description Explicit serializer for ExternalCounterparty.
+         *
+         *     Guards against mass assignment:
+         *     - Primary key (id), timestamps (created_at, updated_at), and
+         *       internal actor (created_by) are strictly read-only.
+         *     - Rejects empty or whitespace-only company_name.
+         *     - Validates email format if provided.
+         */
+        PatchedExternalCounterparty: {
+            /** Format: uuid */
+            readonly id?: string;
+            /** @description Display or legal entity name of the external counterparty. */
+            company_name?: string;
+            /**
+             * @description Name of the contact person or representative.
+             * @default
+             */
+            contact_name: string;
+            /**
+             * @description Phone number for operational contact.
+             * @default
+             */
+            phone: string;
+            /** @description Email address for operational contact. */
+            email?: string;
+            /**
+             * @description Country, port, or regional jurisdiction.
+             * @default
+             */
+            geography: string;
+            /**
+             * @description Operational notes recorded by the Operator.
+             * @default
+             */
+            notes: string;
+            /** @description Operator who recorded this external counterparty (null if unassigned/system). */
+            readonly created_by?: number | null;
+            /** Format: date-time */
+            readonly created_at?: string;
+            /** Format: date-time */
+            readonly updated_at?: string;
+        };
+        /**
+         * @description Payload for updating mutable attributes of an OPEN Opportunity follow-up task.
+         *     Protects status, completed_at, created_by, opportunity, id, timestamps against modification.
+         */
+        PatchedOpportunityTaskUpdate: {
+            /** @description Updated task title. */
+            title?: string;
+            /** @description Updated task description. */
+            description?: string;
+            /**
+             * Format: date-time
+             * @description Updated due date and time.
+             */
+            due_at?: string;
+            /** @description User ID of the assigned Operator or Admin (or null to unassign). */
+            assigned_to?: number | null;
+        };
+        /**
+         * @description Payload for updating an Opportunity.
+         *     Permits updating editable commercial/delivery/counterparty/source fields while
+         *     strictly guarding status, created_by, timestamps, etc.
+         */
+        PatchedOpportunityUpdate: {
+            /** @description Expected aggregate version for optimistic concurrency control. */
+            expected_version?: number;
+            /**
+             * @description Trade direction: Supply or Demand.
+             *
+             *     * `Supply` - Supply
+             *     * `Demand` - Demand
+             */
+            direction?: components["schemas"]["OpportunityDirectionEnum"];
+            /**
+             * @description Authoritative origin source of the opportunity lead.
+             *
+             *     * `broker_referral` - Broker Referral
+             *     * `operator_sourcing` - Operator Sourcing
+             *     * `buyer_referral` - Buyer Referral
+             *     * `supplier_referral` - Supplier Referral
+             *     * `existing_relationship` - Existing Relationship
+             *     * `inbound_lead` - Inbound Lead
+             */
+            source?: components["schemas"]["SourceEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of attributed broker organization.
+             */
+            broker_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of internal registered organization.
+             */
+            organization_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of off-platform external counterparty.
+             */
+            external_counterparty_id?: string | null;
+            /**
+             * Format: uuid
+             * @description UUID of referenced commodity definition.
+             */
+            commodity_id?: string | null;
+            /**
+             * Format: decimal
+             * @description Lead quantity (must be positive).
+             */
+            quantity?: string | null;
+            /** @description Unit of measurement. */
+            unit?: string;
+            /**
+             * Format: decimal
+             * @description Indicative price per unit.
+             */
+            indicative_price?: string | null;
+            /** @description ISO 4217 currency code. */
+            currency?: string;
+            /**
+             * Format: date
+             * @description Earliest expected delivery date.
+             */
+            delivery_window_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest expected delivery date.
+             */
+            delivery_window_end?: string | null;
+            /** @description Indicative payment terms. */
+            payment_terms?: string;
+            /** @description Origin/destination region, country, or port. */
+            geography?: string;
+            /** @description Internal operational notes. */
+            notes?: string;
+        };
         PatchedOrganization: {
             /** Format: uuid */
             readonly id?: string;
@@ -1161,6 +2530,15 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
+        /** @description Machine-readable qualification issue for readiness inspection and error responses. */
+        QualificationIssue: {
+            /** @description Field name associated with the qualification issue. */
+            readonly field: string;
+            /** @description Machine-readable issue code (e.g. required, min_value, invalid_broker). */
+            readonly code: string;
+            /** @description Human-readable explanation of the qualification issue. */
+            readonly message: string;
+        };
         /** @description Authoritative audit activity fact for an RFQ. */
         RFQActivityItem: {
             /** @description Deterministic event identifier. */
@@ -1219,6 +2597,9 @@ export interface components {
             /** Format: uuid */
             readonly schema_version_id: string;
             readonly schema_version_number: number;
+            /** Format: uuid */
+            readonly source_opportunity_id: string | null;
+            readonly source_opportunity_identifier: string | null;
             /** @description Dynamic technical specifications validated against the referenced schema version. */
             readonly specifications: unknown;
             /**
@@ -1685,12 +3066,22 @@ export interface components {
             visibility?: components["schemas"]["RFQVisibilityEnum"];
         };
         /**
-         * @description * `public` - Public
+         * @description * `private` - Private
          *     * `network` - Network
-         *     * `private` - Private
+         *     * `public` - Public
          * @enum {string}
          */
-        RFQVisibilityEnum: "public" | "network" | "private";
+        RFQVisibilityEnum: "private" | "network" | "public";
+        /**
+         * @description * `broker_referral` - Broker Referral
+         *     * `operator_sourcing` - Operator Sourcing
+         *     * `buyer_referral` - Buyer Referral
+         *     * `supplier_referral` - Supplier Referral
+         *     * `existing_relationship` - Existing Relationship
+         *     * `inbound_lead` - Inbound Lead
+         * @enum {string}
+         */
+        SourceEnum: "broker_referral" | "operator_sourcing" | "buyer_referral" | "supplier_referral" | "existing_relationship" | "inbound_lead";
         /** @description Payload for activating a Draft Supply Listing. */
         SupplyListingActivateAction: {
             /** @description Current aggregate version counter for optimistic concurrency control. */
@@ -2041,23 +3432,13 @@ export interface components {
              */
             visibility?: components["schemas"]["RFQVisibilityEnum"];
         };
-        /**
-         * @description * `company_registration` - Company Registration
-         *     * `tax_id` - Tax ID
-         *     * `trade_license` - Trade License
-         *     * `bank_details` - Bank Details
-         *     * `authorized_representative` - Authorized Representative
-         *     * `certifications` - Certifications
-         * @enum {string}
-         */
-        TypeEnum: "company_registration" | "tax_id" | "trade_license" | "bank_details" | "authorized_representative" | "certifications";
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
             allowed_units?: string[];
         };
         UploadDocument: {
-            type: components["schemas"]["TypeEnum"];
+            type: components["schemas"]["DocumentTypeEnum"];
             /**
              * Format: binary
              * @description Binary document file (PDF, JPEG, PNG, max 10MB)
@@ -2099,7 +3480,7 @@ export interface components {
             readonly id: string;
             /** Format: uuid */
             organization: string;
-            type: components["schemas"]["TypeEnum"];
+            type: components["schemas"]["DocumentTypeEnum"];
             file_name: string;
             readonly mime_type: string;
             readonly size_bytes: number;
@@ -2611,6 +3992,1612 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+        };
+    };
+    opportunities_external_counterparties_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by company name substring. */
+                company_name?: string;
+                /** @description Filter by geography or location substring. */
+                geography?: string;
+                /** @description یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده. */
+                page?: number;
+                /** @description تعداد نتایج برای نمایش در هر صفحه. */
+                page_size?: number;
+                /** @description Search across company name, contact person, email, phone, or geography. */
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedExternalCounterpartyList"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_external_counterparties_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalCounterparty"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalCounterparty"];
+                };
+            };
+            /** @description Validation error (e.g. blank company name, invalid email) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_external_counterparties_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این External Counterparty را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalCounterparty"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description External counterparty not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_external_counterparties_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این External Counterparty را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalCounterparty"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalCounterparty"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description External counterparty not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_external_counterparties_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این External Counterparty را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedExternalCounterparty"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalCounterparty"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description External counterparty not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_list: {
+        parameters: {
+            query?: {
+                /** @description Filter opportunities that have at least one open follow-up task assigned to the current operator. */
+                assigned_to_me?: boolean;
+                /** @description Filter by attributed broker organization UUID. */
+                broker?: string;
+                /** @description Filter by commodity code (e.g. bitumen). */
+                commodity?: string;
+                /** @description Filter by direction (Supply or Demand). */
+                direction?: string;
+                /** @description Filter opportunities that have at least one open follow-up task that is due or overdue. */
+                follow_up_required?: boolean;
+                /** @description Filter by exact human-readable identifier (e.g. OPP-2026-000124). */
+                identifier?: string;
+                /** @description یک شماره صفحه‌ در مجموعه نتایج صفحه‌بندی شده. */
+                page?: number;
+                /** @description تعداد نتایج برای نمایش در هر صفحه. */
+                page_size?: number;
+                /** @description Filter by opportunity origin source (e.g. broker_referral, operator_sourcing). */
+                source?: string;
+                /** @description Filter by opportunity status (e.g. Captured, or 'active' for active non-terminal opportunities). */
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedOpportunityDetailList"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error (e.g. counterparty exclusivity violation, invalid direction) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OpportunityUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOpportunityUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_contact_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityContactAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_convert_to_rfq_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityConvertToRFQAction"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityConvertToRFQResponse"];
+                };
+            };
+            /** @description Validation error or invalid state/direction */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — Stale version or already converted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_convert_to_supply_listing_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityConvertToSupplyListingAction"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityConvertToSupplyListingResponse"];
+                };
+            };
+            /** @description Validation error or invalid state/direction */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — Stale version or already converted */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_expire_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityExpireAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_hold_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityHoldAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or missing reason */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_lost_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityLostAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or missing reason */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_match_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityMatchAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_qualify_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityQualifyAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityQualificationErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityRejectAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or missing reason */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_resume_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description یک رشته UUID که این Opportunity را شناسایی میکند. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityResumeAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityDetail"];
+                };
+            };
+            /** @description Validation error or invalid transition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict — stale expected_version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_contact_attempts_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityContactAttemptDetail"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_contact_attempts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityContactAttemptCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityContactAttemptDetail"];
+                };
+            };
+            /** @description Validation error (e.g. invalid type, future timestamp) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_contact_attempts_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Contact attempt UUID. */
+                attempt_id: string;
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityContactAttemptDetail"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Contact attempt or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by assigned user ID (or 'me' for authenticated user). */
+                assigned_to?: string;
+                /** @description Filter overdue open tasks (true/false). */
+                overdue?: boolean;
+                /** @description Filter by task status: OPEN, COMPLETED, CANCELLED. */
+                status?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpportunityTaskCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["OpportunityTaskUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Validation error (e.g. ineligible assignee, task not OPEN) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedOpportunityTaskUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Validation error (e.g. ineligible assignee, task not OPEN) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Invalid transition (e.g. task is already completed or cancelled) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    opportunities_opportunities_tasks_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Opportunity UUID or canonical identifier (e.g. OPP-2026-000124). */
+                opportunity_id: string;
+                /** @description Task UUID. */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpportunityTaskDetail"];
+                };
+            };
+            /** @description Invalid transition (e.g. task is already completed or cancelled) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden — Operator or Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
