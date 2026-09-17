@@ -204,12 +204,14 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
   return (
     <div className="space-y-6">
       {/* Desk Views Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b pb-4">
+      <div className="flex flex-wrap items-center gap-2 border-b pb-4" role="tablist">
         {viewsConfig.map((view) => {
           const isActive = activeView === view.id;
           return (
             <Button
               key={view.id}
+              role="tab"
+              aria-selected={isActive}
               variant={isActive ? "default" : "outline"}
               onClick={() => {
                 setActiveView(view.id);
@@ -389,7 +391,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
 
                       <TableCell>
                         <span className="text-sm font-medium">
-                          {opp.commodity.name_fa || opp.commodity.code}
+                          {opp.commodity?.name_fa || opp.commodity?.code || "—"}
                         </span>
                       </TableCell>
 

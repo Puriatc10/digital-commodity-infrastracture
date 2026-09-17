@@ -7,6 +7,10 @@ import { OpportunityDeskClient } from "@/app/[locale]/opportunities/client";
 import { OpportunityDetailClient } from "@/app/[locale]/opportunities/[id]/client";
 import { AuthProvider } from "@/lib/auth-context";
 import { apiClient } from "@/lib/api/client";
+import { getMessages } from "@/i18n/messages";
+
+const messages = getMessages("fa");
+const oppMsg = messages.opportunities;
 
 // Mock API client
 vi.mock("@/lib/api/client", () => ({
@@ -74,50 +78,66 @@ const mockOpportunities = [
   {
     id: "opp-uuid-1",
     identifier: "OPP-2026-0001",
-    commodity_id: "comm-bitumen-id",
-    commodity_name: "قیر",
+    commodity: {
+      id: "comm-bitumen-id",
+      code: "bitumen",
+      name_fa: "قیر",
+      name_en: "Bitumen",
+    },
     direction: "DEMAND",
     status: "Captured",
     quantity: "500.00",
     unit: "MT",
+    indicative_price: "250.00",
+    currency: "USD",
     geography: "Bandar Abbas",
     incoterm: "FOB",
-    counterparty_name: "پارس قیر",
-    counterparty_type: "external",
-    assigned_to_id: 1,
-    assigned_to_name: "operator_user",
-    claimed_by_id: 1,
-    claimed_by_name: "operator_user",
-    channel: "DIRECT_CALL",
-    ingest_source: "PHONE",
-    broker_attribution_name: "بروکر امین",
-    has_open_tasks: true,
+    external_counterparty: {
+      company_name: "پارس قیر",
+      contact_name: "آقای رضایی",
+      phone: "09123456789",
+      email: "rezaei@example.com",
+      country: "IR",
+    },
+    organization: null,
+    broker: {
+      id: "broker-org-1",
+      name: "بروکر امین",
+    },
+    source: "broker_referral",
     version: 1,
+    can_qualify: false,
+    qualification_issues: [],
     created_at: "2026-03-01T10:00:00Z",
     updated_at: "2026-03-01T10:00:00Z",
   },
   {
     id: "opp-uuid-2",
     identifier: "OPP-2026-0002",
-    commodity_id: "comm-bitumen-id",
-    commodity_name: "قیر",
+    commodity: {
+      id: "comm-bitumen-id",
+      code: "bitumen",
+      name_fa: "قیر",
+      name_en: "Bitumen",
+    },
     direction: "SUPPLY",
     status: "Qualified",
     quantity: "1000.00",
     unit: "MT",
+    indicative_price: "280.00",
+    currency: "USD",
     geography: "Tehran",
     incoterm: "EXW",
-    counterparty_name: "صنایع نفت تهران",
-    counterparty_type: "registered",
-    assigned_to_id: 2,
-    assigned_to_name: "other_operator",
-    claimed_by_id: null,
-    claimed_by_name: null,
-    channel: "WEB_FORM",
-    ingest_source: "DESK_INLINE",
-    broker_attribution_name: null,
-    has_open_tasks: false,
+    external_counterparty: null,
+    organization: {
+      id: "org-supplier",
+      name: "صنایع نفت تهران",
+    },
+    broker: null,
+    source: "operator_sourcing",
     version: 3,
+    can_qualify: false,
+    qualification_issues: [],
     created_at: "2026-03-02T10:00:00Z",
     updated_at: "2026-03-02T12:00:00Z",
   },
@@ -137,11 +157,15 @@ const mockDetailOpportunity = {
   quantity: "500.00",
   unit: "MT",
   target_price: "250.00",
+  indicative_price: "250.00",
   currency: "USD",
   geography: "Bandar Abbas",
   incoterm: "FOB",
   channel: "DIRECT_CALL",
   ingest_source: "PHONE",
+  source: "broker_referral",
+  can_qualify: true,
+  qualification_issues: [],
   external_counterparty: {
     company_name: "پارس قیر",
     contact_name: "آقای رضایی",
@@ -150,6 +174,10 @@ const mockDetailOpportunity = {
     country: "IR",
   },
   organization: null,
+  broker: {
+    id: "broker-org-1",
+    name: "بروکر امین",
+  },
   broker_attribution: {
     id: "broker-org-1",
     name: "بروکر امین",
@@ -203,7 +231,7 @@ describe("T0612 — Opportunity Desk UI", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("دسترسی محدود به مدیران و اپراتورهای سیستم است.")
+          screen.getByText(oppMsg.states.unauthorized)
         ).toBeInTheDocument();
       });
 
@@ -246,21 +274,21 @@ describe("T0612 — Opportunity Desk UI", () => {
       renderWithProviders(<OpportunityDeskClient locale="fa" />);
 
       await waitFor(() => {
-        expect(screen.getByText("میز فرصت‌ها (Opportunity Desk)")).toBeInTheDocument();
+        expect(screen.getByText(oppMsg.title)).toBeInTheDocument();
         // 6 Views
-        expect(screen.getByRole("tab", { name: /کارپوشه فعال/i })).toBeInTheDocument();
-        expect(screen.getByRole("tab", { name: /ارجاع‌شده به من/i })).toBeInTheDocument();
-        expect(screen.getByRole("tab", { name: /واجد شرایط/i })).toBeInTheDocument();
-        expect(screen.getByRole("tab", { name: /نیازمند پیگیری/i })).toBeInTheDocument();
-        expect(screen.getByRole("tab", { name: /تبدیل‌شده/i })).toBeInTheDocument();
-        expect(screen.getByRole("tab", { name: /از دست رفته/i })).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.inbox, "i") })).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.assigned_to_me, "i") })).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.qualified, "i") })).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.follow_up_required, "i") })).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.converted, "i") })).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.lost, "i") })).toBeInTheDocument();
       });
 
       // Renders Opportunity items
       expect(screen.getByText("OPP-2026-0001")).toBeInTheDocument();
       expect(screen.getByText("OPP-2026-0002")).toBeInTheDocument();
-      expect(screen.getByText("تقاضا (Demand)")).toBeInTheDocument();
-      expect(screen.getByText("عرضه (Supply)")).toBeInTheDocument();
+      expect(screen.getAllByText(oppMsg.direction.Demand).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(oppMsg.direction.Supply).length).toBeGreaterThan(0);
     });
 
     it("switching views triggers backend-driven query parameters", async () => {
@@ -294,10 +322,10 @@ describe("T0612 — Opportunity Desk UI", () => {
       renderWithProviders(<OpportunityDeskClient locale="fa" />);
 
       await waitFor(() => {
-        expect(screen.getByRole("tab", { name: /ارجاع‌شده به من/i })).toBeInTheDocument();
+        expect(screen.getByRole("tab", { name: new RegExp(oppMsg.views.assigned_to_me, "i") })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("tab", { name: /ارجاع‌شده به من/i }));
+      fireEvent.click(screen.getByRole("tab", { name: new RegExp(oppMsg.views.assigned_to_me, "i") }));
 
       await waitFor(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -330,10 +358,13 @@ describe("T0612 — Opportunity Desk UI", () => {
             data: [
               {
                 id: "ca-1",
-                contact_type: "CALL",
+                opportunity_id: "opp-uuid-1",
+                type: "CALL",
                 notes: "تماس اولیه با خریدار انجام شد.",
+                occurred_at: "2026-03-01T11:00:00Z",
                 created_at: "2026-03-01T11:00:00Z",
-                actor: { id: 1, username: "operator_user", full_name: "اپراتور" },
+                recorded_by: 1,
+                recorded_by_email: "operator@example.com",
               },
             ],
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -345,11 +376,17 @@ describe("T0612 — Opportunity Desk UI", () => {
             data: [
               {
                 id: "task-1",
+                opportunity_id: "opp-uuid-1",
                 title: "بررسی مشخصات فنی قیر",
-                status: "PENDING",
+                status: "OPEN",
+                is_overdue: false,
                 due_at: "2026-03-05T12:00:00Z",
                 description: "تطبیق با استاندارد صادراتی",
-                assigned_to: { id: 1, username: "operator_user", full_name: "اپراتور" },
+                assigned_to: 1,
+                assigned_to_email: "operator@example.com",
+                created_by: 1,
+                created_by_email: "operator@example.com",
+                completed_at: null,
                 created_at: "2026-03-01T11:00:00Z",
                 updated_at: "2026-03-01T11:00:00Z",
               },
@@ -383,10 +420,13 @@ describe("T0612 — Opportunity Desk UI", () => {
       let contactAttemptsList = [
         {
           id: "ca-1",
-          contact_type: "CALL",
+          opportunity_id: "opp-uuid-1",
+          type: "CALL",
           notes: "تماس تلفنی اولیه",
+          occurred_at: "2026-03-01T11:00:00Z",
           created_at: "2026-03-01T11:00:00Z",
-          actor: { id: 1, username: "operator_user", full_name: "اپراتور" },
+          recorded_by: 1,
+          recorded_by_email: "operator@example.com",
         },
       ];
 
@@ -430,10 +470,13 @@ describe("T0612 — Opportunity Desk UI", () => {
             ...contactAttemptsList,
             {
               id: "ca-2",
-              contact_type: body.contact_type,
+              opportunity_id: "opp-uuid-1",
+              type: body.contact_type,
               notes: body.notes,
-              created_at: "2026-03-01T12:00:00Z",
-              actor: { id: 1, username: "operator_user", full_name: "اپراتور" },
+              occurred_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              recorded_by: 1,
+              recorded_by_email: "operator@example.com",
             },
           ];
           return { response: { ok: true, status: 201 }, data: {} } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -446,19 +489,19 @@ describe("T0612 — Opportunity Desk UI", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("ثبت تعامل جدید")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: new RegExp(oppMsg.actions.addContact, "i") })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText("ثبت تعامل جدید"));
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(oppMsg.actions.addContact, "i") }));
 
       await waitFor(() => {
-        expect(screen.getByText("ثبت تعامل جدید با طرف معامله")).toBeInTheDocument();
+        expect(screen.getByText(oppMsg.modals.contactTitle)).toBeInTheDocument();
       });
 
-      const textarea = screen.getByPlaceholderText("خلاصه مذاکره یا یادداشت تعامل را وارد کنید…");
+      const textarea = screen.getByPlaceholderText(/خلاصه مذاکره/i);
       fireEvent.change(textarea, { target: { value: "پیگیری واتس‌اپ انجام شد." } });
 
-      const submitBtn = screen.getByRole("button", { name: "ثبت" });
+      const submitBtn = screen.getByRole("button", { name: oppMsg.modals.submit });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -470,11 +513,17 @@ describe("T0612 — Opportunity Desk UI", () => {
       let tasksList = [
         {
           id: "task-1",
+          opportunity_id: "opp-uuid-1",
           title: "وظیفه تست",
-          status: "PENDING",
+          status: "OPEN",
+          is_overdue: false,
           due_at: "2026-03-10T10:00:00Z",
           description: "توضیحات",
-          assigned_to: { id: 1, username: "operator_user", full_name: "اپراتور" },
+          assigned_to: 1,
+          assigned_to_email: "operator@example.com",
+          created_by: 1,
+          created_by_email: "operator@example.com",
+          completed_at: null,
           created_at: "2026-03-01T11:00:00Z",
           updated_at: "2026-03-01T11:00:00Z",
         },
@@ -521,13 +570,13 @@ describe("T0612 — Opportunity Desk UI", () => {
 
       await waitFor(() => {
         expect(screen.getByText("وظیفه تست")).toBeInTheDocument();
-        expect(screen.getByTitle("تکمیل وظیفه")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: new RegExp(oppMsg.actions.completeTask, "i") })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByTitle("تکمیل وظیفه"));
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(oppMsg.actions.completeTask, "i") }));
 
       await waitFor(() => {
-        expect(screen.getByText("وظیفه با موفقیت تکمیل شد.")).toBeInTheDocument();
+        expect(screen.getByText(oppMsg.states.taskCompleted)).toBeInTheDocument();
       });
     });
 
@@ -574,20 +623,20 @@ describe("T0612 — Opportunity Desk UI", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("تبدیل به استعلام خرید (RFQ)")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: new RegExp(oppMsg.actions.convertToRfq, "i") })).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText("تبدیل به استعلام خرید (RFQ)"));
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(oppMsg.actions.convertToRfq, "i") }));
 
       await waitFor(() => {
-        expect(screen.getByText("تبدیل فرصت تقاضا به استعلام رسمی (RFQ)")).toBeInTheDocument();
+        expect(screen.getByText(oppMsg.modals.convertRfqTitle)).toBeInTheDocument();
       });
 
       // Fill external buyer org id
-      const buyerInput = screen.getByPlaceholderText("UUID سازمان خریدار ثبت‌شده...");
+      const buyerInput = screen.getByPlaceholderText(/UUID سازمان خریدار/i);
       fireEvent.change(buyerInput, { target: { value: "org-buyer-uuid" } });
 
-      const submitBtn = screen.getByRole("button", { name: "ثبت" });
+      const submitBtn = screen.getByRole("button", { name: oppMsg.modals.submit });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -634,19 +683,18 @@ describe("T0612 — Opportunity Desk UI", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("ثبت تماس اولیه")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: new RegExp(oppMsg.actions.contact, "i") })).toBeInTheDocument();
       });
 
       // Initial GET count is 1
       expect(getCallCount).toBe(1);
 
-      fireEvent.click(screen.getByText("ثبت تماس اولیه"));
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(oppMsg.actions.contact, "i") }));
 
       // Shows conflict banner and refetches
       await waitFor(() => {
-        expect(
-          screen.getByText("تداخل همزمانی: این فرصت توسط کاربر دیگری به‌روزرسانی شده است.")
-        ).toBeInTheDocument();
+        expect(screen.getByText(oppMsg.concurrency.staleWarning)).toBeInTheDocument();
+        expect(screen.getByText(oppMsg.concurrency.conflictAlert)).toBeInTheDocument();
         expect(getCallCount).toBeGreaterThanOrEqual(2);
       });
     });
