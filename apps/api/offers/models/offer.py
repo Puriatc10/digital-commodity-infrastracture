@@ -72,6 +72,16 @@ class Offer(models.Model):
         help_text="Originating lead/opportunity provenance context.",
     )
 
+    # Current Submitted Version Snapshot (Epic 8 Contract §6, §35)
+    current_submitted_version = models.ForeignKey(
+        "offers.OfferVersion",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        help_text="Currently active submitted OfferVersion commercial snapshot.",
+    )
+
     # Optimistic Concurrency Foundation (Contract §6, §76)
     aggregate_version = models.IntegerField(
         default=1,
@@ -138,6 +148,35 @@ class Offer(models.Model):
             raise ValidationError(
                 f"Invalid offeror role '{self.offeror_role}'. Must be SUPPLIER or BROKER."
             )
+        if self.current_submitted_version_id is not None:
+            from offers.enums import OfferVersionStatus
+
+            current_v = self.current_submitted_version
+            if current_v:
+                if current_v.offer_id != self.id:
+                    raise ValidationError(
+                        "current_submitted_version must belong to this offer."
+                    )
+                if current_v.status != OfferVersionStatus.SUBMITTED:
+                    raise ValidationError(
+                        "current_submitted_version must be in SUBMITTED status."
+                    )
+
+    def save(self, *args, **kwargs):
+        if self.current_submitted_version_id is not None:
+            from offers.enums import OfferVersionStatus
+
+            current_v = self.current_submitted_version
+            if current_v:
+                if current_v.offer_id != self.id:
+                    raise ValidationError(
+                        "current_submitted_version must belong to this offer."
+                    )
+                if current_v.status != OfferVersionStatus.SUBMITTED:
+                    raise ValidationError(
+                        "current_submitted_version must be in SUBMITTED status."
+                    )
+        super().save(*args, **kwargs)
 
     @property
     def version(self) -> int:
