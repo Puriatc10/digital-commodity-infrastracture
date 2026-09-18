@@ -467,6 +467,9 @@ class ComparisonRowSerializer(serializers.Serializer):
         help_text="Dynamic commodity specification compliance outcome.",
     )
     trust_status = serializers.CharField(help_text="Authoritative verification status or UNKNOWN.")
+    aggregate_version = serializers.IntegerField(
+        help_text="Current optimistic concurrency aggregate_version of the parent Offer.",
+    )
 
 
 class OperatorComparisonRowSerializer(ComparisonRowSerializer):

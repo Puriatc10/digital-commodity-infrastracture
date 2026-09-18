@@ -576,6 +576,62 @@ class RFQDecisionRunCreateView(APIView):
         response_serializer = DecisionRunDetailResponseSerializer(run_loaded)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(
+        summary="Retrieve latest DecisionRun for an RFQ",
+        description=(
+            "Retrieves the most recent DecisionRun for the specified RFQ. "
+            "Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. "
+            "Returns 404 if no DecisionRun has been executed for this RFQ yet."
+        ),
+        responses={
+            200: DecisionRunDetailResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - lacks Buyer procurement role or Operator authority"),
+            404: OpenApiResponse(description="RFQ or DecisionRun not found"),
+        },
+    )
+    def get(self, request, rfq_id):
+        rfq = RFQ.objects.filter(pk=rfq_id).first()
+        if not rfq:
+            return Response(
+                {"detail": f"RFQ '{rfq_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_rfq_buyer = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+
+        if not is_operator and not is_rfq_buyer:
+            return Response(
+                {"detail": "You do not have permission to view decision intelligence for this RFQ."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        run = (
+            DecisionRun.objects.filter(rfq=rfq)
+            .select_related("rfq", "decision_profile_version", "decision_profile_version__profile")
+            .prefetch_related(
+                "candidates",
+                "candidates__offer_version",
+                "candidates__signals",
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        if not run:
+            return Response(
+                {"detail": f"No DecisionRun found for RFQ '{rfq_id}'."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = DecisionRunDetailResponseSerializer(run)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class DecisionRunDetailView(APIView):
     """

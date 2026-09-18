@@ -44,6 +44,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { RFQMatchingTab } from "@/components/matching/rfq-matching-tab";
+import { RFQComparisonTab } from "@/components/comparison/rfq-comparison-tab";
 
 type RFQBuilderResponse = components["schemas"]["RFQBuilderResponse"];
 type RFQPublicResponse = components["schemas"]["RFQPublicResponse"];
@@ -128,6 +129,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
   const canManage = isOperatorOrAdmin || (isOwnerOrg && isOwnerOrManager);
   const isExternal = Boolean(rfq && !isOperatorOrAdmin && !isOwnerOrg);
   const canAccessMatching = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
+  const canAccessComparison = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
 
   // Track previous organization ID to invalidate cache on switch
   const previousOrgIdRef = useRef<string | null>(null);
@@ -139,6 +141,8 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
       previousOrgIdRef.current !== currentOrgId
     ) {
       queryClient.removeQueries({ queryKey: ["rfq", rfqId] });
+      queryClient.removeQueries({ queryKey: ["rfq-comparison", rfqId] });
+      queryClient.removeQueries({ queryKey: ["rfq-decision-run", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-invitations", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-activity", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-invitation-me", rfqId] });
@@ -152,6 +156,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
       setStaleConflict(false);
       setActionError(null);
       setActionSuccess(null);
+      setActiveTab("overview");
     }
     if (currentOrgId) {
       previousOrgIdRef.current = currentOrgId;
@@ -687,18 +692,20 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
           {t.tabs.offers}
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("comparison")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-            activeTab === "comparison"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Scale className="h-4 w-4" />
-          {t.tabs.comparison}
-        </button>
+        {canAccessComparison && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("comparison")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === "comparison"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Scale className="h-4 w-4" />
+            {t.tabs.comparison}
+          </button>
+        )}
 
         <button
           type="button"
@@ -1213,17 +1220,14 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
         </Card>
       )}
 
-      {/* --- COMPARISON TAB (STAGED PLACEHOLDER) --- */}
-      {activeTab === "comparison" && (
-        <Card className="border-dashed">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-base font-semibold">{t.staged.comparisonTitle}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
-            <Scale className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="max-w-md text-sm leading-relaxed">{t.staged.comparisonPlaceholder}</p>
-          </CardContent>
-        </Card>
+      {/* --- COMPARISON TAB --- */}
+      {activeTab === "comparison" && canAccessComparison && (
+        <RFQComparisonTab
+          rfqId={rfqId}
+          canManage={canManage}
+          isOperator={Boolean(isOperatorOrAdmin)}
+          locale={locale}
+        />
       )}
 
       {/* --- NEGOTIATION TAB (STAGED PLACEHOLDER) --- */}

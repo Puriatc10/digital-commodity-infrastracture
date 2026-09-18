@@ -230,3 +230,51 @@ class DecisionAuthorizationTests(BaseOffersTestCase):
         response = self.client.get(f"/api/offers/decision-runs/{self.decision_run.id}/")
         self.assertIn(response.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
 
+    # --- API-level matrix: GET /rfqs/{rfq_id}/decision-runs/ (latest run) ---
+
+    def test_api_get_latest_run_buyer_200(self):
+        self.client.force_authenticate(user=self.buyer_user)
+        response = self.client.get(f"/api/offers/rfqs/{self.published_rfq.id}/decision-runs/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], str(self.decision_run.id))
+
+    def test_api_get_latest_run_operator_200(self):
+        self.client.force_authenticate(user=self.operator_user)
+        response = self.client.get(f"/api/offers/rfqs/{self.published_rfq.id}/decision-runs/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], str(self.decision_run.id))
+
+    def test_api_get_latest_run_supplier_403(self):
+        self.client.force_authenticate(user=self.supplier_user)
+        response = self.client.get(f"/api/offers/rfqs/{self.published_rfq.id}/decision-runs/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_api_get_latest_run_broker_403(self):
+        self.client.force_authenticate(user=self.broker_user)
+        response = self.client.get(f"/api/offers/rfqs/{self.published_rfq.id}/decision-runs/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_api_get_latest_run_foreign_buyer_403(self):
+        self.client.force_authenticate(user=self.foreign_buyer_user)
+        response = self.client.get(f"/api/offers/rfqs/{self.published_rfq.id}/decision-runs/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_api_get_latest_run_not_found_404(self):
+        # Create a separate published RFQ with no decision runs
+        from trade_hub.models import RFQ, RFQStatus
+        empty_rfq = RFQ.objects.create(
+            organization=self.buyer_org,
+            created_by=self.buyer_user,
+            commodity=self.commodity,
+            schema_version=self.schema_version,
+            specifications={},
+            quantity=100,
+            unit="MT",
+            currency="USD",
+            status=RFQStatus.PUBLISHED,
+        )
+        self.client.force_authenticate(user=self.buyer_user)
+        response = self.client.get(f"/api/offers/rfqs/{empty_rfq.id}/decision-runs/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
