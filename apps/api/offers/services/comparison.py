@@ -85,6 +85,8 @@ class ComparisonRow:
     technical_compliance: TechnicalComplianceStatus
     trust_status: str
 
+    aggregate_version: int = 1
+
     # Operator-only safe provenance (None for Buyer projection)
     source_opportunity_id: Optional[uuid.UUID] = None
     source_opportunity_identifier: Optional[str] = None
@@ -122,6 +124,7 @@ class ComparisonRow:
             "is_expired": self.is_expired,
             "technical_compliance": self.technical_compliance.value,
             "trust_status": self.trust_status,
+            "aggregate_version": self.aggregate_version,
             "source_opportunity_id": str(self.source_opportunity_id) if self.source_opportunity_id else None,
             "source_opportunity_identifier": self.source_opportunity_identifier,
             "entered_by_operator": self.entered_by_operator,
@@ -392,6 +395,7 @@ def compare_rfq_offers(
                     is_expired=is_expired,
                     technical_compliance=tech_compliance,
                     trust_status=trust,
+                    aggregate_version=offer.aggregate_version,
                     source_opportunity_id=opp_id,
                     source_opportunity_identifier=opp_ident,
                     entered_by_operator=entered_by_op,

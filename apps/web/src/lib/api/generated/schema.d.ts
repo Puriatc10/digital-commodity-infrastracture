@@ -602,7 +602,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Retrieve latest DecisionRun for an RFQ
+         * @description Retrieves the most recent DecisionRun for the specified RFQ. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. Returns 404 if no DecisionRun has been executed for this RFQ yet.
+         */
+        get: operations["offers_rfqs_decision_runs_retrieve"];
         put?: never;
         /**
          * Create DecisionRun foundation for an RFQ
@@ -1474,7 +1478,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Retrieve latest DecisionRun for an RFQ
+         * @description Retrieves the most recent DecisionRun for the specified RFQ. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. Returns 404 if no DecisionRun has been executed for this RFQ yet.
+         */
+        get: operations["rfqs_decision_runs_retrieve"];
         put?: never;
         /**
          * Create DecisionRun foundation for an RFQ
@@ -2098,6 +2106,8 @@ export interface components {
             technical_compliance: components["schemas"]["TechnicalComplianceEnum"];
             /** @description Authoritative verification status or UNKNOWN. */
             trust_status: string;
+            /** @description Current optimistic concurrency aggregate_version of the parent Offer. */
+            aggregate_version: number;
         };
         /**
          * @description * `CALL` - Call
@@ -6528,6 +6538,48 @@ export interface operations {
             };
         };
     };
+    offers_rfqs_decision_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or DecisionRun not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     offers_rfqs_decision_runs_create: {
         parameters: {
             query?: never;
@@ -9191,6 +9243,48 @@ export interface operations {
                 content?: never;
             };
             /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_decision_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or DecisionRun not found */
             404: {
                 headers: {
                     [name: string]: unknown;
