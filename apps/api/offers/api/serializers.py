@@ -311,3 +311,48 @@ class OfferErrorResponseSerializer(serializers.Serializer):
         required=False,
         help_text="Optional list of error messages or validation details.",
     )
+
+
+class NormalizedOfferVersionResponseSerializer(serializers.Serializer):
+    """
+    Structured serialized representation of an immutable NormalizedOfferVersion domain result.
+    (Epic 8 Contract §33, T0805).
+    """
+
+    product_cost = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        help_text="Product cost derived from unit_price * offered_quantity.",
+    )
+    known_cost_total = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        help_text="Sum of genuinely known cost components (product + known logistics + known other).",
+    )
+    landed_cost = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        allow_null=True,
+        help_text="Landed cost if required logistics evidence is known; None if UNKNOWN.",
+    )
+    landed_unit_cost = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        allow_null=True,
+        help_text="Landed cost divided by offered_quantity; None if landed_cost is None.",
+    )
+    normalization_complete = serializers.BooleanField(
+        help_text="Whether all required v1 cost evidence is sufficiently known.",
+    )
+    missing_components = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="Machine-readable list of missing required cost components.",
+    )
+    currency = serializers.CharField(
+        max_length=3,
+        help_text="ISO 4217 3-letter currency code (retains original OfferVersion currency).",
+    )
+    policy_version = serializers.CharField(
+        max_length=20,
+        help_text="Semantic policy version applied during normalisation.",
+    )
