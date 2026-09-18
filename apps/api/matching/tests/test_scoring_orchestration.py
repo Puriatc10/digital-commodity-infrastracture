@@ -16,7 +16,14 @@ from matching.enums import (
     SignalDimension,
     SignalOutcome,
 )
+from matching.exceptions import HistoricalProviderError
 from matching.models.candidate import MatchingCandidate
+from matching.models.run import MatchingRun
+from matching.rules.history import (
+    HistoryReasonCode,
+    default_historical_registry,
+)
+from matching.rules.result import RuleResult
 from matching.models.policy import (
     MatchingPolicy,
     MatchingPolicyVersion,
@@ -608,3 +615,105 @@ class ScoringOrchestrationTests(TestCase):
             self.assertEqual(c1.ranking_score, c2.ranking_score)
             self.assertEqual(c1.evidence_coverage, c2.evidence_coverage)
             self.assertEqual(c1.fit_score, c2.fit_score)
+
+    def test_provider_exception_does_not_reduce_na_denominator_and_cannot_inflate_coverage(self):
+        """
+        Prove that a provider exception is NOT an N/A denominator reduction:
+        - Legitimate N/A (no providers): History weight (5) excluded from denominator A -> A=95, Coverage=100%.
+        - Applicable provider with missing evidence (UNKNOWN): History weight (5) included in denominator A -> A=100, Coverage=95%.
+        - Provider exception: MUST fail with HistoricalProviderError and rollback; cannot reduce A to 95 or inflate coverage.
+        """
+        supplier = Organization.objects.create(name="Historical Provider Test Supplier", is_active=True)
+        OrganizationCapability.objects.create(organization=supplier, capability=OrganizationCapability.CapabilityType.SUPPLIER)
+        OrganizationCommodity.objects.create(organization=supplier, commodity=self.commodity)
+        OrganizationVerification.objects.create(organization=supplier, status=VerificationStatus.VERIFIED)
+
+        listing = SupplyListing.objects.create(
+            organization=supplier,
+            commodity=self.commodity,
+            schema_version=self.schema_version,
+            quantity=Decimal("500.000"),
+            unit="MT",
+            availability_window_start=date(2026, 10, 1),
+            availability_window_end=date(2026, 10, 15),
+            origin_area=self.shahriar,
+            specifications={"penetration_grade": "60/70"},
+            status=SupplyListingStatus.ACTIVE,
+            visibility=SupplyListingVisibility.PUBLIC,
+        )
+
+        # Baseline 1: Legitimate N/A (no providers registered)
+        default_historical_registry.clear()
+        run_na = MatchingRunService.execute_matching_run(
+            rfq_id=self.rfq.id,
+            audience=MatchingAudience.BUYER,
+            actor_scope=self.buyer_scope,
+        )
+        cand_na = run_na.candidates.get(lane=CandidateLane.DIRECT_SUPPLY, supply_listing=listing)
+        sig_history_na = cand_na.signals.get(code="history")
+        self.assertEqual(sig_history_na.outcome, SignalOutcome.NOT_APPLICABLE)
+        # In legitimate N/A, denominator A is reduced from 100 to 95. Known K is 95. Coverage is 100%.
+        self.assertEqual(cand_na.evidence_coverage, Decimal("100.00"))
+        self.assertEqual(cand_na.ranking_score, Decimal("100.00"))
+
+        # Baseline 2: Applicable provider with no evidence -> UNKNOWN
+        class MissingEvidenceProvider:
+            code = "history.missing_evidence"
+
+            def supports_candidate_kind(self, candidate_kind: str) -> bool:
+                return True
+
+            def evaluate(self, candidate, context, policy_version=None):
+                return (
+                    RuleResult(
+                        code=self.code,
+                        dimension=SignalDimension.HISTORY.value,
+                        outcome=SignalOutcome.UNKNOWN,
+                        is_hard=False,
+                        raw_score=None,
+                        reason_code=HistoryReasonCode.HISTORICAL_EVIDENCE_UNAVAILABLE.value,
+                    ),
+                )
+
+        default_historical_registry.register(MissingEvidenceProvider())
+        try:
+            run_unknown = MatchingRunService.execute_matching_run(
+                rfq_id=self.rfq.id,
+                audience=MatchingAudience.BUYER,
+                actor_scope=self.buyer_scope,
+            )
+            cand_unknown = run_unknown.candidates.get(lane=CandidateLane.DIRECT_SUPPLY, supply_listing=listing)
+            sig_history_unknown = cand_unknown.signals.get(code="history.missing_evidence")
+            self.assertEqual(sig_history_unknown.outcome, SignalOutcome.UNKNOWN)
+            # A includes 5 weight for history -> A=100. Known K is 95 -> Coverage is 95/100 = 95.00%.
+            self.assertEqual(cand_unknown.evidence_coverage, Decimal("95.00"))
+            self.assertEqual(cand_unknown.ranking_score, Decimal("95.00"))
+        finally:
+            default_historical_registry.clear()
+
+        # Target Assertion: Provider exception MUST raise HistoricalProviderError
+        # It must NOT downgrade to NOT_APPLICABLE (which would reduce A to 95 and inflate coverage to 100%).
+        class CrashingProvider:
+            code = "history.crashing_audit"
+
+            def supports_candidate_kind(self, candidate_kind: str) -> bool:
+                return True
+
+            def evaluate(self, candidate, context, policy_version=None):
+                raise RuntimeError("External history query crashed unexpectedly")
+
+        default_historical_registry.register(CrashingProvider())
+        try:
+            initial_runs = MatchingRun.objects.count()
+            with self.assertRaises(HistoricalProviderError) as ctx:
+                MatchingRunService.execute_matching_run(
+                    rfq_id=self.rfq.id,
+                    audience=MatchingAudience.BUYER,
+                    actor_scope=self.buyer_scope,
+                )
+            self.assertEqual(ctx.exception.code, "historical_provider_failure")
+            self.assertEqual(ctx.exception.provider_code, "history.crashing_audit")
+            # Proves run failure and atomicity: NO run or inflated candidate was created
+            self.assertEqual(MatchingRun.objects.count(), initial_runs)
+        finally:
+            default_historical_registry.clear()

@@ -59,3 +59,18 @@ class MatchingAuthorizationError(PermissionDenied):
         super().__init__(message)
         self.message = message
         self.code = code
+
+
+class HistoricalProviderError(MatchingError):
+    """Raised when an operational defect or failure occurs during historical provider execution."""
+
+    def __init__(
+        self,
+        message: str = "A historical signal provider encountered an operational failure.",
+        code: str = "historical_provider_failure",
+        provider_code: str | None = None,
+        original_exception: Exception | None = None,
+    ):
+        super().__init__(message, code=code)
+        self.provider_code = provider_code
+        self.original_exception = original_exception
