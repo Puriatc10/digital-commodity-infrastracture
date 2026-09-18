@@ -115,3 +115,9 @@ class DecisionExecutionError(DecisionDomainError):
     pass
 
 
+class RevisionRequestNotFoundError(OfferDomainError, ObjectDoesNotExist):
+    """Raised when a RevisionRequest cannot be found."""
+
+    pass
+
+

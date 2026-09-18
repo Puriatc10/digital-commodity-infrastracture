@@ -3,7 +3,12 @@ from typing import Optional
 
 from rest_framework import serializers
 
-from offers.enums import CostComponentKind, LogisticsCostStatus
+from offers.enums import (
+    CostComponentKind,
+    FORBIDDEN_REVISION_FIELDS,
+    LogisticsCostStatus,
+    RevisionRequestedField,
+)
 from offers.models import (
     DecisionCandidate,
     DecisionRun,
@@ -11,6 +16,7 @@ from offers.models import (
     Offer,
     OfferCostComponent,
     OfferVersion,
+    RevisionRequest,
 )
 
 
@@ -644,5 +650,101 @@ class DecisionRunCreateRequestSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Optional exact Published DecisionProfileVersion UUID. Defaults to current default Published v1.",
     )
+
+
+class RevisionRequestCreateSerializer(serializers.Serializer):
+    """
+    Request payload for opening a RevisionRequest against an Offer (T0810, Contract §56).
+    """
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Expected Offer aggregate_version for optimistic concurrency control.",
+    )
+    base_offer_version = serializers.UUIDField(
+        required=True,
+        help_text="UUID of the submitted OfferVersion serving as the revision base.",
+    )
+    requested_fields = serializers.ListField(
+        child=serializers.ChoiceField(choices=RevisionRequestedField.choices),
+        allow_empty=False,
+        required=True,
+        help_text="Canonical list of field names requested for revision.",
+    )
+    message = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional human-readable explanation or negotiation guidance.",
+    )
+
+    def validate_requested_fields(self, value):
+        if not value:
+            raise serializers.ValidationError("At least one field must be requested for revision.")
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError("requested_fields cannot contain duplicate entries.")
+        for f in value:
+            if f in FORBIDDEN_REVISION_FIELDS:
+                raise serializers.ValidationError(
+                    f"Field '{f}' is a server-owned attribute and cannot be requested for revision."
+                )
+        return value
+
+
+class RevisionRequestActionSerializer(serializers.Serializer):
+    """
+    Payload for declining or cancelling an open RevisionRequest (T0810).
+    """
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Expected Offer aggregate_version for optimistic concurrency control.",
+    )
+
+
+class RevisionRequestResponseSerializer(serializers.ModelSerializer):
+    """
+    Authoritative representation of a RevisionRequest record (T0810, Contract §56).
+    """
+
+    offer_id = serializers.UUIDField(help_text="Parent Offer UUID.")
+    base_offer_version_id = serializers.UUIDField(help_text="Base OfferVersion UUID.")
+    base_version_number = serializers.IntegerField(
+        source="base_offer_version.version_number",
+        read_only=True,
+        help_text="Version number of the base OfferVersion.",
+    )
+    requested_by_id = serializers.UUIDField(help_text="User UUID who created the request.")
+    resolved_by_version_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="UUID of resolving OfferVersion (populated upon resolution in T0811).",
+    )
+    offer_aggregate_version = serializers.IntegerField(
+        source="offer.aggregate_version",
+        read_only=True,
+        help_text="Current aggregate_version of the parent Offer.",
+    )
+
+    class Meta:
+        model = RevisionRequest
+        fields = [
+            "id",
+            "offer_id",
+            "base_offer_version_id",
+            "base_version_number",
+            "requested_fields",
+            "message",
+            "requested_by_id",
+            "requested_at",
+            "status",
+            "resolved_by_version_id",
+            "resolved_at",
+            "offer_aggregate_version",
+            "updated_at",
+        ]
+        read_only_fields = fields
 
 

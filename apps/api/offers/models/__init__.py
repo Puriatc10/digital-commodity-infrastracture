@@ -8,11 +8,13 @@ from offers.models.decision import (
 )
 from offers.models.offer import Offer
 from offers.models.offer_version import OfferCostComponent, OfferVersion
+from offers.models.revision_request import RevisionRequest
 
 __all__ = [
     "Offer",
     "OfferVersion",
     "OfferCostComponent",
+    "RevisionRequest",
     "DecisionProfile",
     "DecisionProfileVersion",
     "DecisionDimensionWeight",

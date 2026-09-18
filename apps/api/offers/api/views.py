@@ -17,6 +17,9 @@ from offers.api.serializers import (
     OperatorOfferDetailResponseSerializer,
     OperatorRFQComparisonResponseSerializer,
     RFQComparisonResponseSerializer,
+    RevisionRequestActionSerializer,
+    RevisionRequestCreateSerializer,
+    RevisionRequestResponseSerializer,
 )
 from offers.enums import LogisticsCostStatus
 from offers.exceptions import (
@@ -30,14 +33,26 @@ from offers.exceptions import (
     OfferStateError,
     OfferValidationError,
     OfferVersionNotFoundError,
+    RevisionRequestNotFoundError,
     StaleVersionError,
 )
-from offers.models import DecisionProfileVersion, DecisionRun, Offer, OfferVersion
+from offers.models import (
+    DecisionProfileVersion,
+    DecisionRun,
+    Offer,
+    OfferVersion,
+    RevisionRequest,
+)
 from offers.services.comparison import compare_rfq_offers
 from offers.services.decision_service import (
     execute_decision_run_pipeline,
 )
 from offers.services.operator_submission import submit_operator_external_offer
+from offers.services.revision_service import (
+    cancel_revision_request,
+    create_revision_request,
+    decline_revision_request,
+)
 from offers.services.submission import submit_internal_offer_version
 from organizations.models import OrganizationMembership
 from trade_hub.models import RFQ
@@ -607,6 +622,415 @@ class DecisionRunDetailView(APIView):
             )
 
         serializer = DecisionRunDetailResponseSerializer(run)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class OfferRevisionRequestCreateView(APIView):
+    """
+    Open or list RevisionRequests for a specific Offer (T0810, Contract §56).
+
+    POST: Authoritatively open a RevisionRequest against the Offer's current submitted version.
+    Authorized for Buyer procurement actors (Owner/Manager of RFQ Buyer org) and platform Operators.
+    Supplier/Broker participants attempting to create revision requests receive 403 Forbidden.
+    Competitors receive 404 Not Found to conceal offer existence.
+
+    GET: List revision requests for the offer.
+    Accessible to RFQ Buyer, offering party, and platform Operators.
+    Competitors receive 404 Not Found.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Create offer revision request",
+        description=(
+            "Open a formal RevisionRequest against the current submitted OfferVersion. "
+            "Requires expected_version for optimistic concurrency control on the Offer aggregate. "
+            "Authorized for Buyer organization Owner/Manager or platform Operator. "
+            "Transitions target RFQ from Collecting Offers to Negotiating upon first revision request. "
+            "Competitors attempting to access or request revisions receive 404 Not Found."
+        ),
+        request=RevisionRequestCreateSerializer,
+        responses={
+            201: RevisionRequestResponseSerializer,
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - lacks Buyer procurement role or Operator authority"),
+            404: OpenApiResponse(description="Offer or base OfferVersion not found"),
+            409: OpenApiResponse(description="Conflict - stale expected_version or already open revision request"),
+        },
+    )
+    def post(self, request, offer_id):
+        offer = (
+            Offer.objects.filter(pk=offer_id)
+            .select_related("rfq", "offering_organization")
+            .first()
+        )
+        if not offer:
+            return Response(
+                {"detail": f"Offer '{offer_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_buyer_member = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=offer.rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+        is_offeror_member = bool(
+            offer.offering_organization_id
+            and OrganizationMembership.objects.filter(
+                user=request.user,
+                organization_id=offer.offering_organization_id,
+                is_active=True,
+                organization__is_active=True,
+            ).exists()
+        )
+
+        # IDOR / Privacy guard: competitors receive 404
+        if not (is_operator or is_buyer_member or is_offeror_member):
+            return Response(
+                {"detail": f"Offer '{offer_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Supplier self-request guard: offering organization members cannot request revision on own offer
+        if is_offeror_member and not (is_operator or is_buyer_member):
+            return Response(
+                {"detail": "Suppliers and Brokers cannot issue revision requests to their own offers."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = RevisionRequestCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated = serializer.validated_data
+        try:
+            rev_req = create_revision_request(
+                actor=request.user,
+                offer=offer,
+                base_offer_version=validated["base_offer_version"],
+                requested_fields=validated["requested_fields"],
+                message=validated.get("message", ""),
+                expected_version=validated["expected_version"],
+            )
+        except OfferPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except (OfferNotFoundError, OfferVersionNotFoundError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (StaleVersionError, OfferConflictError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (InvalidVersionError, OfferValidationError, OfferStateError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out_serializer = RevisionRequestResponseSerializer(rev_req)
+        return Response(out_serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        summary="List offer revision requests",
+        description=(
+            "List all revision requests for a specific Offer. "
+            "Authorized for RFQ Buyer, offering party, and platform Operators. "
+            "Competitors receive 404 Not Found."
+        ),
+        responses={
+            200: RevisionRequestResponseSerializer(many=True),
+            401: OpenApiResponse(description="Unauthenticated"),
+            404: OpenApiResponse(description="Offer not found or inaccessible"),
+        },
+    )
+    def get(self, request, offer_id):
+        offer = (
+            Offer.objects.filter(pk=offer_id)
+            .select_related("rfq", "offering_organization")
+            .first()
+        )
+        if not offer:
+            return Response(
+                {"detail": f"Offer '{offer_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_buyer_member = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=offer.rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+        is_offeror_member = bool(
+            offer.offering_organization_id
+            and OrganizationMembership.objects.filter(
+                user=request.user,
+                organization_id=offer.offering_organization_id,
+                is_active=True,
+                organization__is_active=True,
+            ).exists()
+        )
+
+        if not (is_operator or is_buyer_member or is_offeror_member):
+            return Response(
+                {"detail": f"Offer '{offer_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        requests = (
+            RevisionRequest.objects.filter(offer=offer)
+            .select_related("offer", "base_offer_version")
+            .order_by("-requested_at")
+        )
+        serializer = RevisionRequestResponseSerializer(requests, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class RevisionRequestDeclineView(APIView):
+    """
+    Decline an open RevisionRequest (T0810, Contract §56).
+
+    Authorized exclusively for the actor representing the Offer economic party:
+    - Internal: Supplier/Broker organization authorized member (Owner, Manager, Member; Viewer denied).
+    - External: Platform Operator / Product Admin on behalf of external counterparty.
+    Buyer-side actors cannot decline.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Decline open revision request",
+        description=(
+            "Decline an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. "
+            "Authorized exclusively for the Offer economic party representative (Supplier/Broker member "
+            "or Operator for external counterparty). Buyers cannot decline."
+        ),
+        request=RevisionRequestActionSerializer,
+        responses={
+            200: RevisionRequestResponseSerializer,
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - actor does not represent Offer economic party"),
+            404: OpenApiResponse(description="RevisionRequest not found"),
+            409: OpenApiResponse(description="Conflict - stale expected_version or request not in OPEN status"),
+        },
+    )
+    def post(self, request, request_id):
+        rev_req = (
+            RevisionRequest.objects.filter(pk=request_id)
+            .select_related("offer", "offer__rfq")
+            .first()
+        )
+        if not rev_req:
+            return Response(
+                {"detail": f"RevisionRequest '{request_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_buyer_member = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=rev_req.offer.rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+        is_offeror_member = bool(
+            rev_req.offer.offering_organization_id
+            and OrganizationMembership.objects.filter(
+                user=request.user,
+                organization_id=rev_req.offer.offering_organization_id,
+                is_active=True,
+                organization__is_active=True,
+            ).exists()
+        )
+
+        if not (is_operator or is_buyer_member or is_offeror_member):
+            return Response(
+                {"detail": f"RevisionRequest '{request_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if is_buyer_member and not (is_operator or is_offeror_member):
+            return Response(
+                {"detail": "Buyer procurement actors cannot decline revision requests; only the Offer economic party may decline."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = RevisionRequestActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        expected_version = serializer.validated_data["expected_version"]
+
+        try:
+            declined_req = decline_revision_request(
+                actor=request.user,
+                revision_request=rev_req,
+                expected_version=expected_version,
+            )
+        except OfferPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except (RevisionRequestNotFoundError, OfferNotFoundError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (StaleVersionError, OfferConflictError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (InvalidVersionError, OfferValidationError, OfferStateError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(RevisionRequestResponseSerializer(declined_req).data, status=status.HTTP_200_OK)
+
+
+class RevisionRequestCancelView(APIView):
+    """
+    Cancel an open RevisionRequest (T0810, Contract §56).
+
+    Authorized for Buyer procurement actors (Owner/Manager of RFQ Buyer org) or platform Operators.
+    Offer participants (Supplier/Broker) cannot cancel Buyer's request.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Cancel open revision request",
+        description=(
+            "Cancel an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. "
+            "Authorized for Buyer procurement actors or platform Operators. "
+            "Offer participants cannot cancel Buyer's request."
+        ),
+        request=RevisionRequestActionSerializer,
+        responses={
+            200: RevisionRequestResponseSerializer,
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - actor lacks Buyer procurement role or Operator authority"),
+            404: OpenApiResponse(description="RevisionRequest not found"),
+            409: OpenApiResponse(description="Conflict - stale expected_version or request not in OPEN status"),
+        },
+    )
+    def post(self, request, request_id):
+        rev_req = (
+            RevisionRequest.objects.filter(pk=request_id)
+            .select_related("offer", "offer__rfq")
+            .first()
+        )
+        if not rev_req:
+            return Response(
+                {"detail": f"RevisionRequest '{request_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_buyer_member = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=rev_req.offer.rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+        is_offeror_member = bool(
+            rev_req.offer.offering_organization_id
+            and OrganizationMembership.objects.filter(
+                user=request.user,
+                organization_id=rev_req.offer.offering_organization_id,
+                is_active=True,
+                organization__is_active=True,
+            ).exists()
+        )
+
+        if not (is_operator or is_buyer_member or is_offeror_member):
+            return Response(
+                {"detail": f"RevisionRequest '{request_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if is_offeror_member and not (is_operator or is_buyer_member):
+            return Response(
+                {"detail": "Offer participants cannot cancel Buyer's revision request."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = RevisionRequestActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        expected_version = serializer.validated_data["expected_version"]
+
+        try:
+            cancelled_req = cancel_revision_request(
+                actor=request.user,
+                revision_request=rev_req,
+                expected_version=expected_version,
+            )
+        except OfferPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except (RevisionRequestNotFoundError, OfferNotFoundError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (StaleVersionError, OfferConflictError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (InvalidVersionError, OfferValidationError, OfferStateError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(RevisionRequestResponseSerializer(cancelled_req).data, status=status.HTTP_200_OK)
+
+
+class RevisionRequestDetailView(APIView):
+    """
+    Retrieve details of a RevisionRequest (T0810, Contract §56).
+
+    Authorized for RFQ Buyer, offering party, and platform Operators.
+    Competitors receive 404 Not Found.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Get revision request details",
+        description=(
+            "Retrieve details of a RevisionRequest by ID. "
+            "Authorized for RFQ Buyer, offering party, and platform Operators. "
+            "Competitors receive 404 Not Found."
+        ),
+        responses={
+            200: RevisionRequestResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            404: OpenApiResponse(description="RevisionRequest not found or inaccessible"),
+        },
+    )
+    def get(self, request, request_id):
+        rev_req = (
+            RevisionRequest.objects.filter(pk=request_id)
+            .select_related("offer", "offer__rfq", "base_offer_version")
+            .first()
+        )
+        if not rev_req:
+            return Response(
+                {"detail": f"RevisionRequest '{request_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_buyer_member = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=rev_req.offer.rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+        is_offeror_member = bool(
+            rev_req.offer.offering_organization_id
+            and OrganizationMembership.objects.filter(
+                user=request.user,
+                organization_id=rev_req.offer.offering_organization_id,
+                is_active=True,
+                organization__is_active=True,
+            ).exists()
+        )
+
+        if not (is_operator or is_buyer_member or is_offeror_member):
+            return Response(
+                {"detail": f"RevisionRequest '{request_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = RevisionRequestResponseSerializer(rev_req)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

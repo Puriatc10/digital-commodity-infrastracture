@@ -3,11 +3,15 @@ from django.urls import path
 from offers.api.views import (
     DecisionRunDetailView,
     OfferDetailView,
+    OfferRevisionRequestCreateView,
     OfferVersionSubmitActionView,
     OperatorExternalOfferSubmissionActionView,
     RFQComparisonView,
     RFQDecisionRunCreateView,
     RFQOffersListView,
+    RevisionRequestCancelView,
+    RevisionRequestDeclineView,
+    RevisionRequestDetailView,
 )
 
 
@@ -53,6 +57,26 @@ urlpatterns = [
         "decision-runs/<uuid:run_id>/",
         DecisionRunDetailView.as_view(),
         name="decision-run-detail",
+    ),
+    path(
+        "<uuid:offer_id>/revision-requests/",
+        OfferRevisionRequestCreateView.as_view(),
+        name="offer-revision-requests",
+    ),
+    path(
+        "revision-requests/<uuid:request_id>/decline/",
+        RevisionRequestDeclineView.as_view(),
+        name="revision-request-decline",
+    ),
+    path(
+        "revision-requests/<uuid:request_id>/cancel/",
+        RevisionRequestCancelView.as_view(),
+        name="revision-request-cancel",
+    ),
+    path(
+        "revision-requests/<uuid:request_id>/",
+        RevisionRequestDetailView.as_view(),
+        name="revision-request-detail",
     ),
 ]
 
