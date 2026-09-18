@@ -91,6 +91,11 @@ class OfferVersionSubmitActionSerializer(serializers.Serializer):
         min_value=1,
         help_text="Expected aggregate_version of the parent Offer for optimistic concurrency control.",
     )
+    revision_request = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="Optional RevisionRequest UUID if this submission is resolving an open revision request.",
+    )
 
 
 class OfferCostComponentInputSerializer(serializers.Serializer):
@@ -701,6 +706,35 @@ class RevisionRequestActionSerializer(serializers.Serializer):
         min_value=1,
         required=True,
         help_text="Expected Offer aggregate_version for optimistic concurrency control.",
+    )
+
+
+class RevisionRequestDraftCreateSerializer(serializers.Serializer):
+    """
+    Payload for creating a Draft OfferVersion from an OPEN RevisionRequest (T0811).
+    """
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Expected Offer aggregate_version for optimistic concurrency control.",
+    )
+
+
+class RevisionRequestSubmitSerializer(serializers.Serializer):
+    """
+    Payload for submitting a revised Draft OfferVersion and resolving the RevisionRequest (T0811).
+    """
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Expected Offer aggregate_version for optimistic concurrency control.",
+    )
+    draft_version_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="Optional Draft OfferVersion UUID. If omitted, the offer's active draft is submitted.",
     )
 
 

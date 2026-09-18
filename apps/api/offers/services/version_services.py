@@ -351,11 +351,50 @@ def update_draft_offer_version(
                 f"and cannot be edited (only DRAFT versions can be edited)."
             )
 
+        # Actor Authorization Check (T0803, T0804, T0811)
+        if locked_offer.external_counterparty_id is not None:
+            from identity.models import SystemRoleAssignment
+            is_op = SystemRoleAssignment.objects.filter(
+                user=actor,
+                role__in=[
+                    SystemRoleAssignment.SystemRole.OPERATOR,
+                    SystemRoleAssignment.SystemRole.ADMIN,
+                ],
+            ).exists()
+            if not is_op:
+                raise OfferPermissionDeniedError(
+                    "Only platform Operators and Product Admins may edit draft offers for external counterparties."
+                )
+        elif locked_offer.offering_organization_id is not None:
+            from organizations.models import OrganizationMembership
+            membership = OrganizationMembership.objects.filter(
+                user=actor,
+                organization_id=locked_offer.offering_organization_id,
+                is_active=True,
+                organization__is_active=True,
+            ).first()
+            if not membership:
+                raise OfferPermissionDeniedError(
+                    "Actor does not have active membership in the offering organization."
+                )
+            if membership.role == OrganizationMembership.OrganizationRole.VIEWER:
+                raise OfferPermissionDeniedError(
+                    "Viewers have read-only access and cannot edit offer drafts."
+                )
+            if membership.role not in [
+                OrganizationMembership.OrganizationRole.OWNER,
+                OrganizationMembership.OrganizationRole.MANAGER,
+                OrganizationMembership.OrganizationRole.MEMBER,
+            ]:
+                raise OfferPermissionDeniedError(
+                    f"Role '{membership.role}' is not authorized to edit offer drafts."
+                )
+
         # Concurrency verification
         _validate_expected_version(locked_offer, expected_version)
 
         rfq = locked_offer.rfq
-        if rfq.status not in [RFQStatus.PUBLISHED, RFQStatus.COLLECTING_OFFERS]:
+        if rfq.status not in [RFQStatus.PUBLISHED, RFQStatus.COLLECTING_OFFERS, RFQStatus.NEGOTIATING]:
             raise OfferStateError(
                 f"Target RFQ is in status '{rfq.status}'. Offers cannot be edited."
             )

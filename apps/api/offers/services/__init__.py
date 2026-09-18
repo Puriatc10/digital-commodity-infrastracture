@@ -34,10 +34,13 @@ from offers.services.policy_seed import (
     validate_decision_profile_version,
 )
 from offers.services.revision_service import (
+    authorize_offer_actor,
     cancel_revision_request,
+    create_revised_draft_offer_version,
     create_revision_request,
     decline_revision_request,
     is_buyer_procurement_actor,
+    submit_revised_offer_version,
 )
 
 __all__ = [
@@ -69,6 +72,9 @@ __all__ = [
     "decline_revision_request",
     "cancel_revision_request",
     "is_buyer_procurement_actor",
+    "create_revised_draft_offer_version",
+    "submit_revised_offer_version",
+    "authorize_offer_actor",
 ]
 
 
