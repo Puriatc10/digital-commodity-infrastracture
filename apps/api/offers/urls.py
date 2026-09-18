@@ -10,8 +10,10 @@ from offers.api.views import (
     RFQDecisionRunCreateView,
     RFQOffersListView,
     RevisionRequestCancelView,
+    RevisionRequestCreateDraftView,
     RevisionRequestDeclineView,
     RevisionRequestDetailView,
+    RevisionRequestSubmitView,
 )
 
 
@@ -77,6 +79,16 @@ urlpatterns = [
         "revision-requests/<uuid:request_id>/",
         RevisionRequestDetailView.as_view(),
         name="revision-request-detail",
+    ),
+    path(
+        "revision-requests/<uuid:request_id>/draft/",
+        RevisionRequestCreateDraftView.as_view(),
+        name="revision-request-draft",
+    ),
+    path(
+        "revision-requests/<uuid:request_id>/submit/",
+        RevisionRequestSubmitView.as_view(),
+        name="revision-request-submit",
     ),
 ]
 

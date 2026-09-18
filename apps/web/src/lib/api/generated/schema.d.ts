@@ -515,6 +515,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/offers/revision-requests/{request_id}/draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create draft from revision request
+         * @description Create a DRAFT OfferVersion from an OPEN RevisionRequest. Copies commercial semantics, specifications, and cost components from base version. Requires expected_version for optimistic concurrency control. Authorized for the Offer economic party representative (Supplier/Broker member or Operator). Buyer procurement actors cannot create draft offers. Competitors receive 404 Not Found.
+         */
+        post: operations["offers_revision_requests_draft_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit revised offer and resolve revision request
+         * @description Submit a revised Draft OfferVersion and atomically transition the associated OPEN RevisionRequest to RESOLVED status. Requires expected_version for optimistic concurrency control. Authorized for the Offer economic party representative (Supplier/Broker member or Operator). Buyer procurement actors cannot submit revised offers. Competitors receive 404 Not Found.
+         */
+        post: operations["offers_revision_requests_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/offers/rfqs/{rfq_id}/": {
         parameters: {
             query?: never;
@@ -1361,6 +1401,46 @@ export interface paths {
          * @description Decline an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized exclusively for the Offer economic party representative (Supplier/Broker member or Operator for external counterparty). Buyers cannot decline.
          */
         post: operations["revision_requests_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create draft from revision request
+         * @description Create a DRAFT OfferVersion from an OPEN RevisionRequest. Copies commercial semantics, specifications, and cost components from base version. Requires expected_version for optimistic concurrency control. Authorized for the Offer economic party representative (Supplier/Broker member or Operator). Buyer procurement actors cannot create draft offers. Competitors receive 404 Not Found.
+         */
+        post: operations["revision_requests_draft_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit revised offer and resolve revision request
+         * @description Submit a revised Draft OfferVersion and atomically transition the associated OPEN RevisionRequest to RESOLVED status. Requires expected_version for optimistic concurrency control. Authorized for the Offer economic party representative (Supplier/Broker member or Operator). Buyer procurement actors cannot submit revised offers. Competitors receive 404 Not Found.
+         */
+        post: operations["revision_requests_submit_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2701,6 +2781,11 @@ export interface components {
         OfferVersionSubmitAction: {
             /** @description Expected aggregate_version of the parent Offer for optimistic concurrency control. */
             expected_version: number;
+            /**
+             * Format: uuid
+             * @description Optional RevisionRequest UUID if this submission is resolving an open revision request.
+             */
+            revision_request?: string | null;
         };
         /** @description Authoritative payload for Operator submission of an external quote on behalf. */
         OperatorExternalOfferSubmission: {
@@ -4457,6 +4542,11 @@ export interface components {
              */
             message: string;
         };
+        /** @description Payload for creating a Draft OfferVersion from an OPEN RevisionRequest (T0811). */
+        RevisionRequestDraftCreate: {
+            /** @description Expected Offer aggregate_version for optimistic concurrency control. */
+            expected_version: number;
+        };
         /** @description Authoritative representation of a RevisionRequest record (T0810, Contract §56). */
         RevisionRequestResponse: {
             /** Format: uuid */
@@ -4519,6 +4609,16 @@ export interface components {
          * @enum {string}
          */
         RevisionRequestResponseStatusEnum: "OPEN" | "RESOLVED" | "DECLINED" | "CANCELLED";
+        /** @description Payload for submitting a revised Draft OfferVersion and resolving the RevisionRequest (T0811). */
+        RevisionRequestSubmit: {
+            /** @description Expected Offer aggregate_version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description Optional Draft OfferVersion UUID. If omitted, the offer's active draft is submitted.
+             */
+            draft_version_id?: string | null;
+        };
         /**
          * @description * `broker_referral` - Broker Referral
          *     * `operator_sourcing` - Operator Sourcing
@@ -6208,6 +6308,128 @@ export interface operations {
                 content?: never;
             };
             /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestDraftCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version, existing draft, or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestSubmit"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest or OfferVersion not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -8798,6 +9020,128 @@ export interface operations {
                 content?: never;
             };
             /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revision_requests_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestDraftCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version, existing draft, or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revision_requests_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestSubmit"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest or OfferVersion not found */
             404: {
                 headers: {
                     [name: string]: unknown;
