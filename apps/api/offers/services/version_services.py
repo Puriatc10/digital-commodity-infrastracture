@@ -513,137 +513,18 @@ def submit_offer_version(
     actor: Any,
     offer_version: OfferVersion | uuid.UUID | str,
     expected_version: Optional[int] = None,
+    require_expected_version: bool = False,
 ) -> OfferVersion:
     """
-    Authoritative domain service for the low-level version transition: DRAFT -> SUBMITTED.
-
-    Transaction flow:
-    - lock Offer
-    - lock Draft
-    - verify concurrency (expected_version vs aggregate_version)
-    - verify Draft is in DRAFT status (if already SUBMITTED, raises controlled error)
-    - revalidate payload (specifications, quantity, unit, delivery dates, logistics)
-    - set status = SUBMITTED
-    - set submitted_by = actor
-    - set submitted_at = timezone.now()
-    - advance Offer.current_submitted_version = version
-    - increment Offer.aggregate_version
-    - commit atomically
-
-    Guarantees:
-    - Concurrent duplicate submit race: exactly ONE succeeds; second receives controlled
-      conflict or stale error. No double aggregate_version increment, no corrupted pointer.
-    - Submitted version becomes strictly immutable.
+    Authoritative domain service to submit an internal Supplier or Broker OfferVersion (T0803).
+    Delegates to submit_internal_offer_version in offers.services.submission.
     """
-    if not actor or not getattr(actor, "is_authenticated", False):
-        raise OfferPermissionDeniedError("Authentication is required to submit an offer version.")
+    from offers.services.submission import submit_internal_offer_version
 
-    version_obj = _resolve_offer_version(offer_version)
+    return submit_internal_offer_version(
+        actor=actor,
+        offer_version=offer_version,
+        expected_version=expected_version,
+        require_expected_version=require_expected_version,
+    )
 
-    with transaction.atomic():
-        # 1. Lock Offer aggregate first to establish consistent locking order
-        try:
-            locked_offer = (
-                Offer.objects.select_for_update()
-                .select_related("rfq", "rfq__schema_version")
-                .get(pk=version_obj.offer_id)
-            )
-        except Offer.DoesNotExist as exc:
-            raise OfferNotFoundError(f"Offer '{version_obj.offer_id}' does not exist.") from exc
-
-        # 2. Lock the target Draft OfferVersion
-        try:
-            locked_draft = (
-                OfferVersion.objects.select_for_update()
-                .select_related("schema_version")
-                .get(pk=version_obj.pk, offer=locked_offer)
-            )
-        except OfferVersion.DoesNotExist as exc:
-            raise OfferVersionNotFoundError(
-                f"OfferVersion '{version_obj.pk}' does not exist for Offer '{locked_offer.id}'."
-            ) from exc
-
-        # 3. Verify Concurrency (StaleVersion check)
-        _validate_expected_version(locked_offer, expected_version)
-
-        # 4. Verify Draft status (Race guard: prevent double submission)
-        if locked_draft.status != OfferVersionStatus.DRAFT:
-            raise OfferConflictError(
-                f"OfferVersion {locked_draft.version_number} is already in status "
-                f"'{locked_draft.status}' and cannot be submitted again."
-            )
-
-        # 5. Check RFQ state & deadline
-        rfq = locked_offer.rfq
-        if rfq.status not in [RFQStatus.PUBLISHED, RFQStatus.COLLECTING_OFFERS]:
-            raise OfferStateError(
-                f"Target RFQ is in status '{rfq.status}'. Offers cannot be submitted."
-            )
-        if rfq.submission_deadline and timezone.now() > rfq.submission_deadline:
-            raise OfferValidationError("RFQ offer submission deadline has passed.")
-
-        # 6. Re-validate payload completeness & schema validity
-        try:
-            validate_commodity_payload(
-                locked_draft.schema_version, locked_draft.specifications or {}
-            )
-        except ValidationError as exc:
-            raise OfferValidationError(
-                f"Dynamic specifications failed schema validation upon submission: {exc}"
-            ) from exc
-
-        if locked_draft.offered_quantity <= Decimal("0"):
-            raise OfferValidationError("Offered quantity must be positive.")
-
-        if locked_draft.unit_price <= Decimal("0"):
-            raise OfferValidationError("Unit price must be positive.")
-
-        rfq_unit = (rfq.unit or "").strip().upper()
-        offer_unit = (locked_draft.quantity_unit or "").strip().upper()
-        if rfq_unit and offer_unit != rfq_unit:
-            raise OfferValidationError(
-                f"Offer quantity unit '{locked_draft.quantity_unit}' is incompatible with RFQ unit '{rfq.unit}'."
-            )
-
-        if (
-            locked_draft.delivery_start
-            and locked_draft.delivery_end
-            and locked_draft.delivery_start > locked_draft.delivery_end
-        ):
-            raise OfferValidationError("delivery_start cannot be after delivery_end.")
-
-        if locked_draft.logistics_cost_status == LogisticsCostStatus.KNOWN_SEPARATE:
-            if locked_draft.logistics_cost_amount is None:
-                raise OfferValidationError(
-                    "logistics_cost_amount is required when logistics_cost_status is KNOWN_SEPARATE."
-                )
-        else:
-            if locked_draft.logistics_cost_amount is not None:
-                raise OfferValidationError(
-                    f"logistics_cost_amount must be absent when logistics_cost_status is "
-                    f"{locked_draft.logistics_cost_status}."
-                )
-
-        # Check cost components currency consistency
-        for comp in locked_draft.cost_components.all():
-            if comp.currency != locked_draft.currency:
-                raise OfferValidationError(
-                    f"Cost component currency '{comp.currency}' must match "
-                    f"OfferVersion currency '{locked_draft.currency}'."
-                )
-
-        # 7. Transition to SUBMITTED
-        now = timezone.now()
-        locked_draft.status = OfferVersionStatus.SUBMITTED
-        locked_draft.submitted_by = actor
-        locked_draft.submitted_at = now
-        locked_draft.save()
-
-        # 8. Advance current_submitted_version pointer & increment aggregate_version
-        locked_offer.current_submitted_version = locked_draft
-        locked_offer.aggregate_version += 1
-        locked_offer.save(
-            update_fields=["current_submitted_version", "aggregate_version", "updated_at"]
-        )
-
-    return locked_draft

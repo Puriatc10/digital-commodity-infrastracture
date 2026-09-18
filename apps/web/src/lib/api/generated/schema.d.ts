@@ -311,6 +311,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/offer-versions/{version_id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit draft OfferVersion
+         * @description Transition a Draft OfferVersion to immutable SUBMITTED status. Revalidates dynamic commodity specifications against the exact RFQ schema version, quantity, unit, price, delivery dates, and logistics consistency. Revalidates organization capability and actor membership role (Owner, Manager, Member allowed; Viewer denied). Advances parent Offer aggregate_version and updates current_submitted_version pointer. Transitions target RFQ from Published to Collecting Offers upon first successful submission. Competitor participants attempting to access another organization's offer receive 404 Not Found.
+         */
+        post: operations["offer_versions_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/offer-versions/{version_id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit draft OfferVersion
+         * @description Transition a Draft OfferVersion to immutable SUBMITTED status. Revalidates dynamic commodity specifications against the exact RFQ schema version, quantity, unit, price, delivery dates, and logistics consistency. Revalidates organization capability and actor membership role (Owner, Manager, Member allowed; Viewer denied). Advances parent Offer aggregate_version and updates current_submitted_version pointer. Transitions target RFQ from Published to Collecting Offers upon first successful submission. Competitor participants attempting to access another organization's offer receive 404 Not Found.
+         */
+        post: operations["offers_offer_versions_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/opportunities/external-counterparties/": {
         parameters: {
             query?: never;
@@ -1646,6 +1686,12 @@ export interface components {
             readonly notes: components["schemas"]["VerificationNote"][];
         };
         /**
+         * @description * `LOGISTICS` - Logistics
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        KindEnum: "LOGISTICS" | "OTHER";
+        /**
          * @description * `DIRECT_SUPPLY` - Direct Supply
          *     * `POTENTIAL_SUPPLIER` - Potential Supplier
          *     * `BROKER_PATH` - Broker Path
@@ -1657,6 +1703,14 @@ export interface components {
             email: string;
             password: string;
         };
+        /**
+         * @description * `KNOWN_SEPARATE` - Known Separate
+         *     * `INCLUDED_IN_PRICE` - Included in Price
+         *     * `NOT_APPLICABLE` - Not Applicable
+         *     * `UNKNOWN` - Unknown
+         * @enum {string}
+         */
+        LogisticsCostStatusEnum: "KNOWN_SEPARATE" | "INCLUDED_IN_PRICE" | "NOT_APPLICABLE" | "UNKNOWN";
         /**
          * @description Audience-safe matching candidate projection.
          *
@@ -1821,6 +1875,140 @@ export interface components {
         MatchingSignalResponseOutcomeEnum: "PASS" | "PARTIAL" | "FAIL" | "UNKNOWN" | "NOT_APPLICABLE";
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description Immutable cost component line item. */
+        OfferCostComponentResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * @description Cost component kind (LOGISTICS or OTHER).
+             *
+             *     * `LOGISTICS` - Logistics
+             *     * `OTHER` - Other
+             */
+            readonly kind: components["schemas"]["KindEnum"];
+            /**
+             * Format: decimal
+             * @description Cost amount (strictly positive).
+             */
+            readonly amount: string;
+            /** @description ISO 4217 3-letter currency code (must equal OfferVersion currency). */
+            readonly currency: string;
+            /** @description Description or itemization notes for this cost component. */
+            readonly description: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description Standardized error response payload. */
+        OfferErrorResponse: {
+            /** @description High-level error description. */
+            detail: string;
+            /** @description Optional list of error messages or validation details. */
+            errors?: string[];
+        };
+        /** @description Structured representation of an OfferVersion commercial snapshot. */
+        OfferVersionResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent offer aggregate.
+             */
+            readonly offer_id: string;
+            /** @description Authoritative server-allocated sequential version number (1, 2, ...). */
+            readonly version_number: number;
+            /**
+             * @description Lifecycle status: DRAFT or SUBMITTED.
+             *
+             *     * `DRAFT` - Draft
+             *     * `SUBMITTED` - Submitted
+             */
+            readonly status: components["schemas"]["OfferVersionResponseStatusEnum"];
+            /**
+             * Format: uuid
+             * @description Exact schema version bound to the parent RFQ.
+             */
+            readonly schema_version_id: string;
+            /** @description Dynamic specification attributes validated against schema_version. */
+            readonly specifications: unknown;
+            /**
+             * Format: decimal
+             * @description Proposed quantity (strictly positive; partial or surplus allowed).
+             */
+            readonly offered_quantity: string;
+            /** @description Unit of measurement (must be compatible with RFQ unit). */
+            readonly quantity_unit: string;
+            /**
+             * Format: decimal
+             * @description Proposed price per unit (strictly positive).
+             */
+            readonly unit_price: string;
+            /** @description ISO 4217 3-letter currency code (exact submitted truth; no FX). */
+            readonly currency: string;
+            /** @description Proposed payment terms (e.g. LC at sight, TT 30 days). */
+            readonly payment_terms: string;
+            /** @description Proposed delivery conditions or freight details. */
+            readonly delivery_terms: string;
+            /** @description Incoterm code (e.g. FOB, CIF, CFR, EXW). */
+            readonly incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest proposed delivery date.
+             */
+            readonly delivery_start: string | null;
+            /**
+             * Format: date
+             * @description Latest proposed delivery date.
+             */
+            readonly delivery_end: string | null;
+            /**
+             * Format: date-time
+             * @description Proposal validity timestamp (expiry derived, not mutated).
+             */
+            readonly valid_until: string | null;
+            /**
+             * @description Status of logistics cost knowledge.
+             *
+             *     * `KNOWN_SEPARATE` - Known Separate
+             *     * `INCLUDED_IN_PRICE` - Included in Price
+             *     * `NOT_APPLICABLE` - Not Applicable
+             *     * `UNKNOWN` - Unknown
+             */
+            readonly logistics_cost_status: components["schemas"]["LogisticsCostStatusEnum"];
+            /**
+             * Format: decimal
+             * @description Separate logistics cost amount (required if KNOWN_SEPARATE; absent otherwise).
+             */
+            readonly logistics_cost_amount: string | null;
+            /** @description Commercial notes or comments accompanying the version. */
+            readonly notes: string;
+            readonly cost_components: components["schemas"]["OfferCostComponentResponse"][];
+            /** @description Platform user who submitted this version. */
+            readonly submitted_by_id: number | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when version was submitted.
+             */
+            readonly submitted_at: string | null;
+            /** @description Platform user who created this version draft. */
+            readonly created_by_id: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** @description Current optimistic concurrency aggregate_version of the parent Offer. */
+            readonly aggregate_version: number;
+        };
+        /**
+         * @description * `DRAFT` - Draft
+         *     * `SUBMITTED` - Submitted
+         * @enum {string}
+         */
+        OfferVersionResponseStatusEnum: "DRAFT" | "SUBMITTED";
+        /** @description Payload for submitting a Draft OfferVersion. */
+        OfferVersionSubmitAction: {
+            /** @description Expected aggregate_version of the parent Offer for optimistic concurrency control. */
+            expected_version: number;
+        };
         /** @description Safe projection of CommodityDefinition for Opportunity consumers. */
         OpportunityCommodityProjection: {
             /** Format: uuid */
@@ -4570,6 +4758,128 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MatchingErrorResponse"];
                 };
+            };
+        };
+    };
+    offer_versions_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferVersionSubmitAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks submit role or capability */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or concurrent submission race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_offer_versions_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferVersionSubmitAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks submit role or capability */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or concurrent submission race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
