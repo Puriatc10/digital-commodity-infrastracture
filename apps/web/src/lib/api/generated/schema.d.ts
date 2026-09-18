@@ -371,6 +371,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/offers/{offer_id}/revision-requests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List offer revision requests
+         * @description List all revision requests for a specific Offer. Authorized for RFQ Buyer, offering party, and platform Operators. Competitors receive 404 Not Found.
+         */
+        get: operations["offers_revision_requests_list"];
+        put?: never;
+        /**
+         * Create offer revision request
+         * @description Open a formal RevisionRequest against the current submitted OfferVersion. Requires expected_version for optimistic concurrency control on the Offer aggregate. Authorized for Buyer organization Owner/Manager or platform Operator. Transitions target RFQ from Collecting Offers to Negotiating upon first revision request. Competitors attempting to access or request revisions receive 404 Not Found.
+         */
+        post: operations["offers_revision_requests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/offers/decision-runs/{run_id}/": {
         parameters: {
             query?: never;
@@ -425,6 +449,66 @@ export interface paths {
          * @description Enters an external supplier quote from a Qualified Supply Opportunity onto an RFQ. Authorized exclusively for platform Operators and Product Admins (via SystemRoleAssignment). Buyer, Supplier, Broker organizations and staff/superuser without product roles are rejected. Guarantees atomic execution, derives external economic party from the Opportunity, enforces RFQ deadline and lifecycle, dynamic specification schema lock, and immutability.
          */
         post: operations["offers_operator_submission_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get revision request details
+         * @description Retrieve details of a RevisionRequest by ID. Authorized for RFQ Buyer, offering party, and platform Operators. Competitors receive 404 Not Found.
+         */
+        get: operations["offers_revision_requests_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel open revision request
+         * @description Cancel an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized for Buyer procurement actors or platform Operators. Offer participants cannot cancel Buyer's request.
+         */
+        post: operations["offers_revision_requests_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline open revision request
+         * @description Decline an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized exclusively for the Offer economic party representative (Supplier/Broker member or Operator for external counterparty). Buyers cannot decline.
+         */
+        post: operations["offers_revision_requests_decline_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1217,6 +1301,66 @@ export interface paths {
         get: operations["organizations_verification_cases_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get revision request details
+         * @description Retrieve details of a RevisionRequest by ID. Authorized for RFQ Buyer, offering party, and platform Operators. Competitors receive 404 Not Found.
+         */
+        get: operations["revision_requests_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel open revision request
+         * @description Cancel an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized for Buyer procurement actors or platform Operators. Offer participants cannot cancel Buyer's request.
+         */
+        post: operations["revision_requests_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline open revision request
+         * @description Decline an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized exclusively for the Offer economic party representative (Supplier/Broker member or Operator for external counterparty). Buyers cannot decline.
+         */
+        post: operations["revision_requests_decline_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4277,6 +4421,105 @@ export interface components {
          */
         RFQVisibilityEnum: "private" | "network" | "public";
         /**
+         * @description * `unit_price` - Unit Price
+         *     * `offered_quantity` - Offered Quantity
+         *     * `payment_terms` - Payment Terms
+         *     * `delivery_terms` - Delivery Terms
+         *     * `incoterm` - Incoterm
+         *     * `delivery_start` - Delivery Start
+         *     * `delivery_end` - Delivery End
+         *     * `valid_until` - Valid Until
+         *     * `specifications` - Dynamic Specifications
+         *     * `logistics_cost_amount` - Logistics Cost Amount
+         *     * `notes` - Commercial Notes
+         * @enum {string}
+         */
+        RequestedFieldsEnum: "unit_price" | "offered_quantity" | "payment_terms" | "delivery_terms" | "incoterm" | "delivery_start" | "delivery_end" | "valid_until" | "specifications" | "logistics_cost_amount" | "notes";
+        /** @description Payload for declining or cancelling an open RevisionRequest (T0810). */
+        RevisionRequestAction: {
+            /** @description Expected Offer aggregate_version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /** @description Request payload for opening a RevisionRequest against an Offer (T0810, Contract §56). */
+        RevisionRequestCreate: {
+            /** @description Expected Offer aggregate_version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the submitted OfferVersion serving as the revision base.
+             */
+            base_offer_version: string;
+            /** @description Canonical list of field names requested for revision. */
+            requested_fields: components["schemas"]["RequestedFieldsEnum"][];
+            /**
+             * @description Optional human-readable explanation or negotiation guidance.
+             * @default
+             */
+            message: string;
+        };
+        /** @description Authoritative representation of a RevisionRequest record (T0810, Contract §56). */
+        RevisionRequestResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent Offer UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Base OfferVersion UUID.
+             */
+            base_offer_version_id: string;
+            /** @description Version number of the base OfferVersion. */
+            readonly base_version_number: number;
+            /** @description Canonical list of field names requested for revision. */
+            readonly requested_fields: unknown;
+            /** @description Human-entered revision explanation or instruction. */
+            readonly message: string;
+            /**
+             * Format: uuid
+             * @description User UUID who created the request.
+             */
+            requested_by_id: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when revision request was created.
+             */
+            readonly requested_at: string;
+            /**
+             * @description Revision request lifecycle status: OPEN, RESOLVED, DECLINED, CANCELLED.
+             *
+             *     * `OPEN` - Open
+             *     * `RESOLVED` - Resolved
+             *     * `DECLINED` - Declined
+             *     * `CANCELLED` - Cancelled
+             */
+            readonly status: components["schemas"]["RevisionRequestResponseStatusEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of resolving OfferVersion (populated upon resolution in T0811).
+             */
+            resolved_by_version_id?: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when request was resolved, declined, or cancelled.
+             */
+            readonly resolved_at: string | null;
+            /** @description Current aggregate_version of the parent Offer. */
+            readonly offer_aggregate_version: number;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `RESOLVED` - Resolved
+         *     * `DECLINED` - Declined
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        RevisionRequestResponseStatusEnum: "OPEN" | "RESOLVED" | "DECLINED" | "CANCELLED";
+        /**
          * @description * `broker_referral` - Broker Referral
          *     * `operator_sourcing` - Operator Sourcing
          *     * `buyer_referral` - Buyer Referral
@@ -5565,6 +5808,102 @@ export interface operations {
             };
         };
     };
+    offers_revision_requests_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer or base OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or already open revision request */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     offers_decision_runs_retrieve: {
         parameters: {
             query?: never;
@@ -5719,6 +6058,163 @@ export interface operations {
                 content?: never;
             };
             /** @description Conflict - existing submitted version or concurrency race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -8157,6 +8653,163 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["VerificationQueue"][];
                 };
+            };
+        };
+    };
+    revision_requests_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revision_requests_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revision_requests_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

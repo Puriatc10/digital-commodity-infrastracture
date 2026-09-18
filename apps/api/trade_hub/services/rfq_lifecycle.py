@@ -208,10 +208,48 @@ class RFQLifecycleService:
         rfq.save(update_fields=["status", "version", "updated_at"])
         return rfq
 
+    @staticmethod
+    def start_negotiating(rfq_or_id: Any, *, actor: Any = None) -> RFQ:
+        """
+        Transition an RFQ from Collecting Offers to Negotiating (Epic 8 Contract §14, §56).
+
+        Authoritative lifecycle transition invoked when a formal RevisionRequest
+        is opened against an offer on the RFQ.
+        Advances RFQ version and updates status.
+        Idempotent if the RFQ is already in Negotiating.
+        Rejects if RFQ is in a terminal status (Closed, Cancelled, Awarded)
+        or other non-negotiating status (Draft, Published).
+        """
+        if isinstance(rfq_or_id, RFQ):
+            rfq = rfq_or_id
+        else:
+            rfq_id = _extract_rfq_id(rfq_or_id)
+            rfq = _lock_rfq(rfq_id)
+
+        if rfq.status == RFQStatus.NEGOTIATING:
+            return rfq
+
+        if rfq.status in (RFQStatus.CLOSED, RFQStatus.CANCELLED, RFQStatus.AWARDED):
+            raise InvalidTransitionError(
+                f"Cannot transition terminal RFQ in status '{rfq.status}' to Negotiating."
+            )
+
+        if rfq.status != RFQStatus.COLLECTING_OFFERS:
+            raise InvalidTransitionError(
+                f"Cannot transition RFQ to Negotiating from status '{rfq.status}'. "
+                f"Only RFQs in Collecting Offers can transition to Negotiating."
+            )
+
+        rfq.status = RFQStatus.NEGOTIATING
+        rfq.version += 1
+        rfq.save(update_fields=["status", "version", "updated_at"])
+        return rfq
+
 
 # Module-level convenience functions
 publish_rfq = RFQLifecycleService.publish
 cancel_rfq = RFQLifecycleService.cancel
 close_rfq = RFQLifecycleService.close
 start_collecting_offers = RFQLifecycleService.start_collecting_offers
+start_negotiating = RFQLifecycleService.start_negotiating
 

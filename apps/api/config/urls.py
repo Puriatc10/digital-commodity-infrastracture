@@ -8,6 +8,9 @@ from offers.api.views import (
     OfferVersionSubmitActionView,
     RFQComparisonView,
     RFQDecisionRunCreateView,
+    RevisionRequestCancelView,
+    RevisionRequestDeclineView,
+    RevisionRequestDetailView,
 )
 from .views import health
 
@@ -26,6 +29,9 @@ urlpatterns = [
     path("api/rfqs/<uuid:rfq_id>/comparison/", RFQComparisonView.as_view(), name="rfq-comparison-direct"),
     path("api/rfqs/<uuid:rfq_id>/decision-runs/", RFQDecisionRunCreateView.as_view(), name="rfq-decision-runs-direct"),
     path("api/decision-runs/<uuid:run_id>/", DecisionRunDetailView.as_view(), name="decision-run-detail-direct"),
+    path("api/revision-requests/<uuid:request_id>/decline/", RevisionRequestDeclineView.as_view(), name="revision-request-decline-direct"),
+    path("api/revision-requests/<uuid:request_id>/cancel/", RevisionRequestCancelView.as_view(), name="revision-request-cancel-direct"),
+    path("api/revision-requests/<uuid:request_id>/", RevisionRequestDetailView.as_view(), name="revision-request-detail-direct"),
 
     path("", include("documents.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

@@ -91,3 +91,61 @@ class DecisionSignalStatus(models.TextChoices):
     UNKNOWN = "UNKNOWN", "Unknown"
     NOT_APPLICABLE = "NOT_APPLICABLE", "Not Applicable"
 
+
+class RevisionRequestStatus(models.TextChoices):
+    """
+    Lifecycle status of a RevisionRequest against an Offer (Epic 8 Contract §56).
+
+    Lifecycle transitions:
+        create: OPEN
+        OPEN -> DECLINED (by Offer participant)
+        OPEN -> CANCELLED (by Buyer / Operator)
+        OPEN -> RESOLVED (by revised OfferVersion in T0811)
+    """
+
+    OPEN = "OPEN", "Open"
+    RESOLVED = "RESOLVED", "Resolved"
+    DECLINED = "DECLINED", "Declined"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class RevisionRequestedField(models.TextChoices):
+    """
+    Canonical commercial field identifiers eligible for negotiation revision requests (Epic 8 Contract §56).
+    """
+
+    UNIT_PRICE = "unit_price", "Unit Price"
+    OFFERED_QUANTITY = "offered_quantity", "Offered Quantity"
+    PAYMENT_TERMS = "payment_terms", "Payment Terms"
+    DELIVERY_TERMS = "delivery_terms", "Delivery Terms"
+    INCOTERM = "incoterm", "Incoterm"
+    DELIVERY_START = "delivery_start", "Delivery Start"
+    DELIVERY_END = "delivery_end", "Delivery End"
+    VALID_UNTIL = "valid_until", "Valid Until"
+    SPECIFICATIONS = "specifications", "Dynamic Specifications"
+    LOGISTICS_COST_AMOUNT = "logistics_cost_amount", "Logistics Cost Amount"
+    NOTES = "notes", "Commercial Notes"
+
+
+FORBIDDEN_REVISION_FIELDS = frozenset(
+    {
+        "id",
+        "offer",
+        "offer_id",
+        "version_number",
+        "status",
+        "created_by",
+        "created_by_id",
+        "submitted_by",
+        "submitted_by_id",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+        "aggregate_version",
+        "schema_version",
+        "schema_version_id",
+        "currency",
+        "quantity_unit",
+    }
+)
+
