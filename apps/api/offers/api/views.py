@@ -13,6 +13,8 @@ from offers.api.serializers import (
     OfferVersionSubmitActionSerializer,
     OperatorExternalOfferSubmissionSerializer,
     OperatorOfferDetailResponseSerializer,
+    OperatorRFQComparisonResponseSerializer,
+    RFQComparisonResponseSerializer,
 )
 from offers.enums import LogisticsCostStatus
 from offers.exceptions import (
@@ -26,6 +28,7 @@ from offers.exceptions import (
     StaleVersionError,
 )
 from offers.models import Offer, OfferVersion
+from offers.services.comparison import compare_rfq_offers
 from offers.services.operator_submission import submit_operator_external_offer
 from offers.services.submission import submit_internal_offer_version
 from organizations.models import OrganizationMembership
@@ -372,3 +375,92 @@ class RFQOffersListView(APIView):
             {"detail": "You do not have permission to view offers for this RFQ."},
             status=status.HTTP_403_FORBIDDEN,
         )
+
+
+class RFQComparisonView(APIView):
+    """
+    Commercial Offer Comparison API for an RFQ (T0806).
+
+    Exposes structured, side-by-side commercial proposals for an RFQ across all Offer threads.
+    Evaluates each Offer thread's current submitted version only (drafts and older superseded
+    versions are excluded from active comparison rows).
+
+    Authorization:
+    - Allowed:
+      - Authorized Buyer procurement actors (active membership in owning RFQ Organization)
+      - Platform Operators and Product Admins (via SystemRoleAssignment)
+    - Explicitly Rejected:
+      - Supplier / Broker participants attempting to access competitor comparison (403 Forbidden)
+      - Foreign Buyer organizations (403 Forbidden)
+      - Django staff/superuser without SystemRoleAssignment or Buyer membership (403 Forbidden)
+      - Anonymous callers (401 Unauthorized)
+
+    Invariants:
+    - Pure comparison; zero decision support scoring or recommendations.
+    - Neutral deterministic ordering (by created_at, id); no sorting by price or landed cost.
+    - Preserves submitted currencies; flags cross-currency as CROSS_CURRENCY_UNKNOWN without FX.
+    - Distinguishes unknown logistics from zero extra cost.
+    - Protects counterparty privacy: Buyer projection contains safe commercial identity only;
+      phone, email, notes, and private opportunity sourcing details are strictly excluded.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Commercial comparison of submitted offers for an RFQ",
+        description=(
+            "Retrieves the commercial comparison of all currently active submitted offers for an RFQ. "
+            "Evaluates only Offer.current_submitted_version for each offer thread. "
+            "Excludes unsubmitted drafts and older versions. "
+            "Reuses T0805 normalisation engine and derives quantity coverage and surplus. "
+            "Authorized exclusively for the RFQ's Buyer organization members and platform Operators/Admins. "
+            "Competitor participants (Suppliers/Brokers) and foreign buyers are strictly rejected."
+        ),
+        responses={
+            200: RFQComparisonResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - lacks Buyer procurement role or Operator authority"),
+            404: OpenApiResponse(description="RFQ not found"),
+        },
+    )
+    def get(self, request, rfq_id):
+        rfq = (
+            RFQ.objects.filter(pk=rfq_id)
+            .select_related("schema_version", "organization")
+            .first()
+        )
+        if not rfq:
+            return Response(
+                {"detail": f"RFQ '{rfq_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+
+        # Buyer authorization check: active membership in the RFQ's owning Buyer organization
+        is_rfq_buyer = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+
+        if not is_operator and not is_rfq_buyer:
+            return Response(
+                {"detail": "You do not have permission to view commercial comparison for this RFQ."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        comparison = compare_rfq_offers(
+            rfq,
+            actor=request.user,
+            is_operator=is_operator,
+        )
+
+        if is_operator:
+            serializer = OperatorRFQComparisonResponseSerializer(comparison.to_dict())
+        else:
+            serializer = RFQComparisonResponseSerializer(comparison.to_dict())
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+

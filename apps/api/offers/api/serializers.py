@@ -356,3 +356,153 @@ class NormalizedOfferVersionResponseSerializer(serializers.Serializer):
         max_length=20,
         help_text="Semantic policy version applied during normalisation.",
     )
+
+
+class ComparisonRowSerializer(serializers.Serializer):
+    """
+    Typed, safe commercial comparison row for Buyer and Operator procurement intelligence (T0806).
+
+    Invariants:
+    - Never exposes private external contact details (phone, email, contact_name, notes).
+    - Uses exact Decimal arithmetic/representations; never binary float.
+    - Zero decision scoring or recommendation bias.
+    """
+
+    offer_id = serializers.UUIDField(help_text="Stable Offer thread UUID.")
+    offer_version_id = serializers.UUIDField(help_text="Exact current submitted OfferVersion UUID.")
+    version_number = serializers.IntegerField(help_text="Submitted version number.")
+    safe_offeror_identity = serializers.CharField(help_text="Safe commercial identity of the offering party.")
+    offeror_name = serializers.CharField(help_text="Safe display name of the offering party.")
+    is_external = serializers.BooleanField(help_text="Whether offer is from an off-platform external supplier.")
+    offeror_role = serializers.CharField(help_text="Commercial role (SUPPLIER or BROKER).")
+
+    offered_quantity = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=3,
+        help_text="Proposed commercial quantity.",
+    )
+    quantity_unit = serializers.CharField(max_length=20, help_text="Unit of measurement.")
+    quantity_coverage = serializers.DecimalField(
+        max_digits=6,
+        decimal_places=4,
+        help_text="Quantity coverage ratio min(offered / requested, 1.0).",
+    )
+    surplus_quantity = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=3,
+        help_text="Surplus quantity max(offered - requested, 0.0).",
+    )
+
+    unit_price = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        help_text="Proposed unit price.",
+    )
+    currency = serializers.CharField(max_length=3, help_text="ISO 4217 3-letter currency code.")
+
+    product_cost = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        help_text="Product cost derived from unit_price * offered_quantity.",
+    )
+    known_cost_total = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        help_text="Sum of known cost components.",
+    )
+    landed_cost = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        allow_null=True,
+        help_text="Landed cost if logistics is known; null if UNKNOWN.",
+    )
+    landed_unit_cost = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        allow_null=True,
+        help_text="Landed unit cost if logistics is known; null if UNKNOWN.",
+    )
+    normalization_complete = serializers.BooleanField(
+        help_text="Whether normalisation has complete cost evidence.",
+    )
+    missing_components = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="List of missing required cost components.",
+    )
+    cost_comparability = serializers.ChoiceField(
+        choices=["COMPARABLE", "CROSS_CURRENCY_UNKNOWN", "INCOMPLETE_COST"],
+        help_text="Structured cost comparability status.",
+    )
+
+    payment_terms = serializers.CharField(allow_blank=True, help_text="Proposed payment terms.")
+    delivery_terms = serializers.CharField(allow_blank=True, help_text="Proposed delivery terms.")
+    incoterm = serializers.CharField(allow_blank=True, help_text="Incoterm code.")
+    delivery_start = serializers.DateField(allow_null=True, help_text="Earliest delivery date.")
+    delivery_end = serializers.DateField(allow_null=True, help_text="Latest delivery date.")
+    valid_until = serializers.DateTimeField(allow_null=True, help_text="Proposal validity timestamp.")
+    is_expired = serializers.BooleanField(help_text="Whether proposal validity has expired.")
+
+    technical_compliance = serializers.ChoiceField(
+        choices=["PASS", "FAIL", "UNKNOWN"],
+        help_text="Dynamic commodity specification compliance outcome.",
+    )
+    trust_status = serializers.CharField(help_text="Authoritative verification status or UNKNOWN.")
+
+
+class OperatorComparisonRowSerializer(ComparisonRowSerializer):
+    """
+    Comparison row for Platform Operators, including safe provenance context.
+    """
+
+    source_opportunity_id = serializers.UUIDField(
+        allow_null=True,
+        required=False,
+        help_text="Originating lead/opportunity UUID.",
+    )
+    source_opportunity_identifier = serializers.CharField(
+        allow_null=True,
+        required=False,
+        help_text="Human-readable Opportunity identifier.",
+    )
+    entered_by_operator = serializers.BooleanField(
+        allow_null=True,
+        required=False,
+        help_text="Whether offer was entered on behalf by an Operator.",
+    )
+
+
+class RFQComparisonResponseSerializer(serializers.Serializer):
+    """
+    Authoritative response envelope for RFQ commercial comparison (T0806).
+    """
+
+    rfq_id = serializers.UUIDField(help_text="Target RFQ UUID.")
+    rfq_quantity = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=3,
+        help_text="RFQ requested procurement quantity.",
+    )
+    rfq_unit = serializers.CharField(max_length=20, help_text="RFQ unit of measurement.")
+    rfq_currency = serializers.CharField(max_length=3, help_text="RFQ currency.")
+    total_offers = serializers.IntegerField(help_text="Total number of active submitted offers compared.")
+    items = ComparisonRowSerializer(many=True, help_text="List of compared offers.")
+    offers = ComparisonRowSerializer(many=True, source="items", help_text="List of compared offers (alias of items).")
+
+
+class OperatorRFQComparisonResponseSerializer(serializers.Serializer):
+    """
+    Authoritative response envelope for RFQ commercial comparison with Operator provenance (T0806).
+    """
+
+    rfq_id = serializers.UUIDField(help_text="Target RFQ UUID.")
+    rfq_quantity = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=3,
+        help_text="RFQ requested procurement quantity.",
+    )
+    rfq_unit = serializers.CharField(max_length=20, help_text="RFQ unit of measurement.")
+    rfq_currency = serializers.CharField(max_length=3, help_text="RFQ currency.")
+    total_offers = serializers.IntegerField(help_text="Total number of active submitted offers compared.")
+    items = OperatorComparisonRowSerializer(many=True, help_text="List of compared offers with provenance.")
+    offers = OperatorComparisonRowSerializer(many=True, source="items", help_text="List of compared offers with provenance (alias of items).")
+

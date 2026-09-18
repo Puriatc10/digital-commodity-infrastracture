@@ -12,6 +12,14 @@ from offers.services.version_services import (
     submit_offer_version,
     update_draft_offer_version,
 )
+from offers.services.comparison import (
+    ComparisonRow,
+    CostComparability,
+    RFQComparison,
+    TechnicalComplianceStatus,
+    compare_rfq_offers,
+    evaluate_technical_compliance,
+)
 
 __all__ = [
     "create_offer",
@@ -24,5 +32,11 @@ __all__ = [
     "NormalizedOfferVersion",
     "DEFAULT_NORMALIZATION_POLICY_VERSION",
     "CURRENCY_QUANTIZATION",
+    "compare_rfq_offers",
+    "evaluate_technical_compliance",
+    "ComparisonRow",
+    "RFQComparison",
+    "CostComparability",
+    "TechnicalComplianceStatus",
 ]
 
