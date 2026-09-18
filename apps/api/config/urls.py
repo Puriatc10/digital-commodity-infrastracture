@@ -3,7 +3,12 @@
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from offers.api.views import OfferVersionSubmitActionView, RFQComparisonView
+from offers.api.views import (
+    DecisionRunDetailView,
+    OfferVersionSubmitActionView,
+    RFQComparisonView,
+    RFQDecisionRunCreateView,
+)
 from .views import health
 
 urlpatterns = [
@@ -19,6 +24,9 @@ urlpatterns = [
     path("api/offers/", include("offers.urls")),
     path("api/offer-versions/<uuid:version_id>/submit/", OfferVersionSubmitActionView.as_view(), name="offer-version-submit-direct"),
     path("api/rfqs/<uuid:rfq_id>/comparison/", RFQComparisonView.as_view(), name="rfq-comparison-direct"),
+    path("api/rfqs/<uuid:rfq_id>/decision-runs/", RFQDecisionRunCreateView.as_view(), name="rfq-decision-runs-direct"),
+    path("api/decision-runs/<uuid:run_id>/", DecisionRunDetailView.as_view(), name="decision-run-detail-direct"),
+
     path("", include("documents.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

@@ -139,6 +139,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/decision-runs/{run_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve DecisionRun detail
+         * @description Retrieves an immutable DecisionRun and its candidate universe. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. Competitor participants (Suppliers/Brokers) cannot access decision intelligence.
+         */
+        get: operations["decision_runs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/": {
         parameters: {
             query?: never;
@@ -351,6 +371,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/offers/decision-runs/{run_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve DecisionRun detail
+         * @description Retrieves an immutable DecisionRun and its candidate universe. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. Competitor participants (Suppliers/Brokers) cannot access decision intelligence.
+         */
+        get: operations["offers_decision_runs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/offers/offer-versions/{version_id}/submit/": {
         parameters: {
             query?: never;
@@ -425,6 +465,26 @@ export interface paths {
         get: operations["offers_rfqs_comparison_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/decision-runs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create DecisionRun foundation for an RFQ
+         * @description Initiate an immutable DecisionRun foundation for the specified RFQ. Materializes current submitted OfferVersions as DecisionCandidates and computes a deterministic canonical input fingerprint. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins.
+         */
+        post: operations["offers_rfqs_decision_runs_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1183,6 +1243,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rfqs/{rfq_id}/decision-runs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create DecisionRun foundation for an RFQ
+         * @description Initiate an immutable DecisionRun foundation for the specified RFQ. Materializes current submitted OfferVersions as DecisionCandidates and computes a deterministic canonical input fingerprint. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins.
+         */
+        post: operations["rfqs_decision_runs_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trade-hub/rfqs/": {
         parameters: {
             query?: never;
@@ -1823,6 +1903,87 @@ export interface components {
          * @enum {string}
          */
         DataTypeEnum: "string" | "number" | "integer" | "boolean" | "enum";
+        /** @description Representation of an evaluated candidate within a DecisionRun (T0808). */
+        DecisionCandidateResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent offer negotiation thread UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Exact evaluated OfferVersion snapshot UUID.
+             */
+            offer_version_id: string;
+            /** @description Version number of evaluated OfferVersion. */
+            readonly version_number: number;
+            /**
+             * Format: decimal
+             * @description Weighted decision score percentage [0.00, 100.00] (Contract §47).
+             */
+            readonly decision_score: string | null;
+            /**
+             * Format: decimal
+             * @description Evidence coverage percentage [0.00, 100.00] (Contract §48).
+             */
+            readonly evidence_coverage: string | null;
+            /**
+             * Format: decimal
+             * @description Effective decision score percentage [0.00, 100.00] (Contract §49).
+             */
+            readonly effective_score: string | null;
+            /** @description Award eligibility gate outcome. None indicates unevaluated prior to T0809 hard conditions. */
+            readonly award_eligible: boolean | null;
+            /** @description Deterministic rank position (positive integer >= 1) among evaluated candidates. */
+            readonly rank: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description Optional payload for initiating a DecisionRun foundation (T0808). */
+        DecisionRunCreateRequest: {
+            /**
+             * Format: uuid
+             * @description Optional exact Published DecisionProfileVersion UUID. Defaults to current default Published v1.
+             */
+            profile_version_id?: string | null;
+        };
+        /** @description Authoritative response envelope for a DecisionRun audit and execution record (T0808). */
+        DecisionRunDetailResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Target RFQ UUID.
+             */
+            rfq_id: string;
+            /**
+             * Format: uuid
+             * @description Evaluated DecisionProfileVersion UUID.
+             */
+            profile_version_id: string;
+            /** @description Evaluated policy profile code. */
+            readonly profile_code: string;
+            /** @description Evaluated policy version number. */
+            readonly profile_version_number: number;
+            /** @description Centralized semantic decision engine contract version. */
+            readonly engine_version: string;
+            /** @description Authenticated Buyer or Operator actor who initiated the decision run. */
+            readonly created_by_id: number | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the decision run was initiated.
+             */
+            readonly created_at: string;
+            /** @description SHA-256 fingerprint of the canonical decision inputs. */
+            readonly input_fingerprint: string;
+            /** @description SHA-256 fingerprint of the decision results (reserved for T0809). */
+            readonly result_fingerprint: string;
+            /** @description Total number of evaluated candidates. */
+            readonly total_candidates: number;
+            readonly candidates: components["schemas"]["DecisionCandidateResponse"][];
+        };
         DemoPersonaSwitcherRequest: {
             persona: components["schemas"]["PersonaEnum"];
         };
@@ -4838,6 +4999,48 @@ export interface operations {
             };
         };
     };
+    decision_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description DecisionRun not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     documents_list: {
         parameters: {
             query: {
@@ -5290,6 +5493,48 @@ export interface operations {
             };
         };
     };
+    offers_decision_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description DecisionRun not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     offers_offer_versions_submit_create: {
         parameters: {
             query?: never;
@@ -5485,6 +5730,60 @@ export interface operations {
                 content?: never;
             };
             /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_decision_runs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRunCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or DecisionProfileVersion not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -7823,6 +8122,60 @@ export interface operations {
                 content?: never;
             };
             /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_decision_runs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRunCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or DecisionProfileVersion not found */
             404: {
                 headers: {
                     [name: string]: unknown;

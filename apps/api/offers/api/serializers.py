@@ -3,7 +3,14 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from offers.enums import CostComponentKind, LogisticsCostStatus
-from offers.models import Offer, OfferCostComponent, OfferVersion
+from offers.models import (
+    DecisionCandidate,
+    DecisionRun,
+    Offer,
+    OfferCostComponent,
+    OfferVersion,
+)
+
 
 
 class OfferCostComponentResponseSerializer(serializers.ModelSerializer):
@@ -505,4 +512,92 @@ class OperatorRFQComparisonResponseSerializer(serializers.Serializer):
     total_offers = serializers.IntegerField(help_text="Total number of active submitted offers compared.")
     items = OperatorComparisonRowSerializer(many=True, help_text="List of compared offers with provenance.")
     offers = OperatorComparisonRowSerializer(many=True, source="items", help_text="List of compared offers with provenance (alias of items).")
+
+
+class DecisionCandidateResponseSerializer(serializers.ModelSerializer):
+    """
+    Representation of an evaluated candidate within a DecisionRun (T0808).
+    """
+
+    offer_id = serializers.UUIDField(help_text="Parent offer negotiation thread UUID.")
+    offer_version_id = serializers.UUIDField(help_text="Exact evaluated OfferVersion snapshot UUID.")
+    version_number = serializers.IntegerField(
+        source="offer_version.version_number",
+        read_only=True,
+        help_text="Version number of evaluated OfferVersion.",
+    )
+
+    class Meta:
+        model = DecisionCandidate
+        fields = [
+            "id",
+            "offer_id",
+            "offer_version_id",
+            "version_number",
+            "decision_score",
+            "evidence_coverage",
+            "effective_score",
+            "award_eligible",
+            "rank",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class DecisionRunDetailResponseSerializer(serializers.ModelSerializer):
+    """
+    Authoritative response envelope for a DecisionRun audit and execution record (T0808).
+    """
+
+    rfq_id = serializers.UUIDField(help_text="Target RFQ UUID.")
+    profile_version_id = serializers.UUIDField(
+        source="decision_profile_version_id",
+        help_text="Evaluated DecisionProfileVersion UUID.",
+    )
+    profile_code = serializers.CharField(
+        source="decision_profile_version.profile.code",
+        read_only=True,
+        help_text="Evaluated policy profile code.",
+    )
+    profile_version_number = serializers.IntegerField(
+        source="decision_profile_version.version",
+        read_only=True,
+        help_text="Evaluated policy version number.",
+    )
+    candidates = DecisionCandidateResponseSerializer(many=True, read_only=True)
+    total_candidates = serializers.SerializerMethodField(help_text="Total number of evaluated candidates.")
+
+    class Meta:
+        model = DecisionRun
+        fields = [
+            "id",
+            "rfq_id",
+            "profile_version_id",
+            "profile_code",
+            "profile_version_number",
+            "engine_version",
+            "created_by_id",
+            "created_at",
+            "input_fingerprint",
+            "result_fingerprint",
+            "total_candidates",
+            "candidates",
+        ]
+        read_only_fields = fields
+
+    def get_total_candidates(self, obj: DecisionRun) -> int:
+        return obj.candidates.count()
+
+
+class DecisionRunCreateRequestSerializer(serializers.Serializer):
+    """
+    Optional payload for initiating a DecisionRun foundation (T0808).
+    """
+
+    profile_version_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="Optional exact Published DecisionProfileVersion UUID. Defaults to current default Published v1.",
+    )
+
 

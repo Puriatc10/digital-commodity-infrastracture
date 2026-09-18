@@ -8,6 +8,8 @@ from rest_framework.views import APIView
 from identity.models import SystemRoleAssignment
 from offers.api.serializers import (
     BuyerOfferProjectionResponseSerializer,
+    DecisionRunCreateRequestSerializer,
+    DecisionRunDetailResponseSerializer,
     OfferErrorResponseSerializer,
     OfferVersionResponseSerializer,
     OfferVersionSubmitActionSerializer,
@@ -18,6 +20,9 @@ from offers.api.serializers import (
 )
 from offers.enums import LogisticsCostStatus
 from offers.exceptions import (
+    DecisionPermissionDeniedError,
+    DecisionPolicyError,
+    DecisionValidationError,
     InvalidVersionError,
     OfferConflictError,
     OfferNotFoundError,
@@ -27,12 +32,14 @@ from offers.exceptions import (
     OfferVersionNotFoundError,
     StaleVersionError,
 )
-from offers.models import Offer, OfferVersion
+from offers.models import DecisionProfileVersion, DecisionRun, Offer, OfferVersion
 from offers.services.comparison import compare_rfq_offers
+from offers.services.decision_service import create_decision_run_foundation
 from offers.services.operator_submission import submit_operator_external_offer
 from offers.services.submission import submit_internal_offer_version
 from organizations.models import OrganizationMembership
 from trade_hub.models import RFQ
+
 
 
 def _is_operator_or_admin(user: Any) -> bool:
@@ -463,4 +470,133 @@ class RFQComparisonView(APIView):
             serializer = RFQComparisonResponseSerializer(comparison.to_dict())
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class RFQDecisionRunCreateView(APIView):
+    """
+    Initiate an immutable DecisionRun foundation execution for an RFQ (T0808).
+
+    Evaluates the current submitted version per Offer thread using T0806 comparison universe
+    under the specified or default Published DecisionProfileVersion.
+
+    Authorization:
+    - Allowed: RFQ Buyer Organization members and platform Operators/Admins.
+    - Explicitly Rejected: Competitor participants (Suppliers/Brokers), foreign buyers,
+      staff-only, anonymous callers.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Create DecisionRun foundation for an RFQ",
+        description=(
+            "Initiate an immutable DecisionRun foundation for the specified RFQ. "
+            "Materializes current submitted OfferVersions as DecisionCandidates and "
+            "computes a deterministic canonical input fingerprint. "
+            "Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins."
+        ),
+        request=DecisionRunCreateRequestSerializer,
+        responses={
+            201: DecisionRunDetailResponseSerializer,
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - lacks Buyer procurement role or Operator authority"),
+            404: OpenApiResponse(description="RFQ or DecisionProfileVersion not found"),
+        },
+    )
+    def post(self, request, rfq_id):
+        serializer = DecisionRunCreateRequestSerializer(data=request.data or {})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        profile_version_id = serializer.validated_data.get("profile_version_id")
+        profile_version = None
+        if profile_version_id:
+            profile_version = DecisionProfileVersion.objects.filter(pk=profile_version_id).first()
+            if not profile_version:
+                return Response(
+                    {"detail": f"DecisionProfileVersion '{profile_version_id}' does not exist."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        try:
+            run = create_decision_run_foundation(
+                rfq=rfq_id,
+                actor=request.user,
+                profile_version=profile_version,
+            )
+        except OfferNotFoundError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except DecisionPermissionDeniedError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except (DecisionPolicyError, DecisionValidationError, OfferValidationError) as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Reload with related fields for response serialization
+        run_loaded = (
+            DecisionRun.objects.filter(pk=run.pk)
+            .select_related("rfq", "decision_profile_version", "decision_profile_version__profile")
+            .prefetch_related("candidates", "candidates__offer_version")
+            .first()
+        )
+        response_serializer = DecisionRunDetailResponseSerializer(run_loaded)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class DecisionRunDetailView(APIView):
+    """
+    Retrieve an immutable DecisionRun audit record and its materialized candidates (T0808).
+
+    Authorization:
+    - Allowed: RFQ Buyer Organization members and platform Operators/Admins.
+    - Explicitly Rejected: Competitor participants (Suppliers/Brokers), foreign buyers,
+      staff-only, anonymous callers.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Retrieve DecisionRun detail",
+        description=(
+            "Retrieves an immutable DecisionRun and its candidate universe. "
+            "Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. "
+            "Competitor participants (Suppliers/Brokers) cannot access decision intelligence."
+        ),
+        responses={
+            200: DecisionRunDetailResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden - lacks Buyer procurement role or Operator authority"),
+            404: OpenApiResponse(description="DecisionRun not found"),
+        },
+    )
+    def get(self, request, run_id):
+        run = (
+            DecisionRun.objects.filter(pk=run_id)
+            .select_related("rfq", "decision_profile_version", "decision_profile_version__profile")
+            .prefetch_related("candidates", "candidates__offer_version")
+            .first()
+        )
+        if not run:
+            return Response(
+                {"detail": f"DecisionRun '{run_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_rfq_buyer = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=run.rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+
+        if not is_operator and not is_rfq_buyer:
+            return Response(
+                {"detail": "You do not have permission to view decision intelligence for this RFQ."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = DecisionRunDetailResponseSerializer(run)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
