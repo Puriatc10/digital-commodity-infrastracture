@@ -16,7 +16,7 @@ from commodities.models import (
 from commodities.services import publish_schema
 from identity.models import SystemRoleAssignment
 from offers.enums import LogisticsCostStatus, OfferorRole, OfferVersionStatus
-from offers.models import Offer, OfferCostComponent, OfferVersion
+from offers.models import OfferCostComponent
 from offers.services.creation import create_offer
 from offers.services.version_services import create_draft_offer_version
 from organizations.models import (

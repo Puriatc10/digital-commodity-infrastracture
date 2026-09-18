@@ -1,9 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch, PropertyMock
-import uuid
 
-from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from commodities.models import (
@@ -14,7 +12,6 @@ from commodities.services import publish_schema
 from offers.enums import LogisticsCostStatus, OfferorRole, OfferVersionStatus
 from offers.exceptions import (
     InvalidVersionError,
-    OfferConflictError,
     OfferPermissionDeniedError,
     OfferStateError,
     OfferValidationError,

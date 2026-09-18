@@ -1,5 +1,4 @@
 from typing import Any
-import uuid
 
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import permissions, status
