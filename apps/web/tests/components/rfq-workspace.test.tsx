@@ -419,10 +419,12 @@ describe("T0507 - RFQ Workspace Component Suite", () => {
       expect(screen.getByText(t.staged.offersTitle)).toBeInTheDocument();
     });
 
-    // Negotiation tab placeholder
+    // Negotiation tab (now active RFQNegotiationTab under T0812)
     const negotiationTab = screen.getByRole("button", { name: new RegExp(`^${t.tabs.negotiation}$`) });
     fireEvent.click(negotiationTab);
-    expect(screen.getByText(t.staged.negotiationTitle)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("مذاکرات و تاریخچه پیشنهادها")).toBeInTheDocument();
+    });
 
     // Documents tab placeholder (not reusing KYC)
     const documentsTab = screen.getByRole("button", { name: new RegExp(`^${t.tabs.documents}$`) });

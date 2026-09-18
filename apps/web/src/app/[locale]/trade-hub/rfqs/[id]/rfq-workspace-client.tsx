@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { RFQMatchingTab } from "@/components/matching/rfq-matching-tab";
 import { RFQComparisonTab } from "@/components/comparison/rfq-comparison-tab";
+import { RFQNegotiationTab } from "@/components/negotiation/rfq-negotiation-tab";
 
 type RFQBuilderResponse = components["schemas"]["RFQBuilderResponse"];
 type RFQPublicResponse = components["schemas"]["RFQPublicResponse"];
@@ -148,6 +149,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
       queryClient.removeQueries({ queryKey: ["rfq-invitation-me", rfqId] });
       queryClient.removeQueries({ queryKey: ["matching-runs", rfqId] });
       queryClient.removeQueries({ queryKey: ["matching-candidates"] });
+      queryClient.removeQueries({ queryKey: ["offer-history"] });
       setRfq(null);
       setSchema(null);
       setInvitations([]);
@@ -1230,17 +1232,14 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
         />
       )}
 
-      {/* --- NEGOTIATION TAB (STAGED PLACEHOLDER) --- */}
+      {/* --- NEGOTIATION TAB --- */}
       {activeTab === "negotiation" && (
-        <Card className="border-dashed">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-base font-semibold">{t.staged.negotiationTitle}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
-            <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="max-w-md text-sm leading-relaxed">{t.staged.negotiationPlaceholder}</p>
-          </CardContent>
-        </Card>
+        <RFQNegotiationTab
+          rfqId={rfqId}
+          canManage={canManage}
+          isOperator={Boolean(isOperatorOrAdmin)}
+          locale={locale}
+        />
       )}
 
       {/* --- DOCUMENTS TAB (STAGED PLACEHOLDER) --- */}

@@ -371,6 +371,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/offers/{offer_id}/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Offer negotiation history
+         * @description Retrieves the immutable negotiation history (versions, revision requests, schema) for an Offer. Authorized for RFQ Buyer, offering organization, and platform Operators/Admins. Competitors and unauthorized parties receive 404 Not Found.
+         */
+        get: operations["offers_history_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/offers/{offer_id}/revision-requests/": {
         parameters: {
             query?: never;
@@ -1971,6 +1991,13 @@ export interface components {
             name_en: string;
             is_active?: boolean;
         };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `retired` - Retired
+         * @enum {string}
+         */
+        CommoditySchemaStatusEnum: "draft" | "published" | "retired";
         CommoditySchemaVersion: {
             /** Format: uuid */
             readonly id: string;
@@ -1978,16 +2005,9 @@ export interface components {
             readonly commodity_id: string;
             /** @description Version number (e.g., 1, 2) */
             version: number;
-            status?: components["schemas"]["CommoditySchemaVersionStatusEnum"];
+            status?: components["schemas"]["CommoditySchemaStatusEnum"];
             readonly attributes: components["schemas"]["CommodityAttributeDefinition"][];
         };
-        /**
-         * @description * `draft` - Draft
-         *     * `published` - Published
-         *     * `retired` - Retired
-         * @enum {string}
-         */
-        CommoditySchemaVersionStatusEnum: "draft" | "published" | "retired";
         /**
          * @description Typed, safe commercial comparison row for Buyer and Operator procurement intelligence (T0806).
          *
@@ -2687,6 +2707,139 @@ export interface components {
             detail: string;
             /** @description Optional list of error messages or validation details. */
             errors?: string[];
+        };
+        /** @description Authoritative read projection for an Offer's negotiation history (T0812, Contract §56). */
+        OfferNegotiationHistoryResponse: {
+            /**
+             * Format: uuid
+             * @description Offer UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description RFQ UUID.
+             */
+            rfq_id: string;
+            /** @description Role: SUPPLIER or BROKER. */
+            offeror_role: string;
+            /** @description Safe display name of the offering party. */
+            counterparty_name: string;
+            /** @description Whether offer is an external counterparty quote. */
+            is_external: boolean;
+            /** @description Whether offer was entered by a platform Operator. */
+            entered_by_operator: boolean;
+            /** @description Current optimistic concurrency version. */
+            aggregate_version: number;
+            /**
+             * Format: uuid
+             * @description Current submitted OfferVersion UUID.
+             */
+            current_submitted_version_id: string | null;
+            /** @description Historical CommoditySchemaVersion bound to the RFQ. */
+            schema: components["schemas"]["CommoditySchemaVersion"];
+            /** @description Chronological submitted OfferVersions. */
+            versions: components["schemas"]["OfferVersionHistory"][];
+            /** @description Chronological formal RevisionRequests. */
+            revision_requests: components["schemas"]["RevisionRequestHistory"][];
+        };
+        /** @description Structured representation of an OfferVersion in negotiation history (T0812). */
+        OfferVersionHistory: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent offer aggregate.
+             */
+            readonly offer_id: string;
+            /** @description Authoritative server-allocated sequential version number (1, 2, ...). */
+            readonly version_number: number;
+            /**
+             * @description Lifecycle status: DRAFT or SUBMITTED.
+             *
+             *     * `DRAFT` - Draft
+             *     * `SUBMITTED` - Submitted
+             */
+            readonly status: components["schemas"]["OfferVersionStatusEnum"];
+            /**
+             * Format: uuid
+             * @description Exact schema version bound to the parent RFQ.
+             */
+            readonly schema_version_id: string;
+            /** @description Dynamic specification attributes validated against schema_version. */
+            readonly specifications: unknown;
+            /**
+             * Format: decimal
+             * @description Proposed quantity (strictly positive; partial or surplus allowed).
+             */
+            readonly offered_quantity: string;
+            /** @description Unit of measurement (must be compatible with RFQ unit). */
+            readonly quantity_unit: string;
+            /**
+             * Format: decimal
+             * @description Proposed price per unit (strictly positive).
+             */
+            readonly unit_price: string;
+            /** @description ISO 4217 3-letter currency code (exact submitted truth; no FX). */
+            readonly currency: string;
+            /** @description Proposed payment terms (e.g. LC at sight, TT 30 days). */
+            readonly payment_terms: string;
+            /** @description Proposed delivery conditions or freight details. */
+            readonly delivery_terms: string;
+            /** @description Incoterm code (e.g. FOB, CIF, CFR, EXW). */
+            readonly incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest proposed delivery date.
+             */
+            readonly delivery_start: string | null;
+            /**
+             * Format: date
+             * @description Latest proposed delivery date.
+             */
+            readonly delivery_end: string | null;
+            /**
+             * Format: date-time
+             * @description Proposal validity timestamp (expiry derived, not mutated).
+             */
+            readonly valid_until: string | null;
+            /**
+             * @description Status of logistics cost knowledge.
+             *
+             *     * `KNOWN_SEPARATE` - Known Separate
+             *     * `INCLUDED_IN_PRICE` - Included in Price
+             *     * `NOT_APPLICABLE` - Not Applicable
+             *     * `UNKNOWN` - Unknown
+             */
+            readonly logistics_cost_status: components["schemas"]["LogisticsCostStatusEnum"];
+            /**
+             * Format: decimal
+             * @description Separate logistics cost amount (required if KNOWN_SEPARATE; absent otherwise).
+             */
+            readonly logistics_cost_amount: string | null;
+            /** @description Commercial notes or comments accompanying the version. */
+            readonly notes: string;
+            readonly cost_components: components["schemas"]["OfferCostComponentResponse"][];
+            /** @description Platform user who submitted this version. */
+            readonly submitted_by_id: number | null;
+            /** @description Display name or role of the user who submitted this version. */
+            readonly submitted_by_name: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when version was submitted.
+             */
+            readonly submitted_at: string | null;
+            /** @description Platform user who created this version draft. */
+            readonly created_by_id: number;
+            /** @description Display name or role of the user who created this version draft. */
+            readonly created_by_name: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** @description Current optimistic concurrency aggregate_version of the parent Offer. */
+            readonly aggregate_version: number;
+            /** @description Whether this version was entered by an Operator on behalf of an external party. */
+            readonly entered_by_operator: boolean;
         };
         /** @description Structured representation of an OfferVersion commercial snapshot. */
         OfferVersionResponse: {
@@ -4557,6 +4710,66 @@ export interface components {
             /** @description Expected Offer aggregate_version for optimistic concurrency control. */
             expected_version: number;
         };
+        /** @description Authoritative representation of a RevisionRequest in negotiation history (T0812). */
+        RevisionRequestHistory: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent Offer UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Base OfferVersion UUID.
+             */
+            base_offer_version_id: string;
+            /** @description Version number of the base OfferVersion. */
+            readonly base_version_number: number;
+            /** @description Canonical list of field names requested for revision. */
+            readonly requested_fields: unknown;
+            /** @description Human-entered revision explanation or instruction. */
+            readonly message: string;
+            /**
+             * Format: uuid
+             * @description User UUID who created the request.
+             */
+            requested_by_id: string;
+            /** @description Display name or role label of the requester. */
+            readonly requested_by_name: string;
+            /** @description Role of the requester: BUYER or OPERATOR. */
+            readonly requested_by_role: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when revision request was created.
+             */
+            readonly requested_at: string;
+            /**
+             * @description Revision request lifecycle status: OPEN, RESOLVED, DECLINED, CANCELLED.
+             *
+             *     * `OPEN` - Open
+             *     * `RESOLVED` - Resolved
+             *     * `DECLINED` - Declined
+             *     * `CANCELLED` - Cancelled
+             */
+            readonly status: components["schemas"]["RevisionRequestStatusEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of resolving OfferVersion.
+             */
+            resolved_by_version_id?: string | null;
+            /** @description Version number of resolving OfferVersion. */
+            readonly resolved_version_number: number | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when request was resolved, declined, or cancelled.
+             */
+            readonly resolved_at: string | null;
+            /** @description Current aggregate_version of the parent Offer. */
+            readonly offer_aggregate_version: number;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         /** @description Authoritative representation of a RevisionRequest record (T0810, Contract §56). */
         RevisionRequestResponse: {
             /** Format: uuid */
@@ -4595,7 +4808,7 @@ export interface components {
              *     * `DECLINED` - Declined
              *     * `CANCELLED` - Cancelled
              */
-            readonly status: components["schemas"]["RevisionRequestResponseStatusEnum"];
+            readonly status: components["schemas"]["RevisionRequestStatusEnum"];
             /**
              * Format: uuid
              * @description UUID of resolving OfferVersion (populated upon resolution in T0811).
@@ -4618,7 +4831,7 @@ export interface components {
          *     * `CANCELLED` - Cancelled
          * @enum {string}
          */
-        RevisionRequestResponseStatusEnum: "OPEN" | "RESOLVED" | "DECLINED" | "CANCELLED";
+        RevisionRequestStatusEnum: "OPEN" | "RESOLVED" | "DECLINED" | "CANCELLED";
         /** @description Payload for submitting a revised Draft OfferVersion and resolving the RevisionRequest (T0811). */
         RevisionRequestSubmit: {
             /** @description Expected Offer aggregate_version for optimistic concurrency control. */
@@ -5901,6 +6114,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_history_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferNegotiationHistoryResponse"];
+                };
             };
             /** @description Unauthenticated */
             401: {

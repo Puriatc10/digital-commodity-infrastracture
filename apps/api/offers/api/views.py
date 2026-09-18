@@ -11,6 +11,7 @@ from offers.api.serializers import (
     DecisionRunCreateRequestSerializer,
     DecisionRunDetailResponseSerializer,
     OfferErrorResponseSerializer,
+    OfferNegotiationHistoryResponseSerializer,
     OfferVersionResponseSerializer,
     OfferVersionSubmitActionSerializer,
     OperatorExternalOfferSubmissionSerializer,
@@ -23,7 +24,7 @@ from offers.api.serializers import (
     RevisionRequestResponseSerializer,
     RevisionRequestSubmitSerializer,
 )
-from offers.enums import LogisticsCostStatus
+from offers.enums import LogisticsCostStatus, OfferVersionStatus
 from offers.exceptions import (
     DecisionPermissionDeniedError,
     DecisionPolicyError,
@@ -341,6 +342,133 @@ class OfferDetailView(APIView):
             {"detail": f"Offer '{offer_id}' does not exist."},
             status=status.HTTP_404_NOT_FOUND,
         )
+
+
+class OfferNegotiationHistoryView(APIView):
+    """
+    Retrieve authoritative negotiation history for an Offer (T0812, Contract §56).
+
+    Enforces strict privacy and authorization projections:
+    - Operator/Admin: receives complete operational history.
+    - RFQ Buyer: receives safe commercial history (only submitted versions, no CRM/Opportunity notes).
+    - Offering Organization: receives commercial history of own offer thread.
+    - Competitor Supplier/Broker or Foreign Buyer: returns 404 Not Found (privacy guard concealing competitor presence).
+    - Unauthenticated: returns 401 Unauthorized.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Get Offer negotiation history",
+        description=(
+            "Retrieves the immutable negotiation history (versions, revision requests, schema) for an Offer. "
+            "Authorized for RFQ Buyer, offering organization, and platform Operators/Admins. "
+            "Competitors and unauthorized parties receive 404 Not Found."
+        ),
+        responses={
+            200: OfferNegotiationHistoryResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            404: OpenApiResponse(description="Offer not found or inaccessible"),
+        },
+    )
+    def get(self, request, offer_id):
+        offer = (
+            Offer.objects.filter(pk=offer_id)
+            .select_related(
+                "rfq",
+                "rfq__schema_version",
+                "offering_organization",
+                "external_counterparty",
+                "current_submitted_version",
+            )
+            .first()
+        )
+        if not offer:
+            return Response(
+                {"detail": f"Offer '{offer_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_buyer_member = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=offer.rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+        is_offeror_member = bool(
+            offer.offering_organization_id
+            and OrganizationMembership.objects.filter(
+                user=request.user,
+                organization_id=offer.offering_organization_id,
+                is_active=True,
+                organization__is_active=True,
+            ).exists()
+        )
+
+        # 1. Authorization guard: only Operator, RFQ Buyer, or Offering party
+        if not (is_operator or is_buyer_member or is_offeror_member):
+            return Response(
+                {"detail": f"Offer '{offer_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # 2. Buyer privacy guard: if buyer, offer must have at least one submitted version
+        if is_buyer_member and not (is_operator or is_offeror_member):
+            if not offer.current_submitted_version_id:
+                return Response(
+                    {"detail": f"Offer '{offer_id}' does not exist."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        # 3. Fetch versions
+        # Buyer only sees SUBMITTED versions.
+        # Operator and Offeror also see in-progress DRAFT if present.
+        version_qs = (
+            OfferVersion.objects.filter(offer=offer)
+            .select_related("offer", "submitted_by", "created_by")
+            .prefetch_related("cost_components")
+            .order_by("version_number")
+        )
+        if is_buyer_member and not (is_operator or is_offeror_member):
+            version_qs = version_qs.filter(status=OfferVersionStatus.SUBMITTED)
+
+        versions = list(version_qs)
+
+        # 4. Fetch revision requests
+        rev_requests = list(
+            RevisionRequest.objects.filter(offer=offer)
+            .select_related("offer", "base_offer_version", "resolved_by_version", "requested_by")
+            .order_by("requested_at")
+        )
+
+        # 5. Counterparty display name (safe)
+        if offer.external_counterparty_id and offer.external_counterparty:
+            counterparty_name = offer.external_counterparty.company_name
+        elif offer.offering_organization_id and offer.offering_organization:
+            counterparty_name = offer.offering_organization.name
+        else:
+            counterparty_name = "Unknown"
+
+        # 6. Schema
+        schema = offer.rfq.schema_version
+
+        payload = {
+            "offer_id": offer.id,
+            "rfq_id": offer.rfq_id,
+            "offeror_role": offer.offeror_role,
+            "counterparty_name": counterparty_name,
+            "is_external": offer.is_external,
+            "entered_by_operator": offer.entered_by_operator,
+            "aggregate_version": offer.aggregate_version,
+            "current_submitted_version_id": offer.current_submitted_version_id,
+            "schema": schema,
+            "versions": versions,
+            "revision_requests": rev_requests,
+        }
+
+        serializer = OfferNegotiationHistoryResponseSerializer(payload)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class RFQOffersListView(APIView):
