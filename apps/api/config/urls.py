@@ -13,6 +13,8 @@ urlpatterns = [
     path("api/commodity-schemas/", include("commodities.urls_schemas")),
     path("api/trade-hub/", include("trade_hub.urls")),
     path("api/opportunities/", include("opportunities.urls")),
+    path("api/geography/", include("geography.urls")),
+    path("api/matching/", include("matching.urls")),
     path("", include("documents.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

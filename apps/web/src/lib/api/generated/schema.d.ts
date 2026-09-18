@@ -187,6 +187,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/geography/areas/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List active geographic areas
+         * @description Read-only list of geographic areas.
+         *
+         *     Optimized with select_related('parent') to prevent N+1 queries during serialization.
+         *     Supports filtering by country, parent, area type, and search term.
+         */
+        get: operations["geography_areas_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/geography/areas/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve geographic area by ID
+         * @description Read-only retrieval of a single geographic area by ID.
+         */
+        get: operations["geography_areas_read"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -196,6 +239,70 @@ export interface paths {
         };
         /** @description Report process liveness without querying the database. */
         get: operations["health_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matching/rfqs/{rfq_id}/runs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Historical Matching Runs for an RFQ
+         * @description Retrieve historical matching execution runs for an authorized RFQ target.
+         */
+        get: operations["matching_rfqs_runs_list"];
+        put?: never;
+        /**
+         * Trigger a Matching Run for an RFQ
+         * @description Executes an audience-scoped, deterministic matching run against a Published RFQ target. Evaluates Direct Supply, Potential Supplier, and Broker Path lanes with 3-part Decimal scoring (Fit Score, Evidence Coverage, Ranking Score) and lane-local ranking.
+         */
+        post: operations["matching_rfqs_runs_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matching/runs/{run_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Matching Run Details
+         * @description Retrieve metadata, staleness, policy version, and fingerprints for a matching execution run.
+         */
+        get: operations["matching_runs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matching/runs/{run_id}/candidates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Candidates for a Matching Run
+         * @description Retrieve evaluated candidates with lane ranking, 3-part Decimal scores, safe source projection, and structured explainability signals.
+         */
+        get: operations["matching_runs_candidates_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1269,12 +1376,39 @@ export interface components {
          * @enum {string}
          */
         ActorTypeEnum: "buyer" | "supplier" | "broker" | "operator" | "system";
+        /**
+         * @description * `COUNTRY` - Country
+         *     * `ADMINISTRATIVE_AREA` - Administrative Area
+         *     * `CITY` - City
+         * @enum {string}
+         */
+        AreaTypeEnum: "COUNTRY" | "ADMINISTRATIVE_AREA" | "CITY";
+        /**
+         * @description * `BUYER` - Buyer
+         *     * `OPERATOR` - Operator
+         * @enum {string}
+         */
+        AudienceEnum: "BUYER" | "OPERATOR";
+        /**
+         * @description * `SUPPLY_LISTING` - Supply Listing
+         *     * `SUPPLY_OPPORTUNITY` - Supply Opportunity
+         *     * `SUPPLIER_ORGANIZATION` - Supplier Organization
+         *     * `BROKER_ORGANIZATION` - Broker Organization
+         * @enum {string}
+         */
+        CandidateKindEnum: "SUPPLY_LISTING" | "SUPPLY_OPPORTUNITY" | "SUPPLIER_ORGANIZATION" | "BROKER_ORGANIZATION";
         ChecklistReview: {
             /** Format: uuid */
             document_id: string;
-            outcome: components["schemas"]["OutcomeEnum"];
+            outcome: components["schemas"]["ChecklistReviewOutcomeEnum"];
             expected_version: number;
         };
+        /**
+         * @description * `accepted` - accepted
+         *     * `rejected` - rejected
+         * @enum {string}
+         */
+        ChecklistReviewOutcomeEnum: "accepted" | "rejected";
         CommodityAttributeDefinition: {
             /** Format: uuid */
             readonly id: string;
@@ -1346,6 +1480,16 @@ export interface components {
         DemoPersonaSwitcherRequest: {
             persona: components["schemas"]["PersonaEnum"];
         };
+        /**
+         * @description * `SPECIFICATION` - Specification
+         *     * `QUANTITY` - Quantity
+         *     * `AVAILABILITY` - Availability
+         *     * `GEOGRAPHY` - Geography
+         *     * `TRUST` - Trust
+         *     * `HISTORY` - History
+         * @enum {string}
+         */
+        DimensionEnum: "SPECIFICATION" | "QUANTITY" | "AVAILABILITY" | "GEOGRAPHY" | "TRUST" | "HISTORY";
         DirectoryOrganization: {
             /** Format: uuid */
             readonly id: string;
@@ -1439,6 +1583,55 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        /** @description Full representation of a geographic area including its parent summary. */
+        GeographicArea: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical, stable, machine-readable area code (e.g. 'IR', 'IR-07', 'IR-07-THR'). */
+            readonly code: string;
+            /**
+             * @description Exact structural type: COUNTRY, ADMINISTRATIVE_AREA, or CITY.
+             *
+             *     * `COUNTRY` - Country
+             *     * `ADMINISTRATIVE_AREA` - Administrative Area
+             *     * `CITY` - City
+             */
+            readonly area_type: components["schemas"]["AreaTypeEnum"];
+            /** @description ISO 3166-1 alpha-2 country code (e.g. 'IR'). */
+            readonly country_code: string;
+            /** @description English display name. */
+            readonly name_en: string;
+            /** @description Persian display name. */
+            readonly name_fa: string;
+            /** @description Whether this area is active for selection. */
+            readonly is_active: boolean;
+            readonly parent: components["schemas"]["GeographicAreaSummary"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Concise representation of a geographic area (e.g. for parent linkage). */
+        GeographicAreaSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical, stable, machine-readable area code (e.g. 'IR', 'IR-07', 'IR-07-THR'). */
+            readonly code: string;
+            /**
+             * @description Exact structural type: COUNTRY, ADMINISTRATIVE_AREA, or CITY.
+             *
+             *     * `COUNTRY` - Country
+             *     * `ADMINISTRATIVE_AREA` - Administrative Area
+             *     * `CITY` - City
+             */
+            readonly area_type: components["schemas"]["AreaTypeEnum"];
+            /** @description ISO 3166-1 alpha-2 country code (e.g. 'IR'). */
+            readonly country_code: string;
+            /** @description English display name. */
+            readonly name_en: string;
+            /** @description Persian display name. */
+            readonly name_fa: string;
+        };
         HealthResponse: {
             status: string;
         };
@@ -1452,11 +1645,180 @@ export interface components {
             readonly decisions: components["schemas"]["VerificationDecision"][];
             readonly notes: components["schemas"]["VerificationNote"][];
         };
+        /**
+         * @description * `DIRECT_SUPPLY` - Direct Supply
+         *     * `POTENTIAL_SUPPLIER` - Potential Supplier
+         *     * `BROKER_PATH` - Broker Path
+         * @enum {string}
+         */
+        LaneEnum: "DIRECT_SUPPLY" | "POTENTIAL_SUPPLIER" | "BROKER_PATH";
         Login: {
             /** Format: email */
             email: string;
             password: string;
         };
+        /**
+         * @description Audience-safe matching candidate projection.
+         *
+         *     Never exposes internal CRM notes, contact attempts, personal phone/email,
+         *     or raw snapshot dumps to Buyer.
+         */
+        MatchingCandidateResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Associated matching execution run.
+             */
+            readonly run_id: string;
+            /**
+             * @description Lane to which this candidate belongs (Direct Supply, Potential Supplier, Broker Path).
+             *
+             *     * `DIRECT_SUPPLY` - Direct Supply
+             *     * `POTENTIAL_SUPPLIER` - Potential Supplier
+             *     * `BROKER_PATH` - Broker Path
+             */
+            lane: components["schemas"]["LaneEnum"];
+            /**
+             * @description Candidate evidence type.
+             *
+             *     * `SUPPLY_LISTING` - Supply Listing
+             *     * `SUPPLY_OPPORTUNITY` - Supply Opportunity
+             *     * `SUPPLIER_ORGANIZATION` - Supplier Organization
+             *     * `BROKER_ORGANIZATION` - Broker Organization
+             */
+            candidate_kind: components["schemas"]["CandidateKindEnum"];
+            /** @description Whether candidate passed all hard eligibility gates. */
+            eligible?: boolean;
+            /** @description Machine-readable code identifying why candidate was excluded. */
+            exclusion_code?: string;
+            /** Format: decimal */
+            fit_score: string | null;
+            /** Format: decimal */
+            evidence_coverage: string | null;
+            /** Format: decimal */
+            ranking_score: string | null;
+            /** @description Rank within the candidate's lane (1-based, rank > 0). */
+            rank?: number | null;
+            /** @description Audience-safe safe source projection. */
+            readonly source: {
+                [key: string]: unknown;
+            };
+            readonly signals: components["schemas"]["MatchingSignalResponse"][];
+        };
+        /** @description Standardized error structure for controlled business failures. */
+        MatchingErrorResponse: {
+            /** @description Machine-readable error code. */
+            code: string;
+            /** @description Descriptive explanation of the failure. */
+            detail: string;
+        };
+        /** @description Input payload for executing a new matching run. */
+        MatchingRunCreate: {
+            /**
+             * @description Target audience scope: BUYER (default) or OPERATOR.
+             *
+             *     * `BUYER` - Buyer
+             *     * `OPERATOR` - Operator
+             * @default BUYER
+             */
+            audience: components["schemas"]["AudienceEnum"];
+            /**
+             * Format: uuid
+             * @description Optional UUID of specific Published matching policy version.
+             */
+            policy_version_id?: string | null;
+        };
+        /** @description Standardized representation of a persisted MatchingRun. */
+        MatchingRunResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly rfq_id: string;
+            /** @description Exact RFQ aggregate version at execution time. */
+            rfq_version: number;
+            /**
+             * @description Target audience scope (BUYER or OPERATOR).
+             *
+             *     * `BUYER` - Buyer
+             *     * `OPERATOR` - Operator
+             */
+            audience: components["schemas"]["AudienceEnum"];
+            /**
+             * Format: uuid
+             * @description Published policy version used for candidate evaluation.
+             */
+            readonly policy_version_id: string;
+            readonly policy_version_number: number;
+            /** @description Centralized semantic matching engine contract version. */
+            engine_version?: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the matching run was generated.
+             */
+            generated_at?: string;
+            /** @description True if RFQ aggregate version has progressed since run. */
+            readonly is_stale: boolean;
+            /** @description SHA-256 fingerprint of the canonical matching inputs. */
+            input_fingerprint?: string;
+            /** @description SHA-256 fingerprint of the canonical matching results. */
+            result_fingerprint?: string;
+            /** @description Total number of evaluated candidates in this run. */
+            readonly candidate_count: number;
+        };
+        /** @description Structured analytical signal explanation. */
+        MatchingSignalResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * @description Evaluation dimension (Specification, Quantity, Availability, Geography, Trust, History).
+             *
+             *     * `SPECIFICATION` - Specification
+             *     * `QUANTITY` - Quantity
+             *     * `AVAILABILITY` - Availability
+             *     * `GEOGRAPHY` - Geography
+             *     * `TRUST` - Trust
+             *     * `HISTORY` - History
+             */
+            dimension: components["schemas"]["DimensionEnum"];
+            /** @description Machine-readable rule or attribute code (e.g. 'spec.penetration_grade', 'availability'). */
+            code: string;
+            /**
+             * @description Structured outcome: PASS, PARTIAL, FAIL, UNKNOWN, NOT_APPLICABLE.
+             *
+             *     * `PASS` - Pass
+             *     * `PARTIAL` - Partial
+             *     * `FAIL` - Fail
+             *     * `UNKNOWN` - Unknown
+             *     * `NOT_APPLICABLE` - Not Applicable
+             */
+            outcome: components["schemas"]["MatchingSignalResponseOutcomeEnum"];
+            /** @description Whether this signal evaluated a hard eligibility gate. */
+            is_hard?: boolean;
+            /** Format: decimal */
+            weight: string;
+            /** Format: decimal */
+            raw_score: string | null;
+            /** Format: decimal */
+            contribution: string | null;
+            /** @description Machine-readable outcome explanation code (never localized text). */
+            reason_code?: string;
+            /** @description Constrained structured JSONB representing target demand expectation. */
+            expected_value?: unknown;
+            /** @description Constrained structured JSONB representing candidate actual supply evidence. */
+            actual_value?: unknown;
+            /** @description Optional stable UUID or fingerprint snapshot of commodity attribute semantic identity. */
+            semantic_identity?: string | null;
+        };
+        /**
+         * @description * `PASS` - Pass
+         *     * `PARTIAL` - Partial
+         *     * `FAIL` - Fail
+         *     * `UNKNOWN` - Unknown
+         *     * `NOT_APPLICABLE` - Not Applicable
+         * @enum {string}
+         */
+        MatchingSignalResponseOutcomeEnum: "PASS" | "PARTIAL" | "FAIL" | "UNKNOWN" | "NOT_APPLICABLE";
         /** @enum {unknown} */
         NullEnum: null;
         /** @description Safe projection of CommodityDefinition for Opportunity consumers. */
@@ -2205,12 +2567,6 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
-        /**
-         * @description * `accepted` - accepted
-         *     * `rejected` - rejected
-         * @enum {string}
-         */
-        OutcomeEnum: "accepted" | "rejected";
         PaginatedExternalCounterpartyList: {
             /** @example 123 */
             count: number;
@@ -3976,6 +4332,55 @@ export interface operations {
             };
         };
     };
+    geography_areas_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by ISO 3166-1 alpha-2 country code (e.g. 'IR'). */
+                country?: string;
+                /** @description Filter by parent ID, parent code, or 'null' for root countries. */
+                parent?: string;
+                /** @description Case-insensitive substring search in code, name_en, or name_fa. */
+                search?: string;
+                /** @description Filter by area type (COUNTRY, ADMINISTRATIVE_AREA, CITY). */
+                type?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeographicArea"][];
+                };
+            };
+        };
+    };
+    geography_areas_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeographicArea"];
+                };
+            };
+        };
+    };
     health_retrieve: {
         parameters: {
             query?: never;
@@ -3991,6 +4396,179 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    matching_rfqs_runs_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingRunResponse"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+        };
+    };
+    matching_rfqs_runs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MatchingRunCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingRunResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+        };
+    };
+    matching_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingRunResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+        };
+    };
+    matching_runs_candidates_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by candidate eligibility status. */
+                eligible?: boolean;
+                /** @description Filter candidates by lane (DIRECT_SUPPLY, POTENTIAL_SUPPLIER, BROKER_PATH). */
+                lane?: "BROKER_PATH" | "DIRECT_SUPPLY" | "POTENTIAL_SUPPLIER";
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingCandidateResponse"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
                 };
             };
         };

@@ -1,8 +1,9 @@
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from .models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition, lock_commodities
+from .models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition, CommodityAttributeSemanticIdentity, lock_commodities
 import jsonschema
 import math
+import uuid
 
 @transaction.atomic
 def publish_schema(schema: CommoditySchemaVersion, activate: bool = False) -> CommoditySchemaVersion:
@@ -95,6 +96,7 @@ def clone_schema_to_draft(schema: CommoditySchemaVersion) -> CommoditySchemaVers
     for attr in schema.attributes.all():
         CommodityAttributeDefinition.objects.create(
             schema_version=new_schema,
+            semantic_identity=attr.semantic_identity,
             key=attr.key,
             label_fa=attr.label_fa,
             label_en=attr.label_en,
@@ -104,15 +106,100 @@ def clone_schema_to_draft(schema: CommoditySchemaVersion) -> CommoditySchemaVers
             enum_metadata=attr.enum_metadata,
             validation_metadata=attr.validation_metadata,
             display_group=attr.display_group,
-            sort_order=attr.sort_order
+            sort_order=attr.sort_order,
         )
 
     return new_schema
 
 
+@transaction.atomic
+def rotate_attribute_semantic_identity(
+    attribute: CommodityAttributeDefinition,
+    new_semantic_identity: CommodityAttributeSemanticIdentity | None = None,
+    new_code: str | None = None,
+) -> CommodityAttributeDefinition:
+    """
+    Explicitly rotate the semantic identity of an attribute in a draft schema version.
+    Rejects rotation on published or retired schemas.
+    """
+    attribute.refresh_from_db()
+    if attribute.schema_version.status != CommoditySchemaVersion.SchemaStatus.DRAFT:
+        raise ValidationError("Cannot rotate semantic identity of an attribute in a published or retired schema.")
+
+    if new_semantic_identity is not None:
+        if new_semantic_identity.commodity_id != attribute.schema_version.commodity_id:
+            raise ValidationError("Semantic identity must belong to the same commodity.")
+        attribute.semantic_identity = new_semantic_identity
+    else:
+        code = new_code or f"{attribute.key}_v{attribute.schema_version.version}"
+        existing = CommodityAttributeSemanticIdentity.objects.filter(
+            commodity=attribute.schema_version.commodity, code=code
+        ).first()
+        if existing:
+            code = f"{code}_{uuid.uuid4().hex[:8]}"
+        new_id = CommodityAttributeSemanticIdentity.objects.create(
+            commodity=attribute.schema_version.commodity,
+            code=code,
+            name_fa=attribute.label_fa,
+            name_en=attribute.label_en,
+        )
+        attribute.semantic_identity = new_id
+
+    attribute.save(update_fields=["semantic_identity"])
+    return attribute
+
+
+def check_semantic_compatibility(
+    attr_a: CommodityAttributeDefinition,
+    attr_b: CommodityAttributeDefinition,
+) -> tuple[bool, str]:
+    """
+    Verify basic technical compatibility between two attribute definitions
+    sharing the same semantic identity.
+
+    Inspects:
+    - data_type: must match exactly
+    - canonical unit semantics: must match exactly if specified
+    - enum semantics/domain: must have non-disjoint canonical values
+    """
+    if attr_a.data_type != attr_b.data_type:
+        return False, "data_type_mismatch"
+
+    unit_a = (attr_a.unit_metadata or {}).get("canonical_unit", "")
+    unit_b = (attr_b.unit_metadata or {}).get("canonical_unit", "")
+    if (unit_a or unit_b) and unit_a.strip().upper() != unit_b.strip().upper():
+        return False, "unit_not_comparable"
+
+    if attr_a.data_type == CommodityAttributeDefinition.DataType.ENUM:
+        opts_a = {
+            opt["value"]
+            for opt in (attr_a.enum_metadata or {}).get("options", [])
+            if isinstance(opt, dict) and "value" in opt
+        }
+        opts_b = {
+            opt["value"]
+            for opt in (attr_b.enum_metadata or {}).get("options", [])
+            if isinstance(opt, dict) and "value" in opt
+        }
+        if opts_a and opts_b and not (opts_a & opts_b):
+            return False, "enum_domain_incompatible"
+
+    return True, ""
+
+
 def validate_schema_definition(schema_version):
     """Draft metadata may be incomplete; publication must produce a valid v1 contract."""
     for attr in schema_version.attributes.all():
+        if not attr.semantic_identity_id:
+            sem = CommodityAttributeSemanticIdentity.objects.create(
+                commodity=schema_version.commodity,
+                code=f"{attr.key}_{uuid.uuid4().hex[:8]}",
+                name_fa=attr.label_fa or "",
+                name_en=attr.label_en or "",
+            )
+            attr.semantic_identity = sem
+            attr.save(update_fields=["semantic_identity"])
+
         if not isinstance(attr.unit_metadata, dict) or not isinstance(attr.enum_metadata, dict) or not isinstance(attr.validation_metadata, dict):
             raise ValidationError("Attribute metadata must be objects.")
         unit = attr.unit_metadata.get("canonical_unit", "")

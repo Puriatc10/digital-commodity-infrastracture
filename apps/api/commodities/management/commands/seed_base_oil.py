@@ -1,7 +1,57 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from commodities.models import CommodityDefinition, CommoditySchemaVersion, CommodityAttributeDefinition
+from commodities.models import (
+    CommodityDefinition,
+    CommoditySchemaVersion,
+    CommodityAttributeDefinition,
+    CommodityAttributeSemanticIdentity,
+)
 from commodities.services import publish_schema
+
+BASE_OIL_SEMANTIC_IDENTITIES = {
+    "base_oil_group": {
+        "id": "20000000-0000-0000-0000-000000000001",
+        "code": "base_oil_group",
+        "name_fa": "گروه روغن پایه",
+        "name_en": "Base Oil Group",
+        "description": "API Base Oil classification group (Group I, II, III)",
+    },
+    "viscosity_grade": {
+        "id": "20000000-0000-0000-0000-000000000002",
+        "code": "viscosity_grade",
+        "name_fa": "گرید گرانروی",
+        "name_en": "Viscosity Grade",
+        "description": "Commercial viscosity grade designation (e.g. SN150, SN500)",
+    },
+    "viscosity_at_40c": {
+        "id": "20000000-0000-0000-0000-000000000003",
+        "code": "viscosity_at_40c",
+        "name_fa": "گرانروی در ۴۰ درجه",
+        "name_en": "Viscosity at 40°C",
+        "description": "Kinematic viscosity at 40°C measured in cSt",
+    },
+    "viscosity_index": {
+        "id": "20000000-0000-0000-0000-000000000004",
+        "code": "viscosity_index",
+        "name_fa": "شاخص گرانروی",
+        "name_en": "Viscosity Index",
+        "description": "Viscosity index indicating change in viscosity with temperature",
+    },
+    "flash_point": {
+        "id": "20000000-0000-0000-0000-000000000005",
+        "code": "flash_point",
+        "name_fa": "نقطه اشتعال",
+        "name_en": "Flash Point",
+        "description": "Lowest temperature at which base oil vapor flashes on ignition",
+    },
+    "pour_point": {
+        "id": "20000000-0000-0000-0000-000000000006",
+        "code": "pour_point",
+        "name_fa": "نقطه ریزش",
+        "name_en": "Pour Point",
+        "description": "Lowest temperature at which oil continues to flow under test conditions",
+    },
+}
 
 class Command(BaseCommand):
     help = "Seeds the initial deterministic Base Oil v1 definition."
@@ -18,7 +68,20 @@ class Command(BaseCommand):
             }
         )
 
-        # 2. Check if a published v1 already exists
+        # 2. Ensure deterministic semantic identities exist
+        for key, sdata in BASE_OIL_SEMANTIC_IDENTITIES.items():
+            CommodityAttributeSemanticIdentity.objects.get_or_create(
+                id=sdata["id"],
+                commodity=commodity,
+                defaults={
+                    "code": sdata["code"],
+                    "name_fa": sdata["name_fa"],
+                    "name_en": sdata["name_en"],
+                    "description": sdata["description"],
+                }
+            )
+
+        # 3. Check if a published v1 already exists
         existing_v1 = CommoditySchemaVersion.objects.filter(
             commodity=commodity,
             version=1,
@@ -27,6 +90,12 @@ class Command(BaseCommand):
 
         if existing_v1:
             self.stdout.write(self.style.WARNING("Published Base Oil v1 already exists. Skipping mutation to preserve historical semantics."))
+
+            # Ensure attributes have semantic identity attached if missing
+            for attr in existing_v1.attributes.filter(semantic_identity__isnull=True):
+                if attr.key in BASE_OIL_SEMANTIC_IDENTITIES:
+                    sem_id = BASE_OIL_SEMANTIC_IDENTITIES[attr.key]["id"]
+                    CommodityAttributeDefinition.objects.filter(pk=attr.pk).update(semantic_identity_id=sem_id)
 
             # Ensure it is active if no active schema is set
             if not commodity.active_schema_version:
@@ -46,7 +115,6 @@ class Command(BaseCommand):
         )
 
         if not draft_created and draft_v1.status != CommoditySchemaVersion.SchemaStatus.DRAFT:
-             # Should be handled by the existing_v1 check, but just in case for RETIRED etc
              self.stdout.write(self.style.ERROR(f"Base Oil v1 exists but is not draft/published (Status: {draft_v1.status}). Aborting."))
              return
 
@@ -54,7 +122,7 @@ class Command(BaseCommand):
         if not draft_created:
              CommodityAttributeDefinition.objects.filter(schema_version=draft_v1).delete()
 
-        # 3. Create Attributes
+        # 4. Create Attributes with explicit semantic identities
         attributes = [
             {
                 "key": "base_oil_group",
@@ -135,12 +203,14 @@ class Command(BaseCommand):
         ]
 
         for attr_data in attributes:
+            sem_id = BASE_OIL_SEMANTIC_IDENTITIES[attr_data["key"]]["id"]
             CommodityAttributeDefinition.objects.create(
                 schema_version=draft_v1,
+                semantic_identity_id=sem_id,
                 **attr_data
             )
 
-        # 4. Publish and Activate
+        # 5. Publish and Activate
         publish_schema(draft_v1, activate=True)
 
         self.stdout.write(self.style.SUCCESS("Successfully seeded and activated Base Oil v1 definition."))
