@@ -352,6 +352,24 @@ class DecisionRun(models.Model):
     def delete(self, *args, **kwargs):
         raise ValidationError("Decision runs are immutable audit records and cannot be deleted.")
 
+    @property
+    def is_stale(self) -> bool:
+        """
+        Check if any candidate Offer has submitted a newer version, or if
+        the RFQ's active submitted OfferVersion universe has changed since this run (T0809, Contract §80).
+        """
+        from offers.models.offer import Offer
+
+        run_candidate_versions = set(
+            self.candidates.values_list("offer_id", "offer_version_id")
+        )
+        current_submitted = set(
+            Offer.objects.filter(
+                rfq_id=self.rfq_id, current_submitted_version__isnull=False
+            ).values_list("id", "current_submitted_version_id")
+        )
+        return run_candidate_versions != current_submitted
+
     def __str__(self):
         return f"DecisionRun {self.id} on RFQ {self.rfq_id} ({self.engine_version})"
 
@@ -418,6 +436,15 @@ class DecisionCandidate(models.Model):
         blank=True,
         help_text="Deterministic rank position (positive integer >= 1) among evaluated candidates.",
     )
+    is_recommended = models.BooleanField(
+        default=False,
+        help_text="Whether this candidate is the single recommended offer for award under the evaluated policy.",
+    )
+    eligibility_reasons = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Structured machine-readable exclusion reason codes if not award-eligible.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -475,6 +502,9 @@ class DecisionCandidate(models.Model):
 
         if self.rank is not None and self.rank < 1:
             raise ValidationError({"rank": "Rank must be a positive integer (>= 1)."})
+
+        if self.is_recommended and self.award_eligible is not True:
+            raise ValidationError({"is_recommended": "Candidate must be award eligible to be recommended."})
 
     def save(self, *args, **kwargs):
         self.clean()

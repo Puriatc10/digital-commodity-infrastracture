@@ -108,3 +108,10 @@ class DecisionValidationError(DecisionDomainError, ValueError):
 
     pass
 
+
+class DecisionExecutionError(DecisionDomainError):
+    """Raised when an unexpected runtime provider or pipeline failure aborts the decision run."""
+
+    pass
+
+
