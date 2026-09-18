@@ -35,3 +35,27 @@ class OfferStateError(OfferDomainError):
     """Raised when an operation is invalid for the target RFQ lifecycle state."""
 
     pass
+
+
+class OfferVersionNotFoundError(OfferDomainError, ObjectDoesNotExist):
+    """Raised when an OfferVersion cannot be found."""
+
+    pass
+
+
+class OfferImmutableError(OfferDomainError):
+    """Raised when an attempt is made to mutate or delete an immutable submitted OfferVersion."""
+
+    pass
+
+
+class InvalidVersionError(OfferDomainError, ValueError):
+    """Raised when expected_version is missing, not an integer, or less than 1."""
+
+    pass
+
+
+class StaleVersionError(OfferConflictError):
+    """Raised when expected_version does not match current aggregate_version."""
+
+    pass
