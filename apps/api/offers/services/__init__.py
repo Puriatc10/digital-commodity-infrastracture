@@ -24,6 +24,8 @@ from offers.services.comparison import (
 from offers.services.decision_service import (
     authorize_decision_actor,
     create_decision_run_foundation,
+    execute_decision_run_pipeline,
+    is_decision_run_stale,
     is_operator_or_admin,
 )
 from offers.services.policy_seed import (
@@ -50,6 +52,8 @@ __all__ = [
     "CostComparability",
     "TechnicalComplianceStatus",
     "create_decision_run_foundation",
+    "execute_decision_run_pipeline",
+    "is_decision_run_stale",
     "authorize_decision_actor",
     "is_operator_or_admin",
     "seed_decision_profile_v1",

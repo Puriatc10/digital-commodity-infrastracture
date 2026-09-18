@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Optional
 
 from rest_framework import serializers
 
@@ -6,6 +7,7 @@ from offers.enums import CostComponentKind, LogisticsCostStatus
 from offers.models import (
     DecisionCandidate,
     DecisionRun,
+    DecisionSignal,
     Offer,
     OfferCostComponent,
     OfferVersion,
@@ -514,9 +516,33 @@ class OperatorRFQComparisonResponseSerializer(serializers.Serializer):
     offers = OperatorComparisonRowSerializer(many=True, source="items", help_text="List of compared offers with provenance (alias of items).")
 
 
+class DecisionSignalResponseSerializer(serializers.ModelSerializer):
+    """
+    Representation of an evaluated signal within a DecisionCandidate (T0809).
+    """
+
+    class Meta:
+        model = DecisionSignal
+        fields = [
+            "id",
+            "dimension",
+            "code",
+            "status",
+            "weight",
+            "raw_score",
+            "contribution",
+            "expected_value",
+            "actual_value",
+            "reason_code",
+            "snapshot_data",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
 class DecisionCandidateResponseSerializer(serializers.ModelSerializer):
     """
-    Representation of an evaluated candidate within a DecisionRun (T0808).
+    Representation of an evaluated candidate within a DecisionRun (T0808, T0809).
     """
 
     offer_id = serializers.UUIDField(help_text="Parent offer negotiation thread UUID.")
@@ -526,6 +552,7 @@ class DecisionCandidateResponseSerializer(serializers.ModelSerializer):
         read_only=True,
         help_text="Version number of evaluated OfferVersion.",
     )
+    signals = DecisionSignalResponseSerializer(many=True, read_only=True)
 
     class Meta:
         model = DecisionCandidate
@@ -538,7 +565,10 @@ class DecisionCandidateResponseSerializer(serializers.ModelSerializer):
             "evidence_coverage",
             "effective_score",
             "award_eligible",
+            "eligibility_reasons",
             "rank",
+            "is_recommended",
+            "signals",
             "created_at",
         ]
         read_only_fields = fields
@@ -546,7 +576,7 @@ class DecisionCandidateResponseSerializer(serializers.ModelSerializer):
 
 class DecisionRunDetailResponseSerializer(serializers.ModelSerializer):
     """
-    Authoritative response envelope for a DecisionRun audit and execution record (T0808).
+    Authoritative response envelope for a DecisionRun audit and execution record (T0808, T0809).
     """
 
     rfq_id = serializers.UUIDField(help_text="Target RFQ UUID.")
@@ -566,6 +596,12 @@ class DecisionRunDetailResponseSerializer(serializers.ModelSerializer):
     )
     candidates = DecisionCandidateResponseSerializer(many=True, read_only=True)
     total_candidates = serializers.SerializerMethodField(help_text="Total number of evaluated candidates.")
+    is_stale = serializers.SerializerMethodField(
+        help_text="Whether evaluated candidate universe differs from current RFQ submitted offers (Contract §80).",
+    )
+    recommended_candidate_id = serializers.SerializerMethodField(
+        help_text="UUID of the recommended DecisionCandidate, or null if none met recommendation threshold.",
+    )
 
     class Meta:
         model = DecisionRun
@@ -581,12 +617,21 @@ class DecisionRunDetailResponseSerializer(serializers.ModelSerializer):
             "input_fingerprint",
             "result_fingerprint",
             "total_candidates",
+            "is_stale",
+            "recommended_candidate_id",
             "candidates",
         ]
         read_only_fields = fields
 
     def get_total_candidates(self, obj: DecisionRun) -> int:
         return obj.candidates.count()
+
+    def get_is_stale(self, obj: DecisionRun) -> bool:
+        return obj.is_stale
+
+    def get_recommended_candidate_id(self, obj: DecisionRun) -> Optional[str]:
+        recommended = obj.candidates.filter(is_recommended=True).first()
+        return str(recommended.id) if recommended else None
 
 
 class DecisionRunCreateRequestSerializer(serializers.Serializer):

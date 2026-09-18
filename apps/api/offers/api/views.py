@@ -34,7 +34,9 @@ from offers.exceptions import (
 )
 from offers.models import DecisionProfileVersion, DecisionRun, Offer, OfferVersion
 from offers.services.comparison import compare_rfq_offers
-from offers.services.decision_service import create_decision_run_foundation
+from offers.services.decision_service import (
+    execute_decision_run_pipeline,
+)
 from offers.services.operator_submission import submit_operator_external_offer
 from offers.services.submission import submit_internal_offer_version
 from organizations.models import OrganizationMembership
@@ -520,7 +522,7 @@ class RFQDecisionRunCreateView(APIView):
                 )
 
         try:
-            run = create_decision_run_foundation(
+            run = execute_decision_run_pipeline(
                 rfq=rfq_id,
                 actor=request.user,
                 profile_version=profile_version,
@@ -536,7 +538,11 @@ class RFQDecisionRunCreateView(APIView):
         run_loaded = (
             DecisionRun.objects.filter(pk=run.pk)
             .select_related("rfq", "decision_profile_version", "decision_profile_version__profile")
-            .prefetch_related("candidates", "candidates__offer_version")
+            .prefetch_related(
+                "candidates",
+                "candidates__offer_version",
+                "candidates__signals",
+            )
             .first()
         )
         response_serializer = DecisionRunDetailResponseSerializer(run_loaded)
@@ -573,7 +579,11 @@ class DecisionRunDetailView(APIView):
         run = (
             DecisionRun.objects.filter(pk=run_id)
             .select_related("rfq", "decision_profile_version", "decision_profile_version__profile")
-            .prefetch_related("candidates", "candidates__offer_version")
+            .prefetch_related(
+                "candidates",
+                "candidates__offer_version",
+                "candidates__signals",
+            )
             .first()
         )
         if not run:

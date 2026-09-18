@@ -92,6 +92,12 @@ SPECTACULAR_SETTINGS = {
         "AreaTypeEnum": "geography.models.AreaType",
         "GeographyConstraintModeEnum": "trade_hub.models.GeographyConstraintMode",
         "OfferorRoleEnum": "offers.enums.OfferorRole",
+        "OfferVersionStatusEnum": "offers.enums.OfferVersionStatus",
+        "LogisticsCostStatusEnum": "offers.enums.LogisticsCostStatus",
+        "DimensionEnum": "matching.enums.SignalDimension",
+        "DecisionDimensionEnum": "offers.enums.DecisionDimension",
+        "DecisionProfileLifecycleStatusEnum": "offers.enums.DecisionProfileLifecycleStatus",
+        "MatchingSignalResponseOutcomeEnum": "offers.enums.DecisionSignalStatus",
     },
 }
 

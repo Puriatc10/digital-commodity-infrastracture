@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from matching.fingerprint import canonical_normalize, compute_fingerprint
 from offers.models.decision import DecisionProfileVersion
@@ -139,3 +139,77 @@ def compute_decision_run_input_fingerprint(
     }
 
     return compute_fingerprint(payload)
+
+
+def compute_decision_run_result_fingerprint(
+    run: Any,
+    candidate_records: Sequence[Any],
+    signals_by_candidate_id: Mapping[Any, Sequence[Any]],
+) -> str:
+    """
+    Compute a deterministic SHA-256 fingerprint for a completed DecisionRun result (Contract §52, T0809).
+
+    Invariants:
+    - Canonical components: engine_version, policy_version snapshot, input_fingerprint,
+      deterministically ordered candidate results, analytical scores, eligibility outcomes,
+      ranks, recommendation status, and structured signals.
+    - Excludes all timestamps and auto-generated database PKs.
+    - Deterministically sorted by stable offer key (str(offer_id)).
+    - Pure Decimal representation without floating-point precision loss.
+    - Same semantic input -> identical result fingerprint.
+    """
+    candidate_payloads = []
+    for cand in candidate_records:
+        cand_id = cand.id if hasattr(cand, "id") else getattr(cand, "candidate_id", None)
+        cand_signals = signals_by_candidate_id.get(cand_id, [])
+
+        sorted_signals = sorted(
+            cand_signals,
+            key=lambda s: (str(getattr(s, "dimension", "")), str(getattr(s, "code", ""))),
+        )
+        sig_payloads = []
+        for s in sorted_signals:
+            w = getattr(s, "weight", None)
+            rs = getattr(s, "raw_score", None)
+            cb = getattr(s, "contribution", None)
+            sig_payloads.append({
+                "dimension": str(getattr(s, "dimension", "")),
+                "code": str(getattr(s, "code", "")),
+                "status": str(getattr(s, "status", "")),
+                "weight": Decimal(str(w)) if w is not None else None,
+                "raw_score": Decimal(str(rs)) if rs is not None else None,
+                "contribution": Decimal(str(cb)) if cb is not None else None,
+                "reason_code": str(getattr(s, "reason_code", "")),
+                "expected_value": canonical_normalize(getattr(s, "expected_value", {}) or {}),
+                "actual_value": canonical_normalize(getattr(s, "actual_value", {}) or {}),
+                "snapshot_data": canonical_normalize(sanitize_snapshot_data(getattr(s, "snapshot_data", {}) or {})),
+            })
+
+        ds = getattr(cand, "decision_score", None)
+        cov = getattr(cand, "evidence_coverage", None)
+        eff = getattr(cand, "effective_score", None)
+
+        candidate_payloads.append({
+            "offer_id": str(cand.offer_id),
+            "offer_version_id": str(cand.offer_version_id),
+            "decision_score": Decimal(str(ds)) if ds is not None else None,
+            "evidence_coverage": Decimal(str(cov)) if cov is not None else None,
+            "effective_score": Decimal(str(eff)) if eff is not None else None,
+            "award_eligible": cand.award_eligible,
+            "eligibility_reasons": sorted(list(getattr(cand, "eligibility_reasons", []) or [])),
+            "rank": cand.rank,
+            "is_recommended": getattr(cand, "is_recommended", False),
+            "signals": sig_payloads,
+        })
+
+    candidate_payloads.sort(key=lambda c: str(c["offer_id"]))
+
+    payload = {
+        "engine_version": run.engine_version,
+        "policy_version": build_canonical_policy_snapshot(run.decision_profile_version),
+        "input_fingerprint": run.input_fingerprint,
+        "candidates": candidate_payloads,
+    }
+
+    return compute_fingerprint(payload)
+

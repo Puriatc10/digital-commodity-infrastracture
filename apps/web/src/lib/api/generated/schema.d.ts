@@ -1903,7 +1903,7 @@ export interface components {
          * @enum {string}
          */
         DataTypeEnum: "string" | "number" | "integer" | "boolean" | "enum";
-        /** @description Representation of an evaluated candidate within a DecisionRun (T0808). */
+        /** @description Representation of an evaluated candidate within a DecisionRun (T0808, T0809). */
         DecisionCandidateResponse: {
             /** Format: uuid */
             readonly id: string;
@@ -1936,11 +1936,26 @@ export interface components {
             readonly effective_score: string | null;
             /** @description Award eligibility gate outcome. None indicates unevaluated prior to T0809 hard conditions. */
             readonly award_eligible: boolean | null;
+            /** @description Structured machine-readable exclusion reason codes if not award-eligible. */
+            readonly eligibility_reasons: unknown;
             /** @description Deterministic rank position (positive integer >= 1) among evaluated candidates. */
             readonly rank: number | null;
+            /** @description Whether this candidate is the single recommended offer for award under the evaluated policy. */
+            readonly is_recommended: boolean;
+            readonly signals: components["schemas"]["DecisionSignalResponse"][];
             /** Format: date-time */
             readonly created_at: string;
         };
+        /**
+         * @description * `COST` - Cost
+         *     * `QUALITY` - Quality
+         *     * `DELIVERY` - Delivery
+         *     * `PAYMENT` - Payment
+         *     * `TRUST` - Trust
+         *     * `COMPLETENESS` - Completeness
+         * @enum {string}
+         */
+        DecisionDimensionEnum: "COST" | "QUALITY" | "DELIVERY" | "PAYMENT" | "TRUST" | "COMPLETENESS";
         /** @description Optional payload for initiating a DecisionRun foundation (T0808). */
         DecisionRunCreateRequest: {
             /**
@@ -1949,7 +1964,7 @@ export interface components {
              */
             profile_version_id?: string | null;
         };
-        /** @description Authoritative response envelope for a DecisionRun audit and execution record (T0808). */
+        /** @description Authoritative response envelope for a DecisionRun audit and execution record (T0808, T0809). */
         DecisionRunDetailResponse: {
             /** Format: uuid */
             readonly id: string;
@@ -1982,7 +1997,64 @@ export interface components {
             readonly result_fingerprint: string;
             /** @description Total number of evaluated candidates. */
             readonly total_candidates: number;
+            /** @description Whether evaluated candidate universe differs from current RFQ submitted offers (Contract §80). */
+            readonly is_stale: boolean;
+            /** @description UUID of the recommended DecisionCandidate, or null if none met recommendation threshold. */
+            readonly recommended_candidate_id: string | null;
             readonly candidates: components["schemas"]["DecisionCandidateResponse"][];
+        };
+        /** @description Representation of an evaluated signal within a DecisionCandidate (T0809). */
+        DecisionSignalResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * @description Evaluation dimension (COST, QUALITY, DELIVERY, PAYMENT, TRUST, COMPLETENESS).
+             *
+             *     * `COST` - Cost
+             *     * `QUALITY` - Quality
+             *     * `DELIVERY` - Delivery
+             *     * `PAYMENT` - Payment
+             *     * `TRUST` - Trust
+             *     * `COMPLETENESS` - Completeness
+             */
+            readonly dimension: components["schemas"]["DecisionDimensionEnum"];
+            /** @description Machine-readable rule or signal code (e.g. 'cost.landed_unit_cost'). */
+            readonly code: string;
+            /**
+             * @description Structured outcome: PASS, PARTIAL, FAIL, UNKNOWN, NOT_APPLICABLE.
+             *
+             *     * `PASS` - Pass
+             *     * `PARTIAL` - Partial
+             *     * `FAIL` - Fail
+             *     * `UNKNOWN` - Unknown
+             *     * `NOT_APPLICABLE` - Not Applicable
+             */
+            readonly status: components["schemas"]["MatchingSignalResponseOutcomeEnum"];
+            /**
+             * Format: decimal
+             * @description Dimension or signal weight percentage (>= 0).
+             */
+            readonly weight: string | null;
+            /**
+             * Format: decimal
+             * @description Normalized score in [0.0000, 1.0000] for known evaluation. Null for UNKNOWN/NOT_APPLICABLE.
+             */
+            readonly raw_score: string | null;
+            /**
+             * Format: decimal
+             * @description Weighted contribution towards candidate score (>= 0).
+             */
+            readonly contribution: string | null;
+            /** @description Structured JSONB representing target RFQ expectation. */
+            readonly expected_value: unknown;
+            /** @description Structured JSONB representing candidate actual commercial proposal. */
+            readonly actual_value: unknown;
+            /** @description Machine-readable reason code (never localized text). */
+            readonly reason_code: string;
+            /** @description Sanitized decision-relevant facts. Strictly excludes private CRM/contact data. */
+            readonly snapshot_data: unknown;
+            /** Format: date-time */
+            readonly created_at: string;
         };
         DemoPersonaSwitcherRequest: {
             persona: components["schemas"]["PersonaEnum"];
@@ -2399,7 +2471,7 @@ export interface components {
              *     * `DRAFT` - Draft
              *     * `SUBMITTED` - Submitted
              */
-            readonly status: components["schemas"]["OfferVersionResponseStatusEnum"];
+            readonly status: components["schemas"]["OfferVersionStatusEnum"];
             /**
              * Format: uuid
              * @description Exact schema version bound to the parent RFQ.
@@ -2480,7 +2552,7 @@ export interface components {
          *     * `SUBMITTED` - Submitted
          * @enum {string}
          */
-        OfferVersionResponseStatusEnum: "DRAFT" | "SUBMITTED";
+        OfferVersionStatusEnum: "DRAFT" | "SUBMITTED";
         /** @description Payload for submitting a Draft OfferVersion. */
         OfferVersionSubmitAction: {
             /** @description Expected aggregate_version of the parent Offer for optimistic concurrency control. */
