@@ -48,3 +48,46 @@ class CostComponentKind(models.TextChoices):
 
     LOGISTICS = "LOGISTICS", "Logistics"
     OTHER = "OTHER", "Other"
+
+
+class DecisionProfileLifecycleStatus(models.TextChoices):
+    """
+    Lifecycle status of a DecisionProfileVersion (T0808, Contract §39).
+
+    Lifecycle:
+        DRAFT -> PUBLISHED -> RETIRED
+
+    Critical Invariant:
+    - Published versions are strictly immutable.
+    - Runs may only be executed against Published versions.
+    """
+
+    DRAFT = "DRAFT", "Draft"
+    PUBLISHED = "PUBLISHED", "Published"
+    RETIRED = "RETIRED", "Retired"
+
+
+class DecisionDimension(models.TextChoices):
+    """
+    Standard dimensions evaluated in multi-criteria procurement decision support (T0808).
+    """
+
+    COST = "COST", "Cost"
+    QUALITY = "QUALITY", "Quality"
+    DELIVERY = "DELIVERY", "Delivery"
+    PAYMENT = "PAYMENT", "Payment"
+    TRUST = "TRUST", "Trust"
+    COMPLETENESS = "COMPLETENESS", "Completeness"
+
+
+class DecisionSignalStatus(models.TextChoices):
+    """
+    Analytical evaluation outcome for a single decision signal (Contract §40, T0808).
+    """
+
+    PASS = "PASS", "Pass"
+    PARTIAL = "PARTIAL", "Partial"
+    FAIL = "FAIL", "Fail"
+    UNKNOWN = "UNKNOWN", "Unknown"
+    NOT_APPLICABLE = "NOT_APPLICABLE", "Not Applicable"
+

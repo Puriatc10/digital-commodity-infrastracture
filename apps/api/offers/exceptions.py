@@ -65,3 +65,46 @@ class OfferNormalizationError(OfferDomainError, ValueError):
     """Raised when offer normalisation fails due to invalid snapshot or policy inputs."""
 
     pass
+
+
+class DecisionDomainError(OfferDomainError):
+    """Base exception for decision support operations."""
+
+    pass
+
+
+class DecisionPolicyError(DecisionDomainError, ValueError):
+    """Raised when decision policy configuration, lifecycle, or weighting invariants fail."""
+
+    pass
+
+
+class DecisionProfileNotFoundError(DecisionDomainError, ObjectDoesNotExist):
+    """Raised when a requested DecisionProfile or DecisionProfileVersion cannot be found."""
+
+    pass
+
+
+class DecisionProfileSeedConflictError(DecisionPolicyError):
+    """Raised when seeding encounters an existing profile version with conflicting semantics."""
+
+    pass
+
+
+class DecisionRunError(DecisionDomainError):
+    """Raised when decision run creation or candidate materialization fails."""
+
+    pass
+
+
+class DecisionPermissionDeniedError(OfferPermissionDeniedError, DecisionDomainError):
+    """Raised when an actor lacks authorization to execute or view decision intelligence."""
+
+    pass
+
+
+class DecisionValidationError(DecisionDomainError, ValueError):
+    """Raised when candidate, signal, or run validation constraints fail."""
+
+    pass
+

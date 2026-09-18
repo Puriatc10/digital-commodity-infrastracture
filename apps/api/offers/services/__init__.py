@@ -21,6 +21,17 @@ from offers.services.comparison import (
     evaluate_technical_compliance,
 )
 
+from offers.services.decision_service import (
+    authorize_decision_actor,
+    create_decision_run_foundation,
+    is_operator_or_admin,
+)
+from offers.services.policy_seed import (
+    DEFAULT_DECISION_PROFILE_CODE,
+    seed_decision_profile_v1,
+    validate_decision_profile_version,
+)
+
 __all__ = [
     "create_offer",
     "create_draft_offer_version",
@@ -38,5 +49,12 @@ __all__ = [
     "RFQComparison",
     "CostComparability",
     "TechnicalComplianceStatus",
+    "create_decision_run_foundation",
+    "authorize_decision_actor",
+    "is_operator_or_admin",
+    "seed_decision_profile_v1",
+    "validate_decision_profile_version",
+    "DEFAULT_DECISION_PROFILE_CODE",
 ]
+
 

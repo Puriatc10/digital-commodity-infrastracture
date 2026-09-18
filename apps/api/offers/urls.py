@@ -1,12 +1,15 @@
 from django.urls import path
 
 from offers.api.views import (
+    DecisionRunDetailView,
     OfferDetailView,
     OfferVersionSubmitActionView,
     OperatorExternalOfferSubmissionActionView,
     RFQComparisonView,
+    RFQDecisionRunCreateView,
     RFQOffersListView,
 )
+
 
 app_name = "offers"
 
@@ -41,4 +44,15 @@ urlpatterns = [
         OfferVersionSubmitActionView.as_view(),
         name="offer-version-submit",
     ),
+    path(
+        "rfqs/<uuid:rfq_id>/decision-runs/",
+        RFQDecisionRunCreateView.as_view(),
+        name="rfq-decision-runs",
+    ),
+    path(
+        "decision-runs/<uuid:run_id>/",
+        DecisionRunDetailView.as_view(),
+        name="decision-run-detail",
+    ),
 ]
+
