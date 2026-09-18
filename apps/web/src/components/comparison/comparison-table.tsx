@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   Clock,
   HelpCircle,
+  History,
   MessageSquare,
   Scale,
   ShieldAlert,
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 import { WhyRecommendationModal } from "./why-recommendation-modal";
 import { RevisionRequestModal } from "./revision-request-modal";
+import { NegotiationHistoryModal } from "@/components/negotiation/negotiation-history-modal";
 
 type ComparisonRow = components["schemas"]["ComparisonRow"];
 type DecisionRunDetailResponse = components["schemas"]["DecisionRunDetailResponse"];
@@ -65,6 +67,7 @@ export function ComparisonTable({
   } | null>(null);
 
   const [revisionRow, setRevisionRow] = useState<ComparisonRow | null>(null);
+  const [historyOfferId, setHistoryOfferId] = useState<string | null>(null);
 
   const isStale = Boolean(decisionRun?.is_stale);
 
@@ -398,6 +401,15 @@ export function ComparisonTable({
                         </Button>
                       )}
 
+                      <Button
+                        variant="outline"
+                        onClick={() => setHistoryOfferId(row.offer_id)}
+                        className="h-7 min-h-7 px-2 text-[11px] gap-1"
+                      >
+                        <History className="h-3 w-3" />
+                        {isRtl ? "تاریخچه مذاکره" : "History"}
+                      </Button>
+
                       {canManage && (
                         <Button
                           variant="outline"
@@ -535,6 +547,14 @@ export function ComparisonTable({
                       {t.decisionSupport.whyAction}
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    onClick={() => setHistoryOfferId(row.offer_id)}
+                    className="h-7 min-h-7 text-xs gap-1"
+                  >
+                    <History className="h-3 w-3" />
+                    {isRtl ? "تاریخچه" : "History"}
+                  </Button>
                   {canManage && (
                     <Button
                       variant="outline"
@@ -567,6 +587,19 @@ export function ComparisonTable({
         row={revisionRow}
         locale={locale}
         onSuccess={() => {
+          onRefresh();
+        }}
+      />
+
+      {/* 5. Negotiation History Modal */}
+      <NegotiationHistoryModal
+        isOpen={historyOfferId !== null}
+        onClose={() => setHistoryOfferId(null)}
+        offerId={historyOfferId || ""}
+        canManage={canManage}
+        isOperator={isOperator}
+        locale={locale}
+        onActionCompleted={() => {
           onRefresh();
         }}
       />

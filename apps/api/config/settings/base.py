@@ -98,6 +98,8 @@ SPECTACULAR_SETTINGS = {
         "DecisionDimensionEnum": "offers.enums.DecisionDimension",
         "DecisionProfileLifecycleStatusEnum": "offers.enums.DecisionProfileLifecycleStatus",
         "MatchingSignalResponseOutcomeEnum": "offers.enums.DecisionSignalStatus",
+        "RevisionRequestStatusEnum": "offers.enums.RevisionRequestStatus",
+        "CommoditySchemaStatusEnum": "commodities.models.CommoditySchemaVersion.SchemaStatus",
     },
 }
 

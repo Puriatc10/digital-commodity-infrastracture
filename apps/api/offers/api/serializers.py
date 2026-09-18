@@ -9,6 +9,7 @@ from offers.enums import (
     LogisticsCostStatus,
     RevisionRequestedField,
 )
+from commodities.serializers import CommoditySchemaVersionSerializer
 from offers.models import (
     DecisionCandidate,
     DecisionRun,
@@ -783,5 +784,218 @@ class RevisionRequestResponseSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = fields
+
+
+class OfferVersionHistorySerializer(serializers.ModelSerializer):
+    """
+    Structured representation of an OfferVersion in negotiation history (T0812).
+    """
+
+    cost_components = OfferCostComponentResponseSerializer(many=True, read_only=True)
+    aggregate_version = serializers.SerializerMethodField(
+        help_text="Current optimistic concurrency aggregate_version of the parent Offer."
+    )
+    submitted_by_name = serializers.SerializerMethodField(
+        help_text="Display name or role of the user who submitted this version."
+    )
+    created_by_name = serializers.SerializerMethodField(
+        help_text="Display name or role of the user who created this version draft."
+    )
+    entered_by_operator = serializers.SerializerMethodField(
+        help_text="Whether this version was entered by an Operator on behalf of an external party."
+    )
+
+    class Meta:
+        model = OfferVersion
+        fields = [
+            "id",
+            "offer_id",
+            "version_number",
+            "status",
+            "schema_version_id",
+            "specifications",
+            "offered_quantity",
+            "quantity_unit",
+            "unit_price",
+            "currency",
+            "payment_terms",
+            "delivery_terms",
+            "incoterm",
+            "delivery_start",
+            "delivery_end",
+            "valid_until",
+            "logistics_cost_status",
+            "logistics_cost_amount",
+            "notes",
+            "cost_components",
+            "submitted_by_id",
+            "submitted_by_name",
+            "submitted_at",
+            "created_by_id",
+            "created_by_name",
+            "created_at",
+            "updated_at",
+            "aggregate_version",
+            "entered_by_operator",
+        ]
+        read_only_fields = fields
+
+    def get_aggregate_version(self, obj: OfferVersion) -> int:
+        return obj.offer.aggregate_version
+
+    def get_submitted_by_name(self, obj: OfferVersion) -> Optional[str]:
+        if not obj.submitted_by:
+            return None
+        from identity.models import SystemRoleAssignment
+
+        is_operator = SystemRoleAssignment.objects.filter(
+            user=obj.submitted_by,
+            role__in=[
+                SystemRoleAssignment.SystemRole.OPERATOR,
+                SystemRoleAssignment.SystemRole.ADMIN,
+            ],
+        ).exists()
+        if is_operator:
+            return "اپراتور سامانه"
+        return getattr(obj.submitted_by, "email", "")
+
+    def get_created_by_name(self, obj: OfferVersion) -> Optional[str]:
+        if not obj.created_by:
+            return None
+        from identity.models import SystemRoleAssignment
+
+        is_operator = SystemRoleAssignment.objects.filter(
+            user=obj.created_by,
+            role__in=[
+                SystemRoleAssignment.SystemRole.OPERATOR,
+                SystemRoleAssignment.SystemRole.ADMIN,
+            ],
+        ).exists()
+        if is_operator:
+            return "اپراتور سامانه"
+        return getattr(obj.created_by, "email", "")
+
+    def get_entered_by_operator(self, obj: OfferVersion) -> bool:
+        if obj.offer.entered_by_operator:
+            return True
+        from identity.models import SystemRoleAssignment
+
+        actor = obj.submitted_by or obj.created_by
+        if actor:
+            return SystemRoleAssignment.objects.filter(
+                user=actor,
+                role__in=[
+                    SystemRoleAssignment.SystemRole.OPERATOR,
+                    SystemRoleAssignment.SystemRole.ADMIN,
+                ],
+            ).exists()
+        return False
+
+
+class RevisionRequestHistorySerializer(serializers.ModelSerializer):
+    """
+    Authoritative representation of a RevisionRequest in negotiation history (T0812).
+    """
+
+    offer_id = serializers.UUIDField(help_text="Parent Offer UUID.")
+    base_offer_version_id = serializers.UUIDField(help_text="Base OfferVersion UUID.")
+    base_version_number = serializers.IntegerField(
+        source="base_offer_version.version_number",
+        read_only=True,
+        help_text="Version number of the base OfferVersion.",
+    )
+    requested_by_id = serializers.UUIDField(help_text="User UUID who created the request.")
+    requested_by_name = serializers.SerializerMethodField(
+        help_text="Display name or role label of the requester."
+    )
+    requested_by_role = serializers.SerializerMethodField(
+        help_text="Role of the requester: BUYER or OPERATOR."
+    )
+    resolved_by_version_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text="UUID of resolving OfferVersion.",
+    )
+    resolved_version_number = serializers.SerializerMethodField(
+        help_text="Version number of resolving OfferVersion."
+    )
+    offer_aggregate_version = serializers.IntegerField(
+        source="offer.aggregate_version",
+        read_only=True,
+        help_text="Current aggregate_version of the parent Offer.",
+    )
+
+    class Meta:
+        model = RevisionRequest
+        fields = [
+            "id",
+            "offer_id",
+            "base_offer_version_id",
+            "base_version_number",
+            "requested_fields",
+            "message",
+            "requested_by_id",
+            "requested_by_name",
+            "requested_by_role",
+            "requested_at",
+            "status",
+            "resolved_by_version_id",
+            "resolved_version_number",
+            "resolved_at",
+            "offer_aggregate_version",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_resolved_version_number(self, obj: RevisionRequest) -> Optional[int]:
+        if obj.resolved_by_version_id and obj.resolved_by_version:
+            return obj.resolved_by_version.version_number
+        return None
+
+    def get_requested_by_role(self, obj: RevisionRequest) -> str:
+        from identity.models import SystemRoleAssignment
+
+        if obj.requested_by and SystemRoleAssignment.objects.filter(
+            user=obj.requested_by,
+            role__in=[
+                SystemRoleAssignment.SystemRole.OPERATOR,
+                SystemRoleAssignment.SystemRole.ADMIN,
+            ],
+        ).exists():
+            return "OPERATOR"
+        return "BUYER"
+
+    def get_requested_by_name(self, obj: RevisionRequest) -> str:
+        if self.get_requested_by_role(obj) == "OPERATOR":
+            return "اپراتور سامانه"
+        return "خریدار"
+
+
+class OfferNegotiationHistoryResponseSerializer(serializers.Serializer):
+    """
+    Authoritative read projection for an Offer's negotiation history (T0812, Contract §56).
+    """
+
+    offer_id = serializers.UUIDField(help_text="Offer UUID.")
+    rfq_id = serializers.UUIDField(help_text="RFQ UUID.")
+    offeror_role = serializers.CharField(help_text="Role: SUPPLIER or BROKER.")
+    counterparty_name = serializers.CharField(help_text="Safe display name of the offering party.")
+    is_external = serializers.BooleanField(help_text="Whether offer is an external counterparty quote.")
+    entered_by_operator = serializers.BooleanField(
+        help_text="Whether offer was entered by a platform Operator."
+    )
+    aggregate_version = serializers.IntegerField(help_text="Current optimistic concurrency version.")
+    current_submitted_version_id = serializers.UUIDField(
+        allow_null=True, help_text="Current submitted OfferVersion UUID."
+    )
+    schema = CommoditySchemaVersionSerializer(
+        help_text="Historical CommoditySchemaVersion bound to the RFQ."
+    )
+    versions = OfferVersionHistorySerializer(
+        many=True, help_text="Chronological submitted OfferVersions."
+    )
+    revision_requests = RevisionRequestHistorySerializer(
+        many=True, help_text="Chronological formal RevisionRequests."
+    )
 
 

@@ -3,6 +3,7 @@ from django.urls import path
 from offers.api.views import (
     DecisionRunDetailView,
     OfferDetailView,
+    OfferNegotiationHistoryView,
     OfferRevisionRequestCreateView,
     OfferVersionSubmitActionView,
     OperatorExternalOfferSubmissionActionView,
@@ -39,6 +40,11 @@ urlpatterns = [
         "rfqs/<uuid:rfq_id>/",
         RFQOffersListView.as_view(),
         name="rfq-offers-list",
+    ),
+    path(
+        "<uuid:offer_id>/history/",
+        OfferNegotiationHistoryView.as_view(),
+        name="offer-negotiation-history",
     ),
     path(
         "<uuid:offer_id>/",
