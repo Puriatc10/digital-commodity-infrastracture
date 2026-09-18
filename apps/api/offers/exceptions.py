@@ -59,3 +59,9 @@ class StaleVersionError(OfferConflictError):
     """Raised when expected_version does not match current aggregate_version."""
 
     pass
+
+
+class OfferNormalizationError(OfferDomainError, ValueError):
+    """Raised when offer normalisation fails due to invalid snapshot or policy inputs."""
+
+    pass
