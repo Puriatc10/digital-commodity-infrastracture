@@ -50,7 +50,7 @@ describe("ProfileClient Component", () => {
     vi.mocked(apiClient.GET).mockResolvedValue({
       data: mockProfile,
       response: { ok: true, status: 200 } as Response,
-    } as unknown as Promise<unknown>);
+    } as unknown as never);
 
     renderComponent();
 
@@ -82,7 +82,7 @@ describe("ProfileClient Component", () => {
     vi.mocked(apiClient.GET).mockResolvedValue({
       data: mockProfile,
       response: { ok: true, status: 200 } as Response,
-    } as unknown as Promise<unknown>);
+    } as unknown as never);
 
     const { container } = renderComponent();
 
@@ -113,7 +113,7 @@ describe("ProfileClient Component", () => {
     vi.mocked(apiClient.GET).mockResolvedValue({
       error: { detail: "Not found" },
       response: { ok: false, status: 404 } as Response,
-    } as unknown as Promise<unknown>);
+    } as unknown as never);
 
     renderComponent();
 

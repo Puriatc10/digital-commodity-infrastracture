@@ -62,7 +62,7 @@ describe("DirectoryClient Component", () => {
     vi.mocked(apiClient.GET).mockResolvedValue({
       data: mockData,
       response: { ok: true, status: 200 } as Response,
-    } as unknown as Promise<unknown>);
+    } as unknown as never);
 
     renderComponent();
 
@@ -80,7 +80,7 @@ describe("DirectoryClient Component", () => {
     vi.mocked(apiClient.GET).mockResolvedValue({
       data: [],
       response: { ok: true, status: 200 } as Response,
-    } as unknown as Promise<unknown>);
+    } as unknown as never);
 
     renderComponent();
 

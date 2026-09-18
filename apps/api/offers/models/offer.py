@@ -189,6 +189,11 @@ class Offer(models.Model):
         return self.external_counterparty_id is not None
 
     @property
+    def entered_by_operator(self) -> bool:
+        """True if this offer was entered by an operator on behalf of an external counterparty."""
+        return self.external_counterparty_id is not None
+
+    @property
     def economic_party(self):
         """Returns the owning economic entity (Organization or ExternalCounterparty)."""
         return self.offering_organization or self.external_counterparty
