@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "opportunities",
     "matching",
     "geography",
+    "offers",
 ]
 
 # drf-spectacular renders the Swagger UI from its packaged template.
@@ -90,6 +91,7 @@ SPECTACULAR_SETTINGS = {
         "DocumentTypeEnum": "documents.models.DocumentType",
         "AreaTypeEnum": "geography.models.AreaType",
         "GeographyConstraintModeEnum": "trade_hub.models.GeographyConstraintMode",
+        "OfferorRoleEnum": "offers.enums.OfferorRole",
     },
 }
 
