@@ -331,6 +331,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/offers/{offer_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Offer details
+         * @description Retrieves an Offer by ID. Authorized for platform Operators, Admins, and the owning RFQ Buyer. Competitors attempting to access another party's offer receive 404 Not Found.
+         */
+        get: operations["offers_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/offers/offer-versions/{version_id}/submit/": {
         parameters: {
             query?: never;
@@ -345,6 +365,66 @@ export interface paths {
          * @description Transition a Draft OfferVersion to immutable SUBMITTED status. Revalidates dynamic commodity specifications against the exact RFQ schema version, quantity, unit, price, delivery dates, and logistics consistency. Revalidates organization capability and actor membership role (Owner, Manager, Member allowed; Viewer denied). Advances parent Offer aggregate_version and updates current_submitted_version pointer. Transitions target RFQ from Published to Collecting Offers upon first successful submission. Competitor participants attempting to access another organization's offer receive 404 Not Found.
          */
         post: operations["offers_offer_versions_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/operator-submission/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit external supplier offer on behalf (Operator action)
+         * @description Enters an external supplier quote from a Qualified Supply Opportunity onto an RFQ. Authorized exclusively for platform Operators and Product Admins (via SystemRoleAssignment). Buyer, Supplier, Broker organizations and staff/superuser without product roles are rejected. Guarantees atomic execution, derives external economic party from the Opportunity, enforces RFQ deadline and lifecycle, dynamic specification schema lock, and immutability.
+         */
+        post: operations["offers_operator_submission_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List offers for an RFQ
+         * @description Lists all submitted offers for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins.
+         */
+        get: operations["offers_rfqs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/operator-submission/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit external supplier offer on behalf (Operator action)
+         * @description Enters an external supplier quote from a Qualified Supply Opportunity onto an RFQ. Authorized exclusively for platform Operators and Product Admins (via SystemRoleAssignment). Buyer, Supplier, Broker organizations and staff/superuser without product roles are rejected. Guarantees atomic execution, derives external economic party from the Opportunity, enforces RFQ deadline and lifecycle, dynamic specification schema lock, and immutability.
+         */
+        post: operations["offers_rfqs_operator_submission_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1279,6 +1359,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trade-hub/rfqs/{rfq_id}/offers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List offers for an RFQ
+         * @description Lists all submitted offers for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins.
+         */
+        get: operations["trade_hub_rfqs_offers_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/offers/operator-submission/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit external supplier offer on behalf (Operator action)
+         * @description Enters an external supplier quote from a Qualified Supply Opportunity onto an RFQ. Authorized exclusively for platform Operators and Product Admins (via SystemRoleAssignment). Buyer, Supplier, Broker organizations and staff/superuser without product roles are rejected. Guarantees atomic execution, derives external economic party from the Opportunity, enforces RFQ deadline and lifecycle, dynamic specification schema lock, and immutability.
+         */
+        post: operations["trade_hub_rfqs_offers_operator_submission_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trade-hub/rfqs/{rfq_id}/publish/": {
         parameters: {
             query?: never;
@@ -1875,6 +1995,16 @@ export interface components {
         MatchingSignalResponseOutcomeEnum: "PASS" | "PARTIAL" | "FAIL" | "UNKNOWN" | "NOT_APPLICABLE";
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description Input payload for a child cost component. */
+        OfferCostComponentInput: {
+            kind: components["schemas"]["KindEnum"];
+            /** Format: decimal */
+            amount: string;
+            /** @default USD */
+            currency: string;
+            /** @default  */
+            description: string;
+        };
         /** @description Immutable cost component line item. */
         OfferCostComponentResponse: {
             /** Format: uuid */
@@ -2008,6 +2138,94 @@ export interface components {
         OfferVersionSubmitAction: {
             /** @description Expected aggregate_version of the parent Offer for optimistic concurrency control. */
             expected_version: number;
+        };
+        /** @description Authoritative payload for Operator submission of an external quote on behalf. */
+        OperatorExternalOfferSubmission: {
+            /**
+             * Format: uuid
+             * @description Target RFQ ID to which the offer will be submitted.
+             */
+            rfq_id: string;
+            /** @description UUID or human-readable identifier (OPP-...) of the Qualified Supply Opportunity. */
+            opportunity_id: string;
+            /**
+             * Format: decimal
+             * @description Proposed commercial quantity (must be strictly positive).
+             */
+            offered_quantity: string;
+            /** @description Unit of measurement (must be compatible with RFQ unit). */
+            quantity_unit: string;
+            /**
+             * Format: decimal
+             * @description Proposed unit price (must be strictly positive).
+             */
+            unit_price: string;
+            /**
+             * @description ISO 4217 3-letter currency code.
+             * @default USD
+             */
+            currency: string;
+            /**
+             * @description Proposed payment terms.
+             * @default
+             */
+            payment_terms: string;
+            /**
+             * @description Proposed delivery terms.
+             * @default
+             */
+            delivery_terms: string;
+            /**
+             * @description Incoterm code.
+             * @default
+             */
+            incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest proposed delivery date.
+             */
+            delivery_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest proposed delivery date.
+             */
+            delivery_end?: string | null;
+            /**
+             * Format: date-time
+             * @description Offer validity timestamp.
+             */
+            valid_until?: string | null;
+            /**
+             * @description Status of logistics cost knowledge.
+             *
+             *     * `KNOWN_SEPARATE` - Known Separate
+             *     * `INCLUDED_IN_PRICE` - Included in Price
+             *     * `NOT_APPLICABLE` - Not Applicable
+             *     * `UNKNOWN` - Unknown
+             * @default UNKNOWN
+             */
+            logistics_cost_status: components["schemas"]["LogisticsCostStatusEnum"];
+            /**
+             * Format: decimal
+             * @description Separate logistics cost amount (required if KNOWN_SEPARATE).
+             */
+            logistics_cost_amount?: string | null;
+            /** @description Dynamic commodity specifications validated against RFQ schema. */
+            specifications?: unknown;
+            /**
+             * @description Commercial notes.
+             * @default
+             */
+            notes: string;
+            /** @description Optional cost component breakdown items. */
+            cost_components?: components["schemas"]["OfferCostComponentInput"][];
+            /**
+             * Format: uuid
+             * @description Optional external counterparty ID (must match Opportunity external counterparty).
+             */
+            external_counterparty_id?: string | null;
+            /** @description Optional optimistic concurrency aggregate_version if an Offer parent already exists. */
+            expected_version?: number | null;
         };
         /** @description Safe projection of CommodityDefinition for Opportunity consumers. */
         OpportunityCommodityProjection: {
@@ -4822,6 +5040,40 @@ export interface operations {
             };
         };
     };
+    offers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offer details (Operator or Buyer projection) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     offers_offer_versions_submit_create: {
         parameters: {
             query?: never;
@@ -4875,6 +5127,167 @@ export interface operations {
                 content?: never;
             };
             /** @description Conflict - stale expected_version or concurrent submission race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_operator_submission_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperatorExternalOfferSubmission"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Operator or Product Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - existing submitted version or concurrency race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of offers for this RFQ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks access to this RFQ */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_operator_submission_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperatorExternalOfferSubmission"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Operator or Product Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - existing submitted version or concurrency race */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -7770,6 +8183,108 @@ export interface operations {
             };
             /** @description No invitation found for current organization */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_offers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of offers for this RFQ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks access to this RFQ */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_offers_operator_submission_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperatorExternalOfferSubmission"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Operator or Product Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - existing submitted version or concurrency race */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
