@@ -3,6 +3,7 @@
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from offers.api.views import OfferVersionSubmitActionView
 from .views import health
 
 urlpatterns = [
@@ -15,6 +16,8 @@ urlpatterns = [
     path("api/opportunities/", include("opportunities.urls")),
     path("api/geography/", include("geography.urls")),
     path("api/matching/", include("matching.urls")),
+    path("api/offers/", include("offers.urls")),
+    path("api/offer-versions/<uuid:version_id>/submit/", OfferVersionSubmitActionView.as_view(), name="offer-version-submit-direct"),
     path("", include("documents.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
