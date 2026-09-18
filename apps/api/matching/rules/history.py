@@ -6,6 +6,7 @@ import logging
 from typing import Any, Dict, List, Optional, Protocol, Sequence, runtime_checkable
 
 from matching.enums import CandidateKind, SignalDimension, SignalOutcome
+from matching.exceptions import HistoricalProviderError
 from matching.rules.result import RuleResult
 
 logger = logging.getLogger(__name__)
@@ -20,11 +21,6 @@ class HistoryReasonCode(str, Enum):
     HISTORICAL_EVALUATION_SUCCESS = "HISTORICAL_EVALUATION_SUCCESS"
     HISTORICAL_PROVIDER_ERROR = "HISTORICAL_PROVIDER_ERROR"
 
-
-class HistoricalProviderError(Exception):
-    """Raised when an operational defect or failure occurs during historical provider execution."""
-
-    pass
 
 
 @dataclass(frozen=True)
@@ -237,15 +233,18 @@ def evaluate_historical_signals(
         try:
             provider_results = provider.evaluate(candidate, ctx, policy_version)
         except Exception as exc:
+            provider_code = getattr(provider, "code", "unknown")
             logger.error(
-                "Operational failure in historical provider '%s' for candidate_kind '%s': %s",
-                provider.code,
+                "Operational failure in historical provider '%s' for candidate_kind '%s'",
+                provider_code,
                 candidate_kind,
-                exc,
                 exc_info=True,
             )
             raise HistoricalProviderError(
-                f"Historical provider '{provider.code}' execution failed: {exc}"
+                f"Historical provider '{provider_code}' execution failed: {exc}",
+                code="historical_provider_failure",
+                provider_code=provider_code,
+                original_exception=exc,
             ) from exc
 
         for res in provider_results:

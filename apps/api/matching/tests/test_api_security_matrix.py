@@ -18,6 +18,8 @@ from matching.enums import (
     SignalOutcome,
 )
 from matching.models.policy import MatchingPolicy, MatchingPolicyVersion
+from matching.models.run import MatchingRun
+from matching.rules.history import default_historical_registry
 from matching.models.specification_rule import (
     SpecificationMatchingRule,
     SpecificationRuleOperator,
@@ -267,3 +269,43 @@ class APISecurityMatrixTests(APITestCase):
         for c in filtered_res.json():
             self.assertEqual(c["lane"], CandidateLane.DIRECT_SUPPLY.value)
             self.assertTrue(c["eligible"])
+
+    def test_provider_runtime_exception_returns_controlled_500_without_exposing_internals(self):
+        """
+        When a historical provider raises a runtime exception, the API must:
+        - Return HTTP 500 Internal Server Error
+        - Return standardized error payload {"code": "historical_provider_failure", "detail": "..."}
+        - NOT expose raw python exception, internal traceback, or SQL error details
+        - Roll back completely, leaving 0 matching runs.
+        """
+        class FailingHistoryProvider:
+            code = "history.network_down"
+
+            def supports_candidate_kind(self, candidate_kind: str) -> bool:
+                return True
+
+            def evaluate(self, candidate, context, policy_version=None):
+                raise RuntimeError("PostgreSQL socket connection closed unexpectedly at /var/run/postgresql")
+
+        default_historical_registry.register(FailingHistoryProvider())
+        try:
+            initial_runs = MatchingRun.objects.count()
+            self.client.force_authenticate(user=self.buyer_user_a)
+            response = self.client.post(
+                f"/api/matching/rfqs/{self.rfq_a.id}/runs/",
+                {"audience": MatchingAudience.BUYER},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+            data = response.json()
+            self.assertEqual(data.get("code"), "historical_provider_failure")
+            self.assertEqual(data.get("detail"), "A historical signal provider encountered an operational failure.")
+            # Verify raw Python/internal details are completely hidden from the client
+            self.assertNotIn("PostgreSQL socket connection closed", str(data))
+            self.assertNotIn("Traceback", str(data))
+            self.assertNotIn("RuntimeError", str(data))
+
+            # Verify atomicity at the API layer
+            self.assertEqual(MatchingRun.objects.count(), initial_runs)
+        finally:
+            default_historical_registry.clear()

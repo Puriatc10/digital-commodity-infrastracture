@@ -17,11 +17,13 @@ from matching.enums import (
     PolicyLifecycleStatus,
     SignalOutcome,
 )
+from matching.exceptions import HistoricalProviderError
 from matching.models.candidate import MatchingCandidate
 from matching.models.policy import (
     MatchingPolicy,
     MatchingPolicyVersion,
 )
+from matching.rules.history import default_historical_registry
 from matching.models.run import MatchingRun
 from matching.models.signal import MatchingSignal
 from matching.models.specification_rule import (
@@ -202,3 +204,42 @@ class PersistenceAtomicityTests(TestCase):
         self.assertEqual(MatchingRun.objects.count(), initial_runs)
         self.assertEqual(MatchingCandidate.objects.count(), initial_candidates)
         self.assertEqual(MatchingSignal.objects.count(), initial_signals)
+
+    def test_provider_runtime_exception_rolls_back_entire_run_atomically(self):
+        """
+        Prove atomicity on provider runtime failure:
+        When an active historical provider raises an exception during candidate evaluation,
+        the run fails with HistoricalProviderError, the transaction rolls back completely,
+        and zero partial MatchingRun, MatchingCandidate, or MatchingSignal records are created.
+        """
+        initial_runs = MatchingRun.objects.count()
+        initial_candidates = MatchingCandidate.objects.count()
+        initial_signals = MatchingSignal.objects.count()
+
+        class FailingHistoricalProvider:
+            code = "history.failing_atomicity"
+
+            def supports_candidate_kind(self, candidate_kind: str) -> bool:
+                return True
+
+            def evaluate(self, candidate, context, policy_version=None):
+                raise RuntimeError("Database connection dropped during historical query")
+
+        default_historical_registry.register(FailingHistoricalProvider())
+        try:
+            with self.assertRaises(HistoricalProviderError) as ctx:
+                MatchingRunService.execute_matching_run(
+                    rfq_id=self.rfq.id,
+                    audience=MatchingAudience.BUYER,
+                    actor_scope=self.buyer_scope,
+                )
+
+            self.assertEqual(ctx.exception.code, "historical_provider_failure")
+            self.assertEqual(ctx.exception.provider_code, "history.failing_atomicity")
+
+            # Assert clean rollback: zero orphan/partial records
+            self.assertEqual(MatchingRun.objects.count(), initial_runs)
+            self.assertEqual(MatchingCandidate.objects.count(), initial_candidates)
+            self.assertEqual(MatchingSignal.objects.count(), initial_signals)
+        finally:
+            default_historical_registry.clear()

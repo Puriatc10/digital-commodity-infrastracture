@@ -7,6 +7,7 @@ from django.test import TestCase
 
 from matching.candidates.snapshot import CandidateSnapshot
 from matching.enums import CandidateKind, CandidateLane, MatchingAudience, SignalDimension, SignalOutcome
+from matching.exceptions import MatchingError
 from matching.rules.history import (
     HistoricalEvaluationContext,
     HistoricalProviderError,
@@ -482,6 +483,75 @@ class ProviderErrorBehaviorTests(TestCase):
 
         self.assertIn("history.failing_provider", str(ctx.exception))
         self.assertIn("Database connection dropped", str(ctx.exception))
+
+    def test_semantic_state_1_provider_absent_or_unsupported_yields_not_applicable(self):
+        """State 1: Provider absent or unsupported candidate kind -> NOT_APPLICABLE (raw_score=None)."""
+        cand = CandidateSnapshot.create(
+            candidate_kind=CandidateKind.SUPPLIER_ORGANIZATION,
+            source_id=uuid.uuid4(),
+            evidence={},
+        )
+        # 1a. Absent providers
+        results_absent = evaluate_historical_signals(cand, providers=[])
+        self.assertEqual(len(results_absent), 1)
+        self.assertEqual(results_absent[0].outcome, SignalOutcome.NOT_APPLICABLE)
+        self.assertIsNone(results_absent[0].raw_score)
+        self.assertEqual(results_absent[0].reason_code, HistoryReasonCode.HISTORICAL_DATA_NOT_APPLICABLE.value)
+
+        # 1b. Unsupported candidate kind
+        listing_provider = SampleMockProvider(
+            code="history.listing_only",
+            supported_kinds=[CandidateKind.SUPPLY_LISTING],
+        )
+        results_unsupported = evaluate_historical_signals(cand, providers=[listing_provider])
+        self.assertEqual(len(results_unsupported), 1)
+        self.assertEqual(results_unsupported[0].outcome, SignalOutcome.NOT_APPLICABLE)
+        self.assertIsNone(results_unsupported[0].raw_score)
+        self.assertEqual(results_unsupported[0].reason_code, HistoryReasonCode.HISTORICAL_KIND_NOT_SUPPORTED.value)
+
+    def test_semantic_state_2_provider_applies_but_has_no_evidence_yields_unknown(self):
+        """State 2: Provider applies but candidate has no transaction evidence -> UNKNOWN (raw_score=None, not 0.00)."""
+        cand = CandidateSnapshot.create(
+            candidate_kind=CandidateKind.SUPPLIER_ORGANIZATION,
+            source_id=uuid.uuid4(),
+            evidence={},  # No historical_deals evidence
+        )
+        provider = SampleMockProvider(
+            code="history.deal_provider",
+            supported_kinds=[CandidateKind.SUPPLIER_ORGANIZATION],
+        )
+        results = evaluate_historical_signals(cand, providers=[provider])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].outcome, SignalOutcome.UNKNOWN)
+        self.assertIsNone(results[0].raw_score)
+        self.assertEqual(results[0].reason_code, HistoryReasonCode.HISTORICAL_EVIDENCE_UNAVAILABLE.value)
+
+    def test_semantic_state_3_provider_applies_and_crashes_raises_historical_provider_error(self):
+        """
+        State 3: Provider applies and crashes -> raises HistoricalProviderError directly.
+        Must NEVER be converted to UNKNOWN or NOT_APPLICABLE, and must NEVER fabricate a score.
+        """
+        provider = SampleMockProvider(
+            code="history.crashing_provider",
+            supported_kinds=[CandidateKind.SUPPLIER_ORGANIZATION],
+            raise_error=RuntimeError("Third-party historical service timeout"),
+        )
+        cand = CandidateSnapshot.create(
+            candidate_kind=CandidateKind.SUPPLIER_ORGANIZATION,
+            source_id=uuid.uuid4(),
+            evidence={},
+        )
+
+        with self.assertRaises(HistoricalProviderError) as ctx:
+            evaluate_historical_signals(cand, providers=[provider])
+
+        exc = ctx.exception
+        self.assertIsInstance(exc, MatchingError)
+        self.assertEqual(exc.code, "historical_provider_failure")
+        self.assertEqual(exc.provider_code, "history.crashing_provider")
+        self.assertIsInstance(exc.original_exception, RuntimeError)
+        self.assertIn("history.crashing_provider", str(exc))
+        self.assertIn("Third-party historical service timeout", str(exc))
 
     def test_provider_returning_hard_rule_fails(self):
         provider = SampleMockProvider(

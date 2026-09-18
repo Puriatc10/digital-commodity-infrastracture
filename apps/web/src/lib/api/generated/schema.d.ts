@@ -4484,6 +4484,14 @@ export interface operations {
                     "application/json": components["schemas"]["MatchingErrorResponse"];
                 };
             };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchingErrorResponse"];
+                };
+            };
         };
     };
     matching_runs_retrieve: {

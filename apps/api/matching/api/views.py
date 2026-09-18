@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -18,6 +19,7 @@ from matching.candidates.authorization import (
 )
 from matching.enums import CandidateLane, MatchingAudience
 from matching.exceptions import (
+    HistoricalProviderError,
     InvalidPolicyConfigurationError,
     MatchingAuthorizationError,
     NoPublishedPolicyError,
@@ -25,10 +27,13 @@ from matching.exceptions import (
     RFQNotFoundError,
     UnsupportedAudienceError,
 )
+
 from matching.models.candidate import MatchingCandidate
 from matching.models.run import MatchingRun
 from matching.services import MatchingRunService
 from trade_hub.models import RFQ
+
+logger = logging.getLogger(__name__)
 
 
 def _get_org_hint(request):
@@ -61,6 +66,7 @@ class RFQMatchingRunListCreateView(APIView):
             400: MatchingErrorResponseSerializer,
             403: MatchingErrorResponseSerializer,
             404: MatchingErrorResponseSerializer,
+            500: MatchingErrorResponseSerializer,
         },
     )
     def post(self, request, rfq_id: uuid.UUID):
@@ -91,6 +97,20 @@ class RFQMatchingRunListCreateView(APIView):
             return Response({"code": e.code, "detail": e.message}, status=status.HTTP_403_FORBIDDEN)
         except (NoPublishedPolicyError, UnsupportedAudienceError, InvalidPolicyConfigurationError) as e:
             return Response({"code": e.code, "detail": e.message}, status=status.HTTP_400_BAD_REQUEST)
+        except HistoricalProviderError as e:
+            logger.error(
+                "Historical provider failure during matching run: rfq_id=%s, audience=%s, provider=%s",
+                rfq_id,
+                audience,
+                getattr(e, "provider_code", "unknown"),
+            )
+            return Response(
+                {
+                    "code": e.code,
+                    "detail": "A historical signal provider encountered an operational failure.",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         response_data = MatchingRunResponseSerializer(run).data
         return Response(response_data, status=status.HTTP_201_CREATED)
