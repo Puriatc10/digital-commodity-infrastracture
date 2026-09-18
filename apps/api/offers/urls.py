@@ -4,6 +4,7 @@ from offers.api.views import (
     OfferDetailView,
     OfferVersionSubmitActionView,
     OperatorExternalOfferSubmissionActionView,
+    RFQComparisonView,
     RFQOffersListView,
 )
 
@@ -19,6 +20,11 @@ urlpatterns = [
         "rfqs/<uuid:rfq_id>/operator-submission/",
         OperatorExternalOfferSubmissionActionView.as_view(),
         name="operator-external-offer-submission-rfq",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/comparison/",
+        RFQComparisonView.as_view(),
+        name="rfq-comparison",
     ),
     path(
         "rfqs/<uuid:rfq_id>/",

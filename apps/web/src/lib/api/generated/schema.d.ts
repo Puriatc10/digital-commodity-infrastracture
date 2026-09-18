@@ -411,6 +411,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/offers/rfqs/{rfq_id}/comparison/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Commercial comparison of submitted offers for an RFQ
+         * @description Retrieves the commercial comparison of all currently active submitted offers for an RFQ. Evaluates only Offer.current_submitted_version for each offer thread. Excludes unsubmitted drafts and older versions. Reuses T0805 normalisation engine and derives quantity coverage and surplus. Authorized exclusively for the RFQ's Buyer organization members and platform Operators/Admins. Competitor participants (Suppliers/Brokers) and foreign buyers are strictly rejected.
+         */
+        get: operations["offers_rfqs_comparison_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/offers/rfqs/{rfq_id}/operator-submission/": {
         parameters: {
             query?: never;
@@ -1143,6 +1163,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rfqs/{rfq_id}/comparison/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Commercial comparison of submitted offers for an RFQ
+         * @description Retrieves the commercial comparison of all currently active submitted offers for an RFQ. Evaluates only Offer.current_submitted_version for each offer thread. Excludes unsubmitted drafts and older versions. Reuses T0805 normalisation engine and derives quantity coverage and surplus. Authorized exclusively for the RFQ's Buyer organization members and platform Operators/Admins. Competitor participants (Suppliers/Brokers) and foreign buyers are strictly rejected.
+         */
+        get: operations["rfqs_comparison_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trade-hub/rfqs/": {
         parameters: {
             query?: never;
@@ -1249,6 +1289,26 @@ export interface paths {
          * @description Transition a Published RFQ to Closed. Requires expected_version for optimistic concurrency control. Restricted to Buyer Owner/Manager or Platform Operator. Rejects non-published RFQs with 400 Bad Request.
          */
         post: operations["trade_hub_rfqs_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/comparison/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Commercial comparison of submitted offers for an RFQ
+         * @description Retrieves the commercial comparison of all currently active submitted offers for an RFQ. Evaluates only Offer.current_submitted_version for each offer thread. Excludes unsubmitted drafts and older versions. Reuses T0805 normalisation engine and derives quantity coverage and surplus. Authorized exclusively for the RFQ's Buyer organization members and platform Operators/Admins. Competitor participants (Suppliers/Brokers) and foreign buyers are strictly rejected.
+         */
+        get: operations["trade_hub_rfqs_comparison_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1617,6 +1677,125 @@ export interface components {
          */
         CommoditySchemaVersionStatusEnum: "draft" | "published" | "retired";
         /**
+         * @description Typed, safe commercial comparison row for Buyer and Operator procurement intelligence (T0806).
+         *
+         *     Invariants:
+         *     - Never exposes private external contact details (phone, email, contact_name, notes).
+         *     - Uses exact Decimal arithmetic/representations; never binary float.
+         *     - Zero decision scoring or recommendation bias.
+         */
+        ComparisonRow: {
+            /**
+             * Format: uuid
+             * @description Stable Offer thread UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Exact current submitted OfferVersion UUID.
+             */
+            offer_version_id: string;
+            /** @description Submitted version number. */
+            version_number: number;
+            /** @description Safe commercial identity of the offering party. */
+            safe_offeror_identity: string;
+            /** @description Safe display name of the offering party. */
+            offeror_name: string;
+            /** @description Whether offer is from an off-platform external supplier. */
+            is_external: boolean;
+            /** @description Commercial role (SUPPLIER or BROKER). */
+            offeror_role: string;
+            /**
+             * Format: decimal
+             * @description Proposed commercial quantity.
+             */
+            offered_quantity: string;
+            /** @description Unit of measurement. */
+            quantity_unit: string;
+            /**
+             * Format: decimal
+             * @description Quantity coverage ratio min(offered / requested, 1.0).
+             */
+            quantity_coverage: string;
+            /**
+             * Format: decimal
+             * @description Surplus quantity max(offered - requested, 0.0).
+             */
+            surplus_quantity: string;
+            /**
+             * Format: decimal
+             * @description Proposed unit price.
+             */
+            unit_price: string;
+            /** @description ISO 4217 3-letter currency code. */
+            currency: string;
+            /**
+             * Format: decimal
+             * @description Product cost derived from unit_price * offered_quantity.
+             */
+            product_cost: string;
+            /**
+             * Format: decimal
+             * @description Sum of known cost components.
+             */
+            known_cost_total: string;
+            /**
+             * Format: decimal
+             * @description Landed cost if logistics is known; null if UNKNOWN.
+             */
+            landed_cost: string | null;
+            /**
+             * Format: decimal
+             * @description Landed unit cost if logistics is known; null if UNKNOWN.
+             */
+            landed_unit_cost: string | null;
+            /** @description Whether normalisation has complete cost evidence. */
+            normalization_complete: boolean;
+            /** @description List of missing required cost components. */
+            missing_components: string[];
+            /**
+             * @description Structured cost comparability status.
+             *
+             *     * `COMPARABLE` - COMPARABLE
+             *     * `CROSS_CURRENCY_UNKNOWN` - CROSS_CURRENCY_UNKNOWN
+             *     * `INCOMPLETE_COST` - INCOMPLETE_COST
+             */
+            cost_comparability: components["schemas"]["CostComparabilityEnum"];
+            /** @description Proposed payment terms. */
+            payment_terms: string;
+            /** @description Proposed delivery terms. */
+            delivery_terms: string;
+            /** @description Incoterm code. */
+            incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest delivery date.
+             */
+            delivery_start: string | null;
+            /**
+             * Format: date
+             * @description Latest delivery date.
+             */
+            delivery_end: string | null;
+            /**
+             * Format: date-time
+             * @description Proposal validity timestamp.
+             */
+            valid_until: string | null;
+            /** @description Whether proposal validity has expired. */
+            is_expired: boolean;
+            /**
+             * @description Dynamic commodity specification compliance outcome.
+             *
+             *     * `PASS` - PASS
+             *     * `FAIL` - FAIL
+             *     * `UNKNOWN` - UNKNOWN
+             */
+            technical_compliance: components["schemas"]["TechnicalComplianceEnum"];
+            /** @description Authoritative verification status or UNKNOWN. */
+            trust_status: string;
+        };
+        /**
          * @description * `CALL` - Call
          *     * `MESSAGE` - Message
          *     * `EMAIL` - Email
@@ -1625,6 +1804,13 @@ export interface components {
          * @enum {string}
          */
         ContactAttemptTypeEnum: "CALL" | "MESSAGE" | "EMAIL" | "MEETING" | "NOTE";
+        /**
+         * @description * `COMPARABLE` - COMPARABLE
+         *     * `CROSS_CURRENCY_UNKNOWN` - CROSS_CURRENCY_UNKNOWN
+         *     * `INCOMPLETE_COST` - INCOMPLETE_COST
+         * @enum {string}
+         */
+        CostComparabilityEnum: "COMPARABLE" | "CROSS_CURRENCY_UNKNOWN" | "INCOMPLETE_COST";
         CsrfViewResponse: {
             detail: string;
         };
@@ -3468,6 +3654,29 @@ export interface components {
             /** @description Current aggregate version counter for optimistic concurrency control. */
             expected_version: number;
         };
+        /** @description Authoritative response envelope for RFQ commercial comparison (T0806). */
+        RFQComparisonResponse: {
+            /**
+             * Format: uuid
+             * @description Target RFQ UUID.
+             */
+            rfq_id: string;
+            /**
+             * Format: decimal
+             * @description RFQ requested procurement quantity.
+             */
+            rfq_quantity: string;
+            /** @description RFQ unit of measurement. */
+            rfq_unit: string;
+            /** @description RFQ currency. */
+            rfq_currency: string;
+            /** @description Total number of active submitted offers compared. */
+            total_offers: number;
+            /** @description List of compared offers. */
+            items: components["schemas"]["ComparisonRow"][];
+            /** @description List of compared offers (alias of items). */
+            offers: components["schemas"]["ComparisonRow"][];
+        };
         /** @description Payload for creating a new Draft RFQ. */
         RFQCreate: {
             /**
@@ -4194,6 +4403,13 @@ export interface components {
              */
             visibility?: components["schemas"]["RFQVisibilityEnum"];
         };
+        /**
+         * @description * `PASS` - PASS
+         *     * `FAIL` - FAIL
+         *     * `UNKNOWN` - UNKNOWN
+         * @enum {string}
+         */
+        TechnicalComplianceEnum: "PASS" | "FAIL" | "UNKNOWN";
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
@@ -5220,6 +5436,48 @@ export interface operations {
                 content?: never;
             };
             /** @description Forbidden - lacks access to this RFQ */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_comparison_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQComparisonResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -7531,6 +7789,48 @@ export interface operations {
             };
         };
     };
+    rfqs_comparison_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQComparisonResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     trade_hub_rfqs_list: {
         parameters: {
             query?: {
@@ -7920,6 +8220,48 @@ export interface operations {
             };
             /** @description Conflict - stale expected_version */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_comparison_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQComparisonResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
