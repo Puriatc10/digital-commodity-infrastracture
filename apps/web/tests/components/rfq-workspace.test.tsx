@@ -404,7 +404,7 @@ describe("T0507 - RFQ Workspace Component Suite", () => {
     });
   });
 
-  it("5. renders explicit non-functional placeholders for staged tabs (Offers, Comparison, Negotiation, Documents)", async () => {
+  it("5. renders explicit non-functional placeholders for staged tabs (Offers, Negotiation, Documents)", async () => {
     setupAuth();
     render(
       <Wrapper>
@@ -413,24 +413,21 @@ describe("T0507 - RFQ Workspace Component Suite", () => {
     );
 
     // Offers tab placeholder
-    const offersTab = await screen.findByRole("button", { name: new RegExp(t.tabs.offers) });
+    const offersTab = await screen.findByRole("button", { name: new RegExp(`^${t.tabs.offers}$`) });
     fireEvent.click(offersTab);
     await waitFor(() => {
       expect(screen.getByText(t.staged.offersTitle)).toBeInTheDocument();
     });
 
-    // Comparison tab placeholder
-    const comparisonTab = screen.getByRole("button", { name: new RegExp(t.tabs.comparison) });
-    fireEvent.click(comparisonTab);
-    expect(screen.getByText(t.staged.comparisonTitle)).toBeInTheDocument();
-
-    // Negotiation tab placeholder
-    const negotiationTab = screen.getByRole("button", { name: new RegExp(t.tabs.negotiation) });
+    // Negotiation tab (now active RFQNegotiationTab under T0812)
+    const negotiationTab = screen.getByRole("button", { name: new RegExp(`^${t.tabs.negotiation}$`) });
     fireEvent.click(negotiationTab);
-    expect(screen.getByText(t.staged.negotiationTitle)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("مذاکرات و تاریخچه پیشنهادها")).toBeInTheDocument();
+    });
 
     // Documents tab placeholder (not reusing KYC)
-    const documentsTab = screen.getByRole("button", { name: new RegExp(t.tabs.documents) });
+    const documentsTab = screen.getByRole("button", { name: new RegExp(`^${t.tabs.documents}$`) });
     fireEvent.click(documentsTab);
     expect(screen.getByText(t.staged.documentsTitle)).toBeInTheDocument();
   });

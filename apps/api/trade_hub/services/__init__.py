@@ -12,6 +12,7 @@ from trade_hub.services.rfq_lifecycle import (
     cancel_rfq,
     close_rfq,
     publish_rfq,
+    start_collecting_offers,
 )
 from trade_hub.services.visibility_service import (
     RFQVisibilityService,
@@ -59,6 +60,7 @@ __all__ = [
     "publish_rfq",
     "cancel_rfq",
     "close_rfq",
+    "start_collecting_offers",
     "RFQVisibilityService",
     "get_visible_rfqs",
     "get_visible_rfq",

@@ -1,5 +1,10 @@
 from django.urls import path
 
+from offers.api.views import (
+    OperatorExternalOfferSubmissionActionView,
+    RFQComparisonView,
+    RFQOffersListView,
+)
 from trade_hub.api.views_invitation import (
     RFQInvitationDeclineActionView,
     RFQInvitationDetailView,
@@ -55,6 +60,21 @@ urlpatterns = [
         "rfqs/<uuid:rfq_id>/activity/",
         RFQActivityView.as_view(),
         name="rfq-activity",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/comparison/",
+        RFQComparisonView.as_view(),
+        name="rfq-comparison",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/offers/",
+        RFQOffersListView.as_view(),
+        name="rfq-offers-list",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/offers/operator-submission/",
+        OperatorExternalOfferSubmissionActionView.as_view(),
+        name="rfq-offers-operator-submission",
     ),
     path(
         "rfqs/<uuid:rfq_id>/invitations/",

@@ -206,10 +206,10 @@ class RFQVisibilityService:
             }
         )
 
-        # External discovery rule: only Published RFQs owned by other organizations
-        external_published_base = models.Q(status=RFQStatus.PUBLISHED) & ~models.Q(
-            organization=current_org
-        )
+        # External discovery rule: only Published / Collecting Offers RFQs owned by other organizations
+        external_published_base = models.Q(
+            status__in=[RFQStatus.PUBLISHED, RFQStatus.COLLECTING_OFFERS]
+        ) & ~models.Q(organization=current_org)
 
         external_q = models.Q(pk__in=[])
 

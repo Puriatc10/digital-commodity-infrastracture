@@ -119,8 +119,8 @@ class RFQLifecycleService:
         """
         Transition an RFQ to Cancelled.
 
-        Permitted from Draft or Published. When cancelling a Published RFQ,
-        a non-empty reason is strictly required.
+        Permitted from Draft, Published, or Collecting Offers. When cancelling a Published
+        or Collecting Offers RFQ, a non-empty reason is strictly required.
         """
         rfq_id = _extract_rfq_id(rfq_or_id)
         rfq = _lock_rfq(rfq_id)
@@ -171,10 +171,110 @@ class RFQLifecycleService:
                 f"Cannot close RFQ in status '{rfq.status}'. Only published RFQs can be closed."
             )
 
+
         rfq.status = RFQStatus.CLOSED
         rfq.closed_at = timezone.now()
         rfq.version += 1
         rfq.save(update_fields=["status", "closed_at", "version", "updated_at"])
+        return rfq
+
+    @staticmethod
+    def start_collecting_offers(rfq_or_id: Any, *, actor: Any = None) -> RFQ:
+        """
+        Transition an RFQ from Published to Collecting Offers.
+
+        Authoritative lifecycle transition invoked when the first valid offer is
+        successfully submitted against a Published RFQ.
+        Advances RFQ version and updates status.
+        Idempotent if the RFQ is already in Collecting Offers.
+        """
+        if isinstance(rfq_or_id, RFQ):
+            rfq = rfq_or_id
+        else:
+            rfq_id = _extract_rfq_id(rfq_or_id)
+            rfq = _lock_rfq(rfq_id)
+
+        if rfq.status == RFQStatus.COLLECTING_OFFERS:
+            return rfq
+
+        if rfq.status != RFQStatus.PUBLISHED:
+            raise InvalidTransitionError(
+                f"Cannot transition RFQ to Collecting Offers from status '{rfq.status}'. "
+                f"Only Published RFQs can transition to Collecting Offers."
+            )
+
+        rfq.status = RFQStatus.COLLECTING_OFFERS
+        rfq.version += 1
+        rfq.save(update_fields=["status", "version", "updated_at"])
+        return rfq
+
+    @staticmethod
+    def start_negotiating(rfq_or_id: Any, *, actor: Any = None) -> RFQ:
+        """
+        Transition an RFQ from Collecting Offers to Negotiating (Epic 8 Contract §14, §56).
+
+        Authoritative lifecycle transition invoked when a formal RevisionRequest
+        is opened against an offer on the RFQ.
+        Advances RFQ version and updates status.
+        Idempotent if the RFQ is already in Negotiating.
+        Rejects if RFQ is in a terminal status (Closed, Cancelled, Awarded)
+        or other non-negotiating status (Draft, Published).
+        """
+        if isinstance(rfq_or_id, RFQ):
+            rfq = rfq_or_id
+        else:
+            rfq_id = _extract_rfq_id(rfq_or_id)
+            rfq = _lock_rfq(rfq_id)
+
+        if rfq.status == RFQStatus.NEGOTIATING:
+            return rfq
+
+        if rfq.status in (RFQStatus.CLOSED, RFQStatus.CANCELLED, RFQStatus.AWARDED):
+            raise InvalidTransitionError(
+                f"Cannot transition terminal RFQ in status '{rfq.status}' to Negotiating."
+            )
+
+        if rfq.status != RFQStatus.COLLECTING_OFFERS:
+            raise InvalidTransitionError(
+                f"Cannot transition RFQ to Negotiating from status '{rfq.status}'. "
+                f"Only RFQs in Collecting Offers can transition to Negotiating."
+            )
+
+        rfq.status = RFQStatus.NEGOTIATING
+        rfq.version += 1
+        rfq.save(update_fields=["status", "version", "updated_at"])
+        return rfq
+
+    @staticmethod
+    def award_rfq(rfq_or_id: Any, *, actor: Any = None) -> RFQ:
+        """
+        Transition an RFQ to Awarded (Epic 8 Contract §14, §68).
+
+        Authoritative lifecycle transition invoked when an Award is finalized.
+        Advances RFQ version and updates status to AWARDED.
+        Permitted only from Collecting Offers or Negotiating.
+        Rejects terminal statuses (Closed, Cancelled, Awarded) and other statuses (Draft, Published).
+        """
+        if isinstance(rfq_or_id, RFQ):
+            rfq = rfq_or_id
+        else:
+            rfq_id = _extract_rfq_id(rfq_or_id)
+            rfq = _lock_rfq(rfq_id)
+
+        if rfq.status in (RFQStatus.CLOSED, RFQStatus.CANCELLED, RFQStatus.AWARDED):
+            raise InvalidTransitionError(
+                f"Cannot transition terminal RFQ in status '{rfq.status}' to Awarded."
+            )
+
+        if rfq.status not in (RFQStatus.COLLECTING_OFFERS, RFQStatus.NEGOTIATING):
+            raise InvalidTransitionError(
+                f"Cannot transition RFQ to Awarded from status '{rfq.status}'. "
+                f"Only RFQs in Collecting Offers or Negotiating can transition to Awarded."
+            )
+
+        rfq.status = RFQStatus.AWARDED
+        rfq.version += 1
+        rfq.save(update_fields=["status", "version", "updated_at"])
         return rfq
 
 
@@ -182,3 +282,7 @@ class RFQLifecycleService:
 publish_rfq = RFQLifecycleService.publish
 cancel_rfq = RFQLifecycleService.cancel
 close_rfq = RFQLifecycleService.close
+start_collecting_offers = RFQLifecycleService.start_collecting_offers
+start_negotiating = RFQLifecycleService.start_negotiating
+award_rfq = RFQLifecycleService.award_rfq
+

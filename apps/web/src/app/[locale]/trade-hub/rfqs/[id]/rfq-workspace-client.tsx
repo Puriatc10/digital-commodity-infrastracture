@@ -26,6 +26,7 @@ import {
 import {
   AlertTriangle,
   ArrowRight,
+  Award,
   CheckCircle2,
   Clock,
   FileText,
@@ -44,6 +45,9 @@ import {
   XCircle,
 } from "lucide-react";
 import { RFQMatchingTab } from "@/components/matching/rfq-matching-tab";
+import { RFQComparisonTab } from "@/components/comparison/rfq-comparison-tab";
+import { RFQNegotiationTab } from "@/components/negotiation/rfq-negotiation-tab";
+import { RFQAwardTab } from "@/components/award/rfq-award-tab";
 
 type RFQBuilderResponse = components["schemas"]["RFQBuilderResponse"];
 type RFQPublicResponse = components["schemas"]["RFQPublicResponse"];
@@ -60,7 +64,8 @@ export type WorkspaceTab =
   | "comparison"
   | "negotiation"
   | "documents"
-  | "matches";
+  | "matches"
+  | "award";
 
 export interface RFQWorkspaceClientProps {
   locale?: EnabledLocale;
@@ -128,6 +133,8 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
   const canManage = isOperatorOrAdmin || (isOwnerOrg && isOwnerOrManager);
   const isExternal = Boolean(rfq && !isOperatorOrAdmin && !isOwnerOrg);
   const canAccessMatching = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
+  const canAccessComparison = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
+  const canAccessAward = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
 
   // Track previous organization ID to invalidate cache on switch
   const previousOrgIdRef = useRef<string | null>(null);
@@ -139,11 +146,15 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
       previousOrgIdRef.current !== currentOrgId
     ) {
       queryClient.removeQueries({ queryKey: ["rfq", rfqId] });
+      queryClient.removeQueries({ queryKey: ["rfq-comparison", rfqId] });
+      queryClient.removeQueries({ queryKey: ["rfq-decision-run", rfqId] });
+      queryClient.removeQueries({ queryKey: ["rfq-award", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-invitations", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-activity", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-invitation-me", rfqId] });
       queryClient.removeQueries({ queryKey: ["matching-runs", rfqId] });
       queryClient.removeQueries({ queryKey: ["matching-candidates"] });
+      queryClient.removeQueries({ queryKey: ["offer-history"] });
       setRfq(null);
       setSchema(null);
       setInvitations([]);
@@ -152,6 +163,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
       setStaleConflict(false);
       setActionError(null);
       setActionSuccess(null);
+      setActiveTab("overview");
     }
     if (currentOrgId) {
       previousOrgIdRef.current = currentOrgId;
@@ -503,6 +515,8 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
         return "outline";
       case "cancelled":
         return "destructive";
+      case "awarded":
+        return "default";
       default:
         return "secondary";
     }
@@ -687,18 +701,20 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
           {t.tabs.offers}
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("comparison")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
-            activeTab === "comparison"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Scale className="h-4 w-4" />
-          {t.tabs.comparison}
-        </button>
+        {canAccessComparison && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("comparison")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === "comparison"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Scale className="h-4 w-4" />
+            {t.tabs.comparison}
+          </button>
+        )}
 
         <button
           type="button"
@@ -738,6 +754,21 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
           >
             <Sparkles className="h-4 w-4" />
             {t.tabs.matches}
+          </button>
+        )}
+
+        {canAccessAward && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("award")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === "award"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Award className="h-4 w-4" />
+            {t.tabs.award}
           </button>
         )}
       </div>
@@ -1213,30 +1244,24 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
         </Card>
       )}
 
-      {/* --- COMPARISON TAB (STAGED PLACEHOLDER) --- */}
-      {activeTab === "comparison" && (
-        <Card className="border-dashed">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-base font-semibold">{t.staged.comparisonTitle}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
-            <Scale className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="max-w-md text-sm leading-relaxed">{t.staged.comparisonPlaceholder}</p>
-          </CardContent>
-        </Card>
+      {/* --- COMPARISON TAB --- */}
+      {activeTab === "comparison" && canAccessComparison && (
+        <RFQComparisonTab
+          rfqId={rfqId}
+          canManage={canManage}
+          isOperator={Boolean(isOperatorOrAdmin)}
+          locale={locale}
+        />
       )}
 
-      {/* --- NEGOTIATION TAB (STAGED PLACEHOLDER) --- */}
+      {/* --- NEGOTIATION TAB --- */}
       {activeTab === "negotiation" && (
-        <Card className="border-dashed">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-base font-semibold">{t.staged.negotiationTitle}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
-            <MessageSquare className="h-10 w-10 text-muted-foreground/50 mb-3" />
-            <p className="max-w-md text-sm leading-relaxed">{t.staged.negotiationPlaceholder}</p>
-          </CardContent>
-        </Card>
+        <RFQNegotiationTab
+          rfqId={rfqId}
+          canManage={canManage}
+          isOperator={Boolean(isOperatorOrAdmin)}
+          locale={locale}
+        />
       )}
 
       {/* --- DOCUMENTS TAB (STAGED PLACEHOLDER) --- */}
@@ -1272,6 +1297,20 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
             </CardContent>
           </Card>
         )
+      )}
+
+      {/* --- AWARD TAB --- */}
+      {activeTab === "award" && canAccessAward && (
+        <RFQAwardTab
+          rfqId={rfqId}
+          rfqStatus={rfq.status}
+          rfqQuantity={rfq.quantity}
+          rfqUnit={rfq.unit}
+          canManage={canManage}
+          isOperator={Boolean(isOperatorOrAdmin)}
+          locale={locale}
+          onAwardFinalized={triggerRefresh}
+        />
       )}
 
       {/* --- MODAL: CLOSE RFQ CONFIRMATION --- */}

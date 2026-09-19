@@ -84,6 +84,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/award-allocations/{allocation_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete AwardAllocation
+         * @description Deletes an allocation from a Draft Award. Requires expected_version matching the parent Award version (provided in query or body).
+         */
+        delete: operations["award_allocations_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Update AwardAllocation quantity
+         * @description Updates the awarded quantity of an existing allocation in a Draft Award. Requires expected_version matching the parent Award version.
+         */
+        patch: operations["award_allocations_partial_update"];
+        trace?: never;
+    };
+    "/api/awards/{award_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award by ID
+         * @description Retrieves an Award aggregate and its allocations by UUID.
+         */
+        get: operations["awards_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/{award_id}/allocations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add allocation to Draft Award
+         * @description Adds an exact OfferVersion allocation to a Draft Award. Requires expected_version for optimistic concurrency control. Validates quantity limits, unit compatibility, and exact current submitted version.
+         */
+        post: operations["awards_allocations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/{award_id}/finalize/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize Award
+         * @description Authoritatively finalizes a Draft Award aggregate and advances the target RFQ to Awarded. Re-verifies technical specifications, organization verification (rejecting Suspended), expiry, and external offer qualification under row-level database locks. After finalization, the Award and its allocations are strictly immutable. No Deal is created.
+         */
+        post: operations["awards_finalize_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/allocations/{allocation_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete AwardAllocation
+         * @description Deletes an allocation from a Draft Award. Requires expected_version matching the parent Award version (provided in query or body).
+         */
+        delete: operations["awards_allocations_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Update AwardAllocation quantity
+         * @description Updates the awarded quantity of an existing allocation in a Draft Award. Requires expected_version matching the parent Award version.
+         */
+        patch: operations["awards_allocations_partial_update"];
+        trace?: never;
+    };
     "/api/commodities/": {
         parameters: {
             query?: never;
@@ -131,6 +239,26 @@ export interface paths {
          *     Draft definitions are internal and must not be exposed.
          */
         get: operations["commodity_schemas_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/decision-runs/{run_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve DecisionRun detail
+         * @description Retrieves an immutable DecisionRun and its candidate universe. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. Competitor participants (Suppliers/Brokers) cannot access decision intelligence.
+         */
+        get: operations["decision_runs_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -305,6 +433,466 @@ export interface paths {
         get: operations["matching_runs_candidates_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offer-versions/{version_id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit draft OfferVersion
+         * @description Transition a Draft OfferVersion to immutable SUBMITTED status. Revalidates dynamic commodity specifications against the exact RFQ schema version, quantity, unit, price, delivery dates, and logistics consistency. Revalidates organization capability and actor membership role (Owner, Manager, Member allowed; Viewer denied). Advances parent Offer aggregate_version and updates current_submitted_version pointer. Transitions target RFQ from Published to Collecting Offers upon first successful submission. Competitor participants attempting to access another organization's offer receive 404 Not Found.
+         */
+        post: operations["offer_versions_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/{offer_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Offer details
+         * @description Retrieves an Offer by ID. Authorized for platform Operators, Admins, and the owning RFQ Buyer. Competitors attempting to access another party's offer receive 404 Not Found.
+         */
+        get: operations["offers_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/{offer_id}/history/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Offer negotiation history
+         * @description Retrieves the immutable negotiation history (versions, revision requests, schema) for an Offer. Authorized for RFQ Buyer, offering organization, and platform Operators/Admins. Competitors and unauthorized parties receive 404 Not Found.
+         */
+        get: operations["offers_history_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/{offer_id}/revision-requests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List offer revision requests
+         * @description List all revision requests for a specific Offer. Authorized for RFQ Buyer, offering party, and platform Operators. Competitors receive 404 Not Found.
+         */
+        get: operations["offers_revision_requests_list"];
+        put?: never;
+        /**
+         * Create offer revision request
+         * @description Open a formal RevisionRequest against the current submitted OfferVersion. Requires expected_version for optimistic concurrency control on the Offer aggregate. Authorized for Buyer organization Owner/Manager or platform Operator. Transitions target RFQ from Collecting Offers to Negotiating upon first revision request. Competitors attempting to access or request revisions receive 404 Not Found.
+         */
+        post: operations["offers_revision_requests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/awards/{award_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award by ID
+         * @description Retrieves an Award aggregate and its allocations by UUID.
+         */
+        get: operations["offers_awards_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/awards/{award_id}/allocations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add allocation to Draft Award
+         * @description Adds an exact OfferVersion allocation to a Draft Award. Requires expected_version for optimistic concurrency control. Validates quantity limits, unit compatibility, and exact current submitted version.
+         */
+        post: operations["offers_awards_allocations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/awards/{award_id}/finalize/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize Award
+         * @description Authoritatively finalizes a Draft Award aggregate and advances the target RFQ to Awarded. Re-verifies technical specifications, organization verification (rejecting Suspended), expiry, and external offer qualification under row-level database locks. After finalization, the Award and its allocations are strictly immutable. No Deal is created.
+         */
+        post: operations["offers_awards_finalize_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/awards/allocations/{allocation_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete AwardAllocation
+         * @description Deletes an allocation from a Draft Award. Requires expected_version matching the parent Award version (provided in query or body).
+         */
+        delete: operations["offers_awards_allocations_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Update AwardAllocation quantity
+         * @description Updates the awarded quantity of an existing allocation in a Draft Award. Requires expected_version matching the parent Award version.
+         */
+        patch: operations["offers_awards_allocations_partial_update"];
+        trace?: never;
+    };
+    "/api/offers/decision-runs/{run_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve DecisionRun detail
+         * @description Retrieves an immutable DecisionRun and its candidate universe. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. Competitor participants (Suppliers/Brokers) cannot access decision intelligence.
+         */
+        get: operations["offers_decision_runs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/offer-versions/{version_id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit draft OfferVersion
+         * @description Transition a Draft OfferVersion to immutable SUBMITTED status. Revalidates dynamic commodity specifications against the exact RFQ schema version, quantity, unit, price, delivery dates, and logistics consistency. Revalidates organization capability and actor membership role (Owner, Manager, Member allowed; Viewer denied). Advances parent Offer aggregate_version and updates current_submitted_version pointer. Transitions target RFQ from Published to Collecting Offers upon first successful submission. Competitor participants attempting to access another organization's offer receive 404 Not Found.
+         */
+        post: operations["offers_offer_versions_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/operator-submission/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit external supplier offer on behalf (Operator action)
+         * @description Enters an external supplier quote from a Qualified Supply Opportunity onto an RFQ. Authorized exclusively for platform Operators and Product Admins (via SystemRoleAssignment). Buyer, Supplier, Broker organizations and staff/superuser without product roles are rejected. Guarantees atomic execution, derives external economic party from the Opportunity, enforces RFQ deadline and lifecycle, dynamic specification schema lock, and immutability.
+         */
+        post: operations["offers_operator_submission_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get revision request details
+         * @description Retrieve details of a RevisionRequest by ID. Authorized for RFQ Buyer, offering party, and platform Operators. Competitors receive 404 Not Found.
+         */
+        get: operations["offers_revision_requests_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel open revision request
+         * @description Cancel an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized for Buyer procurement actors or platform Operators. Offer participants cannot cancel Buyer's request.
+         */
+        post: operations["offers_revision_requests_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline open revision request
+         * @description Decline an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized exclusively for the Offer economic party representative (Supplier/Broker member or Operator for external counterparty). Buyers cannot decline.
+         */
+        post: operations["offers_revision_requests_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create draft from revision request
+         * @description Create a DRAFT OfferVersion from an OPEN RevisionRequest. Copies commercial semantics, specifications, and cost components from base version. Requires expected_version for optimistic concurrency control. Authorized for the Offer economic party representative (Supplier/Broker member or Operator). Buyer procurement actors cannot create draft offers. Competitors receive 404 Not Found.
+         */
+        post: operations["offers_revision_requests_draft_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/revision-requests/{request_id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit revised offer and resolve revision request
+         * @description Submit a revised Draft OfferVersion and atomically transition the associated OPEN RevisionRequest to RESOLVED status. Requires expected_version for optimistic concurrency control. Authorized for the Offer economic party representative (Supplier/Broker member or Operator). Buyer procurement actors cannot submit revised offers. Competitors receive 404 Not Found.
+         */
+        post: operations["offers_revision_requests_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List offers for an RFQ
+         * @description Lists all submitted offers for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins.
+         */
+        get: operations["offers_rfqs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/award/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award for an RFQ
+         * @description Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Returns 404 if no Award has been created yet.
+         */
+        get: operations["offers_rfqs_award_retrieve"];
+        put?: never;
+        /**
+         * Create Draft Award for an RFQ
+         * @description Initializes the single authoritative Draft Award aggregate for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Permitted only when RFQ is in Collecting Offers or Negotiating status.
+         */
+        post: operations["offers_rfqs_award_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/awards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award for an RFQ
+         * @description Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Returns 404 if no Award has been created yet.
+         */
+        get: operations["offers_rfqs_awards_retrieve"];
+        put?: never;
+        /**
+         * Create Draft Award for an RFQ
+         * @description Initializes the single authoritative Draft Award aggregate for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Permitted only when RFQ is in Collecting Offers or Negotiating status.
+         */
+        post: operations["offers_rfqs_awards_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/comparison/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Commercial comparison of submitted offers for an RFQ
+         * @description Retrieves the commercial comparison of all currently active submitted offers for an RFQ. Evaluates only Offer.current_submitted_version for each offer thread. Excludes unsubmitted drafts and older versions. Reuses T0805 normalisation engine and derives quantity coverage and surplus. Authorized exclusively for the RFQ's Buyer organization members and platform Operators/Admins. Competitor participants (Suppliers/Brokers) and foreign buyers are strictly rejected.
+         */
+        get: operations["offers_rfqs_comparison_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/decision-runs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve latest DecisionRun for an RFQ
+         * @description Retrieves the most recent DecisionRun for the specified RFQ. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. Returns 404 if no DecisionRun has been executed for this RFQ yet.
+         */
+        get: operations["offers_rfqs_decision_runs_retrieve"];
+        put?: never;
+        /**
+         * Create DecisionRun foundation for an RFQ
+         * @description Initiate an immutable DecisionRun foundation for the specified RFQ. Materializes current submitted OfferVersions as DecisionCandidates and computes a deterministic canonical input fingerprint. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins.
+         */
+        post: operations["offers_rfqs_decision_runs_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/operator-submission/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit external supplier offer on behalf (Operator action)
+         * @description Enters an external supplier quote from a Qualified Supply Opportunity onto an RFQ. Authorized exclusively for platform Operators and Product Admins (via SystemRoleAssignment). Buyer, Supplier, Broker organizations and staff/superuser without product roles are rejected. Guarantees atomic execution, derives external economic party from the Opportunity, enforces RFQ deadline and lifecycle, dynamic specification schema lock, and immutability.
+         */
+        post: operations["offers_rfqs_operator_submission_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1023,6 +1611,198 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/revision-requests/{request_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get revision request details
+         * @description Retrieve details of a RevisionRequest by ID. Authorized for RFQ Buyer, offering party, and platform Operators. Competitors receive 404 Not Found.
+         */
+        get: operations["revision_requests_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel open revision request
+         * @description Cancel an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized for Buyer procurement actors or platform Operators. Offer participants cannot cancel Buyer's request.
+         */
+        post: operations["revision_requests_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/decline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decline open revision request
+         * @description Decline an OPEN RevisionRequest. Requires expected_version for optimistic concurrency. Authorized exclusively for the Offer economic party representative (Supplier/Broker member or Operator for external counterparty). Buyers cannot decline.
+         */
+        post: operations["revision_requests_decline_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create draft from revision request
+         * @description Create a DRAFT OfferVersion from an OPEN RevisionRequest. Copies commercial semantics, specifications, and cost components from base version. Requires expected_version for optimistic concurrency control. Authorized for the Offer economic party representative (Supplier/Broker member or Operator). Buyer procurement actors cannot create draft offers. Competitors receive 404 Not Found.
+         */
+        post: operations["revision_requests_draft_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/revision-requests/{request_id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit revised offer and resolve revision request
+         * @description Submit a revised Draft OfferVersion and atomically transition the associated OPEN RevisionRequest to RESOLVED status. Requires expected_version for optimistic concurrency control. Authorized for the Offer economic party representative (Supplier/Broker member or Operator). Buyer procurement actors cannot submit revised offers. Competitors receive 404 Not Found.
+         */
+        post: operations["revision_requests_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rfqs/{rfq_id}/award/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award for an RFQ
+         * @description Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Returns 404 if no Award has been created yet.
+         */
+        get: operations["rfqs_award_retrieve"];
+        put?: never;
+        /**
+         * Create Draft Award for an RFQ
+         * @description Initializes the single authoritative Draft Award aggregate for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Permitted only when RFQ is in Collecting Offers or Negotiating status.
+         */
+        post: operations["rfqs_award_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rfqs/{rfq_id}/awards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award for an RFQ
+         * @description Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Returns 404 if no Award has been created yet.
+         */
+        get: operations["rfqs_awards_retrieve"];
+        put?: never;
+        /**
+         * Create Draft Award for an RFQ
+         * @description Initializes the single authoritative Draft Award aggregate for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Permitted only when RFQ is in Collecting Offers or Negotiating status.
+         */
+        post: operations["rfqs_awards_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rfqs/{rfq_id}/comparison/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Commercial comparison of submitted offers for an RFQ
+         * @description Retrieves the commercial comparison of all currently active submitted offers for an RFQ. Evaluates only Offer.current_submitted_version for each offer thread. Excludes unsubmitted drafts and older versions. Reuses T0805 normalisation engine and derives quantity coverage and surplus. Authorized exclusively for the RFQ's Buyer organization members and platform Operators/Admins. Competitor participants (Suppliers/Brokers) and foreign buyers are strictly rejected.
+         */
+        get: operations["rfqs_comparison_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rfqs/{rfq_id}/decision-runs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve latest DecisionRun for an RFQ
+         * @description Retrieves the most recent DecisionRun for the specified RFQ. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins. Returns 404 if no DecisionRun has been executed for this RFQ yet.
+         */
+        get: operations["rfqs_decision_runs_retrieve"];
+        put?: never;
+        /**
+         * Create DecisionRun foundation for an RFQ
+         * @description Initiate an immutable DecisionRun foundation for the specified RFQ. Materializes current submitted OfferVersions as DecisionCandidates and computes a deterministic canonical input fingerprint. Authorized exclusively for the RFQ's Buyer organization and platform Operators/Admins.
+         */
+        post: operations["rfqs_decision_runs_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trade-hub/rfqs/": {
         parameters: {
             query?: never;
@@ -1135,6 +1915,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/trade-hub/rfqs/{rfq_id}/comparison/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Commercial comparison of submitted offers for an RFQ
+         * @description Retrieves the commercial comparison of all currently active submitted offers for an RFQ. Evaluates only Offer.current_submitted_version for each offer thread. Excludes unsubmitted drafts and older versions. Reuses T0805 normalisation engine and derives quantity coverage and surplus. Authorized exclusively for the RFQ's Buyer organization members and platform Operators/Admins. Competitor participants (Suppliers/Brokers) and foreign buyers are strictly rejected.
+         */
+        get: operations["trade_hub_rfqs_comparison_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trade-hub/rfqs/{rfq_id}/invitations/": {
         parameters: {
             query?: never;
@@ -1233,6 +2033,46 @@ export interface paths {
         get: operations["trade_hub_rfqs_invitations_me_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/offers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List offers for an RFQ
+         * @description Lists all submitted offers for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins.
+         */
+        get: operations["trade_hub_rfqs_offers_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/trade-hub/rfqs/{rfq_id}/offers/operator-submission/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit external supplier offer on behalf (Operator action)
+         * @description Enters an external supplier quote from a Qualified Supply Opportunity onto an RFQ. Authorized exclusively for platform Operators and Product Admins (via SystemRoleAssignment). Buyer, Supplier, Broker organizations and staff/superuser without product roles are rejected. Guarantees atomic execution, derives external economic party from the Opportunity, enforces RFQ deadline and lifecycle, dynamic specification schema lock, and immutability.
+         */
+        post: operations["trade_hub_rfqs_offers_operator_submission_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1389,6 +2229,147 @@ export interface components {
          * @enum {string}
          */
         AudienceEnum: "BUYER" | "OPERATOR";
+        /** @description Payload for adding an allocation to a Draft Award. */
+        AwardAllocationCreateRequest: {
+            /**
+             * Format: uuid
+             * @description UUID of the exact current submitted OfferVersion to allocate.
+             */
+            offer_version_id: string;
+            /**
+             * Format: decimal
+             * @description Commercial quantity to award (must be > 0 and <= offered quantity).
+             */
+            awarded_quantity: string;
+            /** @description Unit of measurement (optional, defaults to OfferVersion unit). */
+            quantity_unit?: string;
+            /** @description Expected aggregate version of the Award for optimistic locking. */
+            expected_version: number;
+        };
+        /** @description Authoritative read projection for an AwardAllocation (Contract §64, T0813). */
+        AwardAllocationResponse: {
+            /**
+             * Format: uuid
+             * @description Allocation UUID.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Parent Award UUID.
+             */
+            award_id: string;
+            /**
+             * Format: uuid
+             * @description Parent Offer UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Selected OfferVersion UUID.
+             */
+            offer_version_id: string;
+            /** @description Sequential version number of the selected OfferVersion. */
+            readonly offer_version_number: number | null;
+            /**
+             * Format: decimal
+             * @description Offered unit price.
+             */
+            readonly unit_price: string;
+            /** @description Currency code. */
+            readonly currency: string;
+            /**
+             * Format: decimal
+             * @description Total offered quantity in snapshot.
+             */
+            readonly offered_quantity: string;
+            /**
+             * Format: decimal
+             * @description Awarded commercial quantity.
+             */
+            readonly awarded_quantity: string;
+            /** @description Commercial unit of measurement. */
+            readonly quantity_unit: string;
+            /** @description Safe counterparty display name. */
+            readonly counterparty_name: string;
+            /** @description Whether this allocation belongs to an external counterparty offer. */
+            readonly is_external: boolean;
+            /**
+             * Format: date-time
+             * @description Allocation creation timestamp.
+             */
+            readonly created_at: string;
+        };
+        /** @description Payload for creating a Draft Award aggregate on an RFQ. */
+        AwardCreateRequest: {
+            /**
+             * Format: uuid
+             * @description Target RFQ UUID (optional if provided in route path).
+             */
+            rfq_id?: string;
+        };
+        /** @description Authoritative read projection for an Award aggregate (Contract §63, T0813). */
+        AwardDetailResponse: {
+            /**
+             * Format: uuid
+             * @description Award UUID.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Target RFQ UUID.
+             */
+            rfq_id: string;
+            /**
+             * Format: decimal
+             * @description RFQ requested procurement quantity.
+             */
+            readonly rfq_quantity: string;
+            /** @description RFQ procurement unit of measurement. */
+            readonly rfq_unit: string;
+            /** @description Lifecycle status of the award: DRAFT or FINALIZED. */
+            status: string;
+            /** @description Optimistic concurrency aggregate version counter. */
+            version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the platform user who created the draft award.
+             */
+            created_by_id: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the draft award was created.
+             */
+            created_at: string;
+            /**
+             * Format: uuid
+             * @description UUID of the platform user who finalized the award.
+             */
+            finalized_by_id: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when the award was finalized.
+             */
+            finalized_at: string | null;
+            /** @description Commercial allocations contained within this award. */
+            readonly allocations: components["schemas"]["AwardAllocationResponse"][];
+            /**
+             * Format: double
+             * @description Sum of all awarded quantities across allocations.
+             */
+            readonly total_awarded_quantity: number;
+            /**
+             * Format: double
+             * @description RFQ requested quantity minus total awarded quantity.
+             */
+            readonly remaining_quantity: number;
+            /** @description True if total awarded quantity exactly equals RFQ requested quantity. */
+            readonly is_fully_allocated: boolean;
+        };
+        /** @description Payload for authoritatively finalizing an Award. */
+        AwardFinalizeRequest: {
+            /** @description Expected aggregate version of the Award for optimistic locking. */
+            expected_version: number;
+        };
         /**
          * @description * `SUPPLY_LISTING` - Supply Listing
          *     * `SUPPLY_OPPORTUNITY` - Supply Opportunity
@@ -1439,6 +2420,13 @@ export interface components {
             name_en: string;
             is_active?: boolean;
         };
+        /**
+         * @description * `draft` - Draft
+         *     * `published` - Published
+         *     * `retired` - Retired
+         * @enum {string}
+         */
+        CommoditySchemaStatusEnum: "draft" | "published" | "retired";
         CommoditySchemaVersion: {
             /** Format: uuid */
             readonly id: string;
@@ -1446,16 +2434,130 @@ export interface components {
             readonly commodity_id: string;
             /** @description Version number (e.g., 1, 2) */
             version: number;
-            status?: components["schemas"]["CommoditySchemaVersionStatusEnum"];
+            status?: components["schemas"]["CommoditySchemaStatusEnum"];
             readonly attributes: components["schemas"]["CommodityAttributeDefinition"][];
         };
         /**
-         * @description * `draft` - Draft
-         *     * `published` - Published
-         *     * `retired` - Retired
-         * @enum {string}
+         * @description Typed, safe commercial comparison row for Buyer and Operator procurement intelligence (T0806).
+         *
+         *     Invariants:
+         *     - Never exposes private external contact details (phone, email, contact_name, notes).
+         *     - Uses exact Decimal arithmetic/representations; never binary float.
+         *     - Zero decision scoring or recommendation bias.
          */
-        CommoditySchemaVersionStatusEnum: "draft" | "published" | "retired";
+        ComparisonRow: {
+            /**
+             * Format: uuid
+             * @description Stable Offer thread UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Exact current submitted OfferVersion UUID.
+             */
+            offer_version_id: string;
+            /** @description Submitted version number. */
+            version_number: number;
+            /** @description Safe commercial identity of the offering party. */
+            safe_offeror_identity: string;
+            /** @description Safe display name of the offering party. */
+            offeror_name: string;
+            /** @description Whether offer is from an off-platform external supplier. */
+            is_external: boolean;
+            /** @description Commercial role (SUPPLIER or BROKER). */
+            offeror_role: string;
+            /**
+             * Format: decimal
+             * @description Proposed commercial quantity.
+             */
+            offered_quantity: string;
+            /** @description Unit of measurement. */
+            quantity_unit: string;
+            /**
+             * Format: decimal
+             * @description Quantity coverage ratio min(offered / requested, 1.0).
+             */
+            quantity_coverage: string;
+            /**
+             * Format: decimal
+             * @description Surplus quantity max(offered - requested, 0.0).
+             */
+            surplus_quantity: string;
+            /**
+             * Format: decimal
+             * @description Proposed unit price.
+             */
+            unit_price: string;
+            /** @description ISO 4217 3-letter currency code. */
+            currency: string;
+            /**
+             * Format: decimal
+             * @description Product cost derived from unit_price * offered_quantity.
+             */
+            product_cost: string;
+            /**
+             * Format: decimal
+             * @description Sum of known cost components.
+             */
+            known_cost_total: string;
+            /**
+             * Format: decimal
+             * @description Landed cost if logistics is known; null if UNKNOWN.
+             */
+            landed_cost: string | null;
+            /**
+             * Format: decimal
+             * @description Landed unit cost if logistics is known; null if UNKNOWN.
+             */
+            landed_unit_cost: string | null;
+            /** @description Whether normalisation has complete cost evidence. */
+            normalization_complete: boolean;
+            /** @description List of missing required cost components. */
+            missing_components: string[];
+            /**
+             * @description Structured cost comparability status.
+             *
+             *     * `COMPARABLE` - COMPARABLE
+             *     * `CROSS_CURRENCY_UNKNOWN` - CROSS_CURRENCY_UNKNOWN
+             *     * `INCOMPLETE_COST` - INCOMPLETE_COST
+             */
+            cost_comparability: components["schemas"]["CostComparabilityEnum"];
+            /** @description Proposed payment terms. */
+            payment_terms: string;
+            /** @description Proposed delivery terms. */
+            delivery_terms: string;
+            /** @description Incoterm code. */
+            incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest delivery date.
+             */
+            delivery_start: string | null;
+            /**
+             * Format: date
+             * @description Latest delivery date.
+             */
+            delivery_end: string | null;
+            /**
+             * Format: date-time
+             * @description Proposal validity timestamp.
+             */
+            valid_until: string | null;
+            /** @description Whether proposal validity has expired. */
+            is_expired: boolean;
+            /**
+             * @description Dynamic commodity specification compliance outcome.
+             *
+             *     * `PASS` - PASS
+             *     * `FAIL` - FAIL
+             *     * `UNKNOWN` - UNKNOWN
+             */
+            technical_compliance: components["schemas"]["TechnicalComplianceEnum"];
+            /** @description Authoritative verification status or UNKNOWN. */
+            trust_status: string;
+            /** @description Current optimistic concurrency aggregate_version of the parent Offer. */
+            aggregate_version: number;
+        };
         /**
          * @description * `CALL` - Call
          *     * `MESSAGE` - Message
@@ -1465,6 +2567,13 @@ export interface components {
          * @enum {string}
          */
         ContactAttemptTypeEnum: "CALL" | "MESSAGE" | "EMAIL" | "MEETING" | "NOTE";
+        /**
+         * @description * `COMPARABLE` - COMPARABLE
+         *     * `CROSS_CURRENCY_UNKNOWN` - CROSS_CURRENCY_UNKNOWN
+         *     * `INCOMPLETE_COST` - INCOMPLETE_COST
+         * @enum {string}
+         */
+        CostComparabilityEnum: "COMPARABLE" | "CROSS_CURRENCY_UNKNOWN" | "INCOMPLETE_COST";
         CsrfViewResponse: {
             detail: string;
         };
@@ -1477,6 +2586,159 @@ export interface components {
          * @enum {string}
          */
         DataTypeEnum: "string" | "number" | "integer" | "boolean" | "enum";
+        /** @description Representation of an evaluated candidate within a DecisionRun (T0808, T0809). */
+        DecisionCandidateResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent offer negotiation thread UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Exact evaluated OfferVersion snapshot UUID.
+             */
+            offer_version_id: string;
+            /** @description Version number of evaluated OfferVersion. */
+            readonly version_number: number;
+            /**
+             * Format: decimal
+             * @description Weighted decision score percentage [0.00, 100.00] (Contract §47).
+             */
+            readonly decision_score: string | null;
+            /**
+             * Format: decimal
+             * @description Evidence coverage percentage [0.00, 100.00] (Contract §48).
+             */
+            readonly evidence_coverage: string | null;
+            /**
+             * Format: decimal
+             * @description Effective decision score percentage [0.00, 100.00] (Contract §49).
+             */
+            readonly effective_score: string | null;
+            /** @description Award eligibility gate outcome. None indicates unevaluated prior to T0809 hard conditions. */
+            readonly award_eligible: boolean | null;
+            /** @description Structured machine-readable exclusion reason codes if not award-eligible. */
+            readonly eligibility_reasons: unknown;
+            /** @description Deterministic rank position (positive integer >= 1) among evaluated candidates. */
+            readonly rank: number | null;
+            /** @description Whether this candidate is the single recommended offer for award under the evaluated policy. */
+            readonly is_recommended: boolean;
+            readonly signals: components["schemas"]["DecisionSignalResponse"][];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `COST` - Cost
+         *     * `QUALITY` - Quality
+         *     * `DELIVERY` - Delivery
+         *     * `PAYMENT` - Payment
+         *     * `TRUST` - Trust
+         *     * `COMPLETENESS` - Completeness
+         * @enum {string}
+         */
+        DecisionDimensionEnum: "COST" | "QUALITY" | "DELIVERY" | "PAYMENT" | "TRUST" | "COMPLETENESS";
+        /** @description Optional payload for initiating a DecisionRun foundation (T0808). */
+        DecisionRunCreateRequest: {
+            /**
+             * Format: uuid
+             * @description Optional exact Published DecisionProfileVersion UUID. Defaults to current default Published v1.
+             */
+            profile_version_id?: string | null;
+        };
+        /** @description Authoritative response envelope for a DecisionRun audit and execution record (T0808, T0809). */
+        DecisionRunDetailResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Target RFQ UUID.
+             */
+            rfq_id: string;
+            /**
+             * Format: uuid
+             * @description Evaluated DecisionProfileVersion UUID.
+             */
+            profile_version_id: string;
+            /** @description Evaluated policy profile code. */
+            readonly profile_code: string;
+            /** @description Evaluated policy version number. */
+            readonly profile_version_number: number;
+            /** @description Centralized semantic decision engine contract version. */
+            readonly engine_version: string;
+            /** @description Authenticated Buyer or Operator actor who initiated the decision run. */
+            readonly created_by_id: number | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when the decision run was initiated.
+             */
+            readonly created_at: string;
+            /** @description SHA-256 fingerprint of the canonical decision inputs. */
+            readonly input_fingerprint: string;
+            /** @description SHA-256 fingerprint of the decision results (reserved for T0809). */
+            readonly result_fingerprint: string;
+            /** @description Total number of evaluated candidates. */
+            readonly total_candidates: number;
+            /** @description Whether evaluated candidate universe differs from current RFQ submitted offers (Contract §80). */
+            readonly is_stale: boolean;
+            /** @description UUID of the recommended DecisionCandidate, or null if none met recommendation threshold. */
+            readonly recommended_candidate_id: string | null;
+            readonly candidates: components["schemas"]["DecisionCandidateResponse"][];
+        };
+        /** @description Representation of an evaluated signal within a DecisionCandidate (T0809). */
+        DecisionSignalResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * @description Evaluation dimension (COST, QUALITY, DELIVERY, PAYMENT, TRUST, COMPLETENESS).
+             *
+             *     * `COST` - Cost
+             *     * `QUALITY` - Quality
+             *     * `DELIVERY` - Delivery
+             *     * `PAYMENT` - Payment
+             *     * `TRUST` - Trust
+             *     * `COMPLETENESS` - Completeness
+             */
+            readonly dimension: components["schemas"]["DecisionDimensionEnum"];
+            /** @description Machine-readable rule or signal code (e.g. 'cost.landed_unit_cost'). */
+            readonly code: string;
+            /**
+             * @description Structured outcome: PASS, PARTIAL, FAIL, UNKNOWN, NOT_APPLICABLE.
+             *
+             *     * `PASS` - Pass
+             *     * `PARTIAL` - Partial
+             *     * `FAIL` - Fail
+             *     * `UNKNOWN` - Unknown
+             *     * `NOT_APPLICABLE` - Not Applicable
+             */
+            readonly status: components["schemas"]["MatchingSignalResponseOutcomeEnum"];
+            /**
+             * Format: decimal
+             * @description Dimension or signal weight percentage (>= 0).
+             */
+            readonly weight: string | null;
+            /**
+             * Format: decimal
+             * @description Normalized score in [0.0000, 1.0000] for known evaluation. Null for UNKNOWN/NOT_APPLICABLE.
+             */
+            readonly raw_score: string | null;
+            /**
+             * Format: decimal
+             * @description Weighted contribution towards candidate score (>= 0).
+             */
+            readonly contribution: string | null;
+            /** @description Structured JSONB representing target RFQ expectation. */
+            readonly expected_value: unknown;
+            /** @description Structured JSONB representing candidate actual commercial proposal. */
+            readonly actual_value: unknown;
+            /** @description Machine-readable reason code (never localized text). */
+            readonly reason_code: string;
+            /** @description Sanitized decision-relevant facts. Strictly excludes private CRM/contact data. */
+            readonly snapshot_data: unknown;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
         DemoPersonaSwitcherRequest: {
             persona: components["schemas"]["PersonaEnum"];
         };
@@ -1646,6 +2908,12 @@ export interface components {
             readonly notes: components["schemas"]["VerificationNote"][];
         };
         /**
+         * @description * `LOGISTICS` - Logistics
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        KindEnum: "LOGISTICS" | "OTHER";
+        /**
          * @description * `DIRECT_SUPPLY` - Direct Supply
          *     * `POTENTIAL_SUPPLIER` - Potential Supplier
          *     * `BROKER_PATH` - Broker Path
@@ -1657,6 +2925,14 @@ export interface components {
             email: string;
             password: string;
         };
+        /**
+         * @description * `KNOWN_SEPARATE` - Known Separate
+         *     * `INCLUDED_IN_PRICE` - Included in Price
+         *     * `NOT_APPLICABLE` - Not Applicable
+         *     * `UNKNOWN` - Unknown
+         * @enum {string}
+         */
+        LogisticsCostStatusEnum: "KNOWN_SEPARATE" | "INCLUDED_IN_PRICE" | "NOT_APPLICABLE" | "UNKNOWN";
         /**
          * @description Audience-safe matching candidate projection.
          *
@@ -1821,6 +3097,376 @@ export interface components {
         MatchingSignalResponseOutcomeEnum: "PASS" | "PARTIAL" | "FAIL" | "UNKNOWN" | "NOT_APPLICABLE";
         /** @enum {unknown} */
         NullEnum: null;
+        /** @description Input payload for a child cost component. */
+        OfferCostComponentInput: {
+            kind: components["schemas"]["KindEnum"];
+            /** Format: decimal */
+            amount: string;
+            /** @default USD */
+            currency: string;
+            /** @default  */
+            description: string;
+        };
+        /** @description Immutable cost component line item. */
+        OfferCostComponentResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * @description Cost component kind (LOGISTICS or OTHER).
+             *
+             *     * `LOGISTICS` - Logistics
+             *     * `OTHER` - Other
+             */
+            readonly kind: components["schemas"]["KindEnum"];
+            /**
+             * Format: decimal
+             * @description Cost amount (strictly positive).
+             */
+            readonly amount: string;
+            /** @description ISO 4217 3-letter currency code (must equal OfferVersion currency). */
+            readonly currency: string;
+            /** @description Description or itemization notes for this cost component. */
+            readonly description: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description Standardized error response payload. */
+        OfferErrorResponse: {
+            /** @description High-level error description. */
+            detail: string;
+            /** @description Optional list of error messages or validation details. */
+            errors?: string[];
+        };
+        /** @description Authoritative read projection for an Offer's negotiation history (T0812, Contract §56). */
+        OfferNegotiationHistoryResponse: {
+            /**
+             * Format: uuid
+             * @description Offer UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description RFQ UUID.
+             */
+            rfq_id: string;
+            /** @description Role: SUPPLIER or BROKER. */
+            offeror_role: string;
+            /** @description Safe display name of the offering party. */
+            counterparty_name: string;
+            /** @description Whether offer is an external counterparty quote. */
+            is_external: boolean;
+            /** @description Whether offer was entered by a platform Operator. */
+            entered_by_operator: boolean;
+            /** @description Current optimistic concurrency version. */
+            aggregate_version: number;
+            /**
+             * Format: uuid
+             * @description Current submitted OfferVersion UUID.
+             */
+            current_submitted_version_id: string | null;
+            /** @description Historical CommoditySchemaVersion bound to the RFQ. */
+            schema: components["schemas"]["CommoditySchemaVersion"];
+            /** @description Chronological submitted OfferVersions. */
+            versions: components["schemas"]["OfferVersionHistory"][];
+            /** @description Chronological formal RevisionRequests. */
+            revision_requests: components["schemas"]["RevisionRequestHistory"][];
+        };
+        /** @description Structured representation of an OfferVersion in negotiation history (T0812). */
+        OfferVersionHistory: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent offer aggregate.
+             */
+            readonly offer_id: string;
+            /** @description Authoritative server-allocated sequential version number (1, 2, ...). */
+            readonly version_number: number;
+            /**
+             * @description Lifecycle status: DRAFT or SUBMITTED.
+             *
+             *     * `DRAFT` - Draft
+             *     * `SUBMITTED` - Submitted
+             */
+            readonly status: components["schemas"]["OfferVersionStatusEnum"];
+            /**
+             * Format: uuid
+             * @description Exact schema version bound to the parent RFQ.
+             */
+            readonly schema_version_id: string;
+            /** @description Dynamic specification attributes validated against schema_version. */
+            readonly specifications: unknown;
+            /**
+             * Format: decimal
+             * @description Proposed quantity (strictly positive; partial or surplus allowed).
+             */
+            readonly offered_quantity: string;
+            /** @description Unit of measurement (must be compatible with RFQ unit). */
+            readonly quantity_unit: string;
+            /**
+             * Format: decimal
+             * @description Proposed price per unit (strictly positive).
+             */
+            readonly unit_price: string;
+            /** @description ISO 4217 3-letter currency code (exact submitted truth; no FX). */
+            readonly currency: string;
+            /** @description Proposed payment terms (e.g. LC at sight, TT 30 days). */
+            readonly payment_terms: string;
+            /** @description Proposed delivery conditions or freight details. */
+            readonly delivery_terms: string;
+            /** @description Incoterm code (e.g. FOB, CIF, CFR, EXW). */
+            readonly incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest proposed delivery date.
+             */
+            readonly delivery_start: string | null;
+            /**
+             * Format: date
+             * @description Latest proposed delivery date.
+             */
+            readonly delivery_end: string | null;
+            /**
+             * Format: date-time
+             * @description Proposal validity timestamp (expiry derived, not mutated).
+             */
+            readonly valid_until: string | null;
+            /**
+             * @description Status of logistics cost knowledge.
+             *
+             *     * `KNOWN_SEPARATE` - Known Separate
+             *     * `INCLUDED_IN_PRICE` - Included in Price
+             *     * `NOT_APPLICABLE` - Not Applicable
+             *     * `UNKNOWN` - Unknown
+             */
+            readonly logistics_cost_status: components["schemas"]["LogisticsCostStatusEnum"];
+            /**
+             * Format: decimal
+             * @description Separate logistics cost amount (required if KNOWN_SEPARATE; absent otherwise).
+             */
+            readonly logistics_cost_amount: string | null;
+            /** @description Commercial notes or comments accompanying the version. */
+            readonly notes: string;
+            readonly cost_components: components["schemas"]["OfferCostComponentResponse"][];
+            /** @description Platform user who submitted this version. */
+            readonly submitted_by_id: number | null;
+            /** @description Display name or role of the user who submitted this version. */
+            readonly submitted_by_name: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when version was submitted.
+             */
+            readonly submitted_at: string | null;
+            /** @description Platform user who created this version draft. */
+            readonly created_by_id: number;
+            /** @description Display name or role of the user who created this version draft. */
+            readonly created_by_name: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** @description Current optimistic concurrency aggregate_version of the parent Offer. */
+            readonly aggregate_version: number;
+            /** @description Whether this version was entered by an Operator on behalf of an external party. */
+            readonly entered_by_operator: boolean;
+        };
+        /** @description Structured representation of an OfferVersion commercial snapshot. */
+        OfferVersionResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent offer aggregate.
+             */
+            readonly offer_id: string;
+            /** @description Authoritative server-allocated sequential version number (1, 2, ...). */
+            readonly version_number: number;
+            /**
+             * @description Lifecycle status: DRAFT or SUBMITTED.
+             *
+             *     * `DRAFT` - Draft
+             *     * `SUBMITTED` - Submitted
+             */
+            readonly status: components["schemas"]["OfferVersionStatusEnum"];
+            /**
+             * Format: uuid
+             * @description Exact schema version bound to the parent RFQ.
+             */
+            readonly schema_version_id: string;
+            /** @description Dynamic specification attributes validated against schema_version. */
+            readonly specifications: unknown;
+            /**
+             * Format: decimal
+             * @description Proposed quantity (strictly positive; partial or surplus allowed).
+             */
+            readonly offered_quantity: string;
+            /** @description Unit of measurement (must be compatible with RFQ unit). */
+            readonly quantity_unit: string;
+            /**
+             * Format: decimal
+             * @description Proposed price per unit (strictly positive).
+             */
+            readonly unit_price: string;
+            /** @description ISO 4217 3-letter currency code (exact submitted truth; no FX). */
+            readonly currency: string;
+            /** @description Proposed payment terms (e.g. LC at sight, TT 30 days). */
+            readonly payment_terms: string;
+            /** @description Proposed delivery conditions or freight details. */
+            readonly delivery_terms: string;
+            /** @description Incoterm code (e.g. FOB, CIF, CFR, EXW). */
+            readonly incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest proposed delivery date.
+             */
+            readonly delivery_start: string | null;
+            /**
+             * Format: date
+             * @description Latest proposed delivery date.
+             */
+            readonly delivery_end: string | null;
+            /**
+             * Format: date-time
+             * @description Proposal validity timestamp (expiry derived, not mutated).
+             */
+            readonly valid_until: string | null;
+            /**
+             * @description Status of logistics cost knowledge.
+             *
+             *     * `KNOWN_SEPARATE` - Known Separate
+             *     * `INCLUDED_IN_PRICE` - Included in Price
+             *     * `NOT_APPLICABLE` - Not Applicable
+             *     * `UNKNOWN` - Unknown
+             */
+            readonly logistics_cost_status: components["schemas"]["LogisticsCostStatusEnum"];
+            /**
+             * Format: decimal
+             * @description Separate logistics cost amount (required if KNOWN_SEPARATE; absent otherwise).
+             */
+            readonly logistics_cost_amount: string | null;
+            /** @description Commercial notes or comments accompanying the version. */
+            readonly notes: string;
+            readonly cost_components: components["schemas"]["OfferCostComponentResponse"][];
+            /** @description Platform user who submitted this version. */
+            readonly submitted_by_id: number | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when version was submitted.
+             */
+            readonly submitted_at: string | null;
+            /** @description Platform user who created this version draft. */
+            readonly created_by_id: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+            /** @description Current optimistic concurrency aggregate_version of the parent Offer. */
+            readonly aggregate_version: number;
+        };
+        /**
+         * @description * `DRAFT` - Draft
+         *     * `SUBMITTED` - Submitted
+         * @enum {string}
+         */
+        OfferVersionStatusEnum: "DRAFT" | "SUBMITTED";
+        /** @description Payload for submitting a Draft OfferVersion. */
+        OfferVersionSubmitAction: {
+            /** @description Expected aggregate_version of the parent Offer for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description Optional RevisionRequest UUID if this submission is resolving an open revision request.
+             */
+            revision_request?: string | null;
+        };
+        /** @description Authoritative payload for Operator submission of an external quote on behalf. */
+        OperatorExternalOfferSubmission: {
+            /**
+             * Format: uuid
+             * @description Target RFQ ID to which the offer will be submitted.
+             */
+            rfq_id: string;
+            /** @description UUID or human-readable identifier (OPP-...) of the Qualified Supply Opportunity. */
+            opportunity_id: string;
+            /**
+             * Format: decimal
+             * @description Proposed commercial quantity (must be strictly positive).
+             */
+            offered_quantity: string;
+            /** @description Unit of measurement (must be compatible with RFQ unit). */
+            quantity_unit: string;
+            /**
+             * Format: decimal
+             * @description Proposed unit price (must be strictly positive).
+             */
+            unit_price: string;
+            /**
+             * @description ISO 4217 3-letter currency code.
+             * @default USD
+             */
+            currency: string;
+            /**
+             * @description Proposed payment terms.
+             * @default
+             */
+            payment_terms: string;
+            /**
+             * @description Proposed delivery terms.
+             * @default
+             */
+            delivery_terms: string;
+            /**
+             * @description Incoterm code.
+             * @default
+             */
+            incoterm: string;
+            /**
+             * Format: date
+             * @description Earliest proposed delivery date.
+             */
+            delivery_start?: string | null;
+            /**
+             * Format: date
+             * @description Latest proposed delivery date.
+             */
+            delivery_end?: string | null;
+            /**
+             * Format: date-time
+             * @description Offer validity timestamp.
+             */
+            valid_until?: string | null;
+            /**
+             * @description Status of logistics cost knowledge.
+             *
+             *     * `KNOWN_SEPARATE` - Known Separate
+             *     * `INCLUDED_IN_PRICE` - Included in Price
+             *     * `NOT_APPLICABLE` - Not Applicable
+             *     * `UNKNOWN` - Unknown
+             * @default UNKNOWN
+             */
+            logistics_cost_status: components["schemas"]["LogisticsCostStatusEnum"];
+            /**
+             * Format: decimal
+             * @description Separate logistics cost amount (required if KNOWN_SEPARATE).
+             */
+            logistics_cost_amount?: string | null;
+            /** @description Dynamic commodity specifications validated against RFQ schema. */
+            specifications?: unknown;
+            /**
+             * @description Commercial notes.
+             * @default
+             */
+            notes: string;
+            /** @description Optional cost component breakdown items. */
+            cost_components?: components["schemas"]["OfferCostComponentInput"][];
+            /**
+             * Format: uuid
+             * @description Optional external counterparty ID (must match Opportunity external counterparty).
+             */
+            external_counterparty_id?: string | null;
+            /** @description Optional optimistic concurrency aggregate_version if an Offer parent already exists. */
+            expected_version?: number | null;
+        };
         /** @description Safe projection of CommodityDefinition for Opportunity consumers. */
         OpportunityCommodityProjection: {
             /** Format: uuid */
@@ -2597,6 +4243,16 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["OpportunityDetail"][];
         };
+        /** @description Payload for updating quantity of an existing AwardAllocation. */
+        PatchedAwardAllocationUpdateRequest: {
+            /**
+             * Format: decimal
+             * @description Updated awarded commercial quantity.
+             */
+            awarded_quantity?: string;
+            /** @description Expected aggregate version of the Award for optimistic locking. */
+            expected_version?: number;
+        };
         /**
          * @description Explicit serializer for ExternalCounterparty.
          *
@@ -3062,6 +4718,29 @@ export interface components {
             /** @description Current aggregate version counter for optimistic concurrency control. */
             expected_version: number;
         };
+        /** @description Authoritative response envelope for RFQ commercial comparison (T0806). */
+        RFQComparisonResponse: {
+            /**
+             * Format: uuid
+             * @description Target RFQ UUID.
+             */
+            rfq_id: string;
+            /**
+             * Format: decimal
+             * @description RFQ requested procurement quantity.
+             */
+            rfq_quantity: string;
+            /** @description RFQ unit of measurement. */
+            rfq_unit: string;
+            /** @description RFQ currency. */
+            rfq_currency: string;
+            /** @description Total number of active submitted offers compared. */
+            total_offers: number;
+            /** @description List of compared offers. */
+            items: components["schemas"]["ComparisonRow"][];
+            /** @description List of compared offers (alias of items). */
+            offers: components["schemas"]["ComparisonRow"][];
+        };
         /** @description Payload for creating a new Draft RFQ. */
         RFQCreate: {
             /**
@@ -3429,6 +5108,180 @@ export interface components {
          */
         RFQVisibilityEnum: "private" | "network" | "public";
         /**
+         * @description * `unit_price` - Unit Price
+         *     * `offered_quantity` - Offered Quantity
+         *     * `payment_terms` - Payment Terms
+         *     * `delivery_terms` - Delivery Terms
+         *     * `incoterm` - Incoterm
+         *     * `delivery_start` - Delivery Start
+         *     * `delivery_end` - Delivery End
+         *     * `valid_until` - Valid Until
+         *     * `specifications` - Dynamic Specifications
+         *     * `logistics_cost_amount` - Logistics Cost Amount
+         *     * `notes` - Commercial Notes
+         * @enum {string}
+         */
+        RequestedFieldsEnum: "unit_price" | "offered_quantity" | "payment_terms" | "delivery_terms" | "incoterm" | "delivery_start" | "delivery_end" | "valid_until" | "specifications" | "logistics_cost_amount" | "notes";
+        /** @description Payload for declining or cancelling an open RevisionRequest (T0810). */
+        RevisionRequestAction: {
+            /** @description Expected Offer aggregate_version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /** @description Request payload for opening a RevisionRequest against an Offer (T0810, Contract §56). */
+        RevisionRequestCreate: {
+            /** @description Expected Offer aggregate_version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the submitted OfferVersion serving as the revision base.
+             */
+            base_offer_version: string;
+            /** @description Canonical list of field names requested for revision. */
+            requested_fields: components["schemas"]["RequestedFieldsEnum"][];
+            /**
+             * @description Optional human-readable explanation or negotiation guidance.
+             * @default
+             */
+            message: string;
+        };
+        /** @description Payload for creating a Draft OfferVersion from an OPEN RevisionRequest (T0811). */
+        RevisionRequestDraftCreate: {
+            /** @description Expected Offer aggregate_version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /** @description Authoritative representation of a RevisionRequest in negotiation history (T0812). */
+        RevisionRequestHistory: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent Offer UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Base OfferVersion UUID.
+             */
+            base_offer_version_id: string;
+            /** @description Version number of the base OfferVersion. */
+            readonly base_version_number: number;
+            /** @description Canonical list of field names requested for revision. */
+            readonly requested_fields: unknown;
+            /** @description Human-entered revision explanation or instruction. */
+            readonly message: string;
+            /**
+             * Format: uuid
+             * @description User UUID who created the request.
+             */
+            requested_by_id: string;
+            /** @description Display name or role label of the requester. */
+            readonly requested_by_name: string;
+            /** @description Role of the requester: BUYER or OPERATOR. */
+            readonly requested_by_role: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when revision request was created.
+             */
+            readonly requested_at: string;
+            /**
+             * @description Revision request lifecycle status: OPEN, RESOLVED, DECLINED, CANCELLED.
+             *
+             *     * `OPEN` - Open
+             *     * `RESOLVED` - Resolved
+             *     * `DECLINED` - Declined
+             *     * `CANCELLED` - Cancelled
+             */
+            readonly status: components["schemas"]["RevisionRequestStatusEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of resolving OfferVersion.
+             */
+            resolved_by_version_id?: string | null;
+            /** @description Version number of resolving OfferVersion. */
+            readonly resolved_version_number: number | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when request was resolved, declined, or cancelled.
+             */
+            readonly resolved_at: string | null;
+            /** @description Current aggregate_version of the parent Offer. */
+            readonly offer_aggregate_version: number;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Authoritative representation of a RevisionRequest record (T0810, Contract §56). */
+        RevisionRequestResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent Offer UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Base OfferVersion UUID.
+             */
+            base_offer_version_id: string;
+            /** @description Version number of the base OfferVersion. */
+            readonly base_version_number: number;
+            /** @description Canonical list of field names requested for revision. */
+            readonly requested_fields: unknown;
+            /** @description Human-entered revision explanation or instruction. */
+            readonly message: string;
+            /**
+             * Format: uuid
+             * @description User UUID who created the request.
+             */
+            requested_by_id: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when revision request was created.
+             */
+            readonly requested_at: string;
+            /**
+             * @description Revision request lifecycle status: OPEN, RESOLVED, DECLINED, CANCELLED.
+             *
+             *     * `OPEN` - Open
+             *     * `RESOLVED` - Resolved
+             *     * `DECLINED` - Declined
+             *     * `CANCELLED` - Cancelled
+             */
+            readonly status: components["schemas"]["RevisionRequestStatusEnum"];
+            /**
+             * Format: uuid
+             * @description UUID of resolving OfferVersion (populated upon resolution in T0811).
+             */
+            resolved_by_version_id?: string | null;
+            /**
+             * Format: date-time
+             * @description Timestamp when request was resolved, declined, or cancelled.
+             */
+            readonly resolved_at: string | null;
+            /** @description Current aggregate_version of the parent Offer. */
+            readonly offer_aggregate_version: number;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `RESOLVED` - Resolved
+         *     * `DECLINED` - Declined
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        RevisionRequestStatusEnum: "OPEN" | "RESOLVED" | "DECLINED" | "CANCELLED";
+        /** @description Payload for submitting a revised Draft OfferVersion and resolving the RevisionRequest (T0811). */
+        RevisionRequestSubmit: {
+            /** @description Expected Offer aggregate_version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: uuid
+             * @description Optional Draft OfferVersion UUID. If omitted, the offer's active draft is submitted.
+             */
+            draft_version_id?: string | null;
+        };
+        /**
          * @description * `broker_referral` - Broker Referral
          *     * `operator_sourcing` - Operator Sourcing
          *     * `buyer_referral` - Buyer Referral
@@ -3788,6 +5641,13 @@ export interface components {
              */
             visibility?: components["schemas"]["RFQVisibilityEnum"];
         };
+        /**
+         * @description * `PASS` - PASS
+         *     * `FAIL` - FAIL
+         *     * `UNKNOWN` - UNKNOWN
+         * @enum {string}
+         */
+        TechnicalComplianceEnum: "PASS" | "FAIL" | "UNKNOWN";
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
@@ -4105,6 +5965,410 @@ export interface operations {
             };
         };
     };
+    award_allocations_destroy: {
+        parameters: {
+            query?: {
+                /** @description Expected aggregate version of parent Award. */
+                expected_version?: number;
+            };
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Allocation successfully deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    award_allocations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAwardAllocationUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_allocations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardAllocationCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award or OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_finalize_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardFinalizeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - already finalized or stale version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_allocations_destroy: {
+        parameters: {
+            query?: {
+                /** @description Expected aggregate version of parent Award. */
+                expected_version?: number;
+            };
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Allocation successfully deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_allocations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAwardAllocationUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     commodities_list: {
         parameters: {
             query?: never;
@@ -4213,6 +6477,48 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
+            };
+        };
+    };
+    decision_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description DecisionRun not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4570,6 +6876,1403 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MatchingErrorResponse"];
                 };
+            };
+        };
+    };
+    offer_versions_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferVersionSubmitAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks submit role or capability */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or concurrent submission race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offer details (Operator or Buyer projection) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_history_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferNegotiationHistoryResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"][];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offer or base OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or already open revision request */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_allocations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardAllocationCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award or OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_finalize_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardFinalizeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - already finalized or stale version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_allocations_destroy: {
+        parameters: {
+            query?: {
+                /** @description Expected aggregate version of parent Award. */
+                expected_version?: number;
+            };
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Allocation successfully deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_allocations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAwardAllocationUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_decision_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description DecisionRun not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_offer_versions_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferVersionSubmitAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks submit role or capability */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or concurrent submission race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_operator_submission_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperatorExternalOfferSubmission"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Operator or Product Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - existing submitted version or concurrency race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestDraftCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version, existing draft, or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_revision_requests_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestSubmit"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest or OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of offers for this RFQ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks access to this RFQ */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_award_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_award_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AwardCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - Award already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_awards_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AwardCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - Award already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_comparison_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQComparisonResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_decision_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or DecisionRun not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_decision_runs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRunCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or DecisionProfileVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_operator_submission_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperatorExternalOfferSubmission"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Operator or Product Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - existing submitted version or concurrency race */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -6808,6 +10511,629 @@ export interface operations {
             };
         };
     };
+    revision_requests_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found or inaccessible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revision_requests_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revision_requests_decline_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestAction"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionRequestResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revision_requests_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestDraftCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version, existing draft, or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revision_requests_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevisionRequestSubmit"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - actor does not represent Offer economic party */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RevisionRequest or OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_award_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_award_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AwardCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - Award already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_awards_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AwardCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - Award already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_comparison_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQComparisonResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_decision_runs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or DecisionRun not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_decision_runs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionRunCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRunDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or DecisionProfileVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     trade_hub_rfqs_list: {
         parameters: {
             query?: {
@@ -7204,6 +11530,48 @@ export interface operations {
             };
         };
     };
+    trade_hub_rfqs_comparison_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RFQComparisonResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks Buyer procurement role or Operator authority */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     trade_hub_rfqs_invitations_list: {
         parameters: {
             query?: never;
@@ -7460,6 +11828,108 @@ export interface operations {
             };
             /** @description No invitation found for current organization */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_offers_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of offers for this RFQ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - lacks access to this RFQ */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    trade_hub_rfqs_offers_operator_submission_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OperatorExternalOfferSubmission"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferVersionResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Operator or Product Admin role required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Opportunity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - existing submitted version or concurrency race */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
