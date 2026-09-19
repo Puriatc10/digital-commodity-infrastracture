@@ -1,3 +1,10 @@
+from offers.services.award_service import (
+    add_award_allocation,
+    create_draft_award,
+    finalize_award,
+    remove_award_allocation,
+    update_award_allocation,
+)
 from offers.services.creation import create_offer
 from offers.services.normalization import (
     CURRENCY_QUANTIZATION,
@@ -75,6 +82,12 @@ __all__ = [
     "create_revised_draft_offer_version",
     "submit_revised_offer_version",
     "authorize_offer_actor",
+    "create_draft_award",
+    "add_award_allocation",
+    "update_award_allocation",
+    "remove_award_allocation",
+    "finalize_award",
 ]
+
 
 

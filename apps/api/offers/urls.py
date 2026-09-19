@@ -1,12 +1,17 @@
 from django.urls import path
 
 from offers.api.views import (
+    AwardAllocationCreateView,
+    AwardAllocationDetailView,
+    AwardDetailView,
+    AwardFinalizeView,
     DecisionRunDetailView,
     OfferDetailView,
     OfferNegotiationHistoryView,
     OfferRevisionRequestCreateView,
     OfferVersionSubmitActionView,
     OperatorExternalOfferSubmissionActionView,
+    RFQAwardDetailView,
     RFQComparisonView,
     RFQDecisionRunCreateView,
     RFQOffersListView,
@@ -96,5 +101,36 @@ urlpatterns = [
         RevisionRequestSubmitView.as_view(),
         name="revision-request-submit",
     ),
+    path(
+        "rfqs/<uuid:rfq_id>/awards/",
+        RFQAwardDetailView.as_view(),
+        name="rfq-awards",
+    ),
+    path(
+        "rfqs/<uuid:rfq_id>/award/",
+        RFQAwardDetailView.as_view(),
+        name="rfq-award",
+    ),
+    path(
+        "awards/<uuid:award_id>/",
+        AwardDetailView.as_view(),
+        name="award-detail",
+    ),
+    path(
+        "awards/<uuid:award_id>/allocations/",
+        AwardAllocationCreateView.as_view(),
+        name="award-allocations",
+    ),
+    path(
+        "awards/allocations/<uuid:allocation_id>/",
+        AwardAllocationDetailView.as_view(),
+        name="award-allocation-detail",
+    ),
+    path(
+        "awards/<uuid:award_id>/finalize/",
+        AwardFinalizeView.as_view(),
+        name="award-finalize",
+    ),
 ]
+
 
