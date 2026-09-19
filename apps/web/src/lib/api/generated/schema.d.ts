@@ -84,6 +84,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/award-allocations/{allocation_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete AwardAllocation
+         * @description Deletes an allocation from a Draft Award. Requires expected_version matching the parent Award version (provided in query or body).
+         */
+        delete: operations["award_allocations_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Update AwardAllocation quantity
+         * @description Updates the awarded quantity of an existing allocation in a Draft Award. Requires expected_version matching the parent Award version.
+         */
+        patch: operations["award_allocations_partial_update"];
+        trace?: never;
+    };
+    "/api/awards/{award_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award by ID
+         * @description Retrieves an Award aggregate and its allocations by UUID.
+         */
+        get: operations["awards_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/{award_id}/allocations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add allocation to Draft Award
+         * @description Adds an exact OfferVersion allocation to a Draft Award. Requires expected_version for optimistic concurrency control. Validates quantity limits, unit compatibility, and exact current submitted version.
+         */
+        post: operations["awards_allocations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/{award_id}/finalize/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize Award
+         * @description Authoritatively finalizes a Draft Award aggregate and advances the target RFQ to Awarded. Re-verifies technical specifications, organization verification (rejecting Suspended), expiry, and external offer qualification under row-level database locks. After finalization, the Award and its allocations are strictly immutable. No Deal is created.
+         */
+        post: operations["awards_finalize_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/awards/allocations/{allocation_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete AwardAllocation
+         * @description Deletes an allocation from a Draft Award. Requires expected_version matching the parent Award version (provided in query or body).
+         */
+        delete: operations["awards_allocations_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Update AwardAllocation quantity
+         * @description Updates the awarded quantity of an existing allocation in a Draft Award. Requires expected_version matching the parent Award version.
+         */
+        patch: operations["awards_allocations_partial_update"];
+        trace?: never;
+    };
     "/api/commodities/": {
         parameters: {
             query?: never;
@@ -415,6 +523,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/offers/awards/{award_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award by ID
+         * @description Retrieves an Award aggregate and its allocations by UUID.
+         */
+        get: operations["offers_awards_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/awards/{award_id}/allocations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add allocation to Draft Award
+         * @description Adds an exact OfferVersion allocation to a Draft Award. Requires expected_version for optimistic concurrency control. Validates quantity limits, unit compatibility, and exact current submitted version.
+         */
+        post: operations["offers_awards_allocations_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/awards/{award_id}/finalize/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize Award
+         * @description Authoritatively finalizes a Draft Award aggregate and advances the target RFQ to Awarded. Re-verifies technical specifications, organization verification (rejecting Suspended), expiry, and external offer qualification under row-level database locks. After finalization, the Award and its allocations are strictly immutable. No Deal is created.
+         */
+        post: operations["offers_awards_finalize_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/awards/allocations/{allocation_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete AwardAllocation
+         * @description Deletes an allocation from a Draft Award. Requires expected_version matching the parent Award version (provided in query or body).
+         */
+        delete: operations["offers_awards_allocations_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Update AwardAllocation quantity
+         * @description Updates the awarded quantity of an existing allocation in a Draft Award. Requires expected_version matching the parent Award version.
+         */
+        patch: operations["offers_awards_allocations_partial_update"];
+        trace?: never;
+    };
     "/api/offers/decision-runs/{run_id}/": {
         parameters: {
             query?: never;
@@ -589,6 +781,54 @@ export interface paths {
         get: operations["offers_rfqs_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/award/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award for an RFQ
+         * @description Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Returns 404 if no Award has been created yet.
+         */
+        get: operations["offers_rfqs_award_retrieve"];
+        put?: never;
+        /**
+         * Create Draft Award for an RFQ
+         * @description Initializes the single authoritative Draft Award aggregate for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Permitted only when RFQ is in Collecting Offers or Negotiating status.
+         */
+        post: operations["offers_rfqs_award_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/offers/rfqs/{rfq_id}/awards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award for an RFQ
+         * @description Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Returns 404 if no Award has been created yet.
+         */
+        get: operations["offers_rfqs_awards_retrieve"];
+        put?: never;
+        /**
+         * Create Draft Award for an RFQ
+         * @description Initializes the single authoritative Draft Award aggregate for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Permitted only when RFQ is in Collecting Offers or Negotiating status.
+         */
+        post: operations["offers_rfqs_awards_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1471,6 +1711,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rfqs/{rfq_id}/award/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award for an RFQ
+         * @description Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Returns 404 if no Award has been created yet.
+         */
+        get: operations["rfqs_award_retrieve"];
+        put?: never;
+        /**
+         * Create Draft Award for an RFQ
+         * @description Initializes the single authoritative Draft Award aggregate for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Permitted only when RFQ is in Collecting Offers or Negotiating status.
+         */
+        post: operations["rfqs_award_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rfqs/{rfq_id}/awards/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Award for an RFQ
+         * @description Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Returns 404 if no Award has been created yet.
+         */
+        get: operations["rfqs_awards_retrieve"];
+        put?: never;
+        /**
+         * Create Draft Award for an RFQ
+         * @description Initializes the single authoritative Draft Award aggregate for an RFQ. Authorized for RFQ Buyer organization members and platform Operators/Admins. Permitted only when RFQ is in Collecting Offers or Negotiating status.
+         */
+        post: operations["rfqs_awards_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rfqs/{rfq_id}/comparison/": {
         parameters: {
             query?: never;
@@ -1941,6 +2229,147 @@ export interface components {
          * @enum {string}
          */
         AudienceEnum: "BUYER" | "OPERATOR";
+        /** @description Payload for adding an allocation to a Draft Award. */
+        AwardAllocationCreateRequest: {
+            /**
+             * Format: uuid
+             * @description UUID of the exact current submitted OfferVersion to allocate.
+             */
+            offer_version_id: string;
+            /**
+             * Format: decimal
+             * @description Commercial quantity to award (must be > 0 and <= offered quantity).
+             */
+            awarded_quantity: string;
+            /** @description Unit of measurement (optional, defaults to OfferVersion unit). */
+            quantity_unit?: string;
+            /** @description Expected aggregate version of the Award for optimistic locking. */
+            expected_version: number;
+        };
+        /** @description Authoritative read projection for an AwardAllocation (Contract §64, T0813). */
+        AwardAllocationResponse: {
+            /**
+             * Format: uuid
+             * @description Allocation UUID.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Parent Award UUID.
+             */
+            award_id: string;
+            /**
+             * Format: uuid
+             * @description Parent Offer UUID.
+             */
+            offer_id: string;
+            /**
+             * Format: uuid
+             * @description Selected OfferVersion UUID.
+             */
+            offer_version_id: string;
+            /** @description Sequential version number of the selected OfferVersion. */
+            readonly offer_version_number: number | null;
+            /**
+             * Format: decimal
+             * @description Offered unit price.
+             */
+            readonly unit_price: string;
+            /** @description Currency code. */
+            readonly currency: string;
+            /**
+             * Format: decimal
+             * @description Total offered quantity in snapshot.
+             */
+            readonly offered_quantity: string;
+            /**
+             * Format: decimal
+             * @description Awarded commercial quantity.
+             */
+            readonly awarded_quantity: string;
+            /** @description Commercial unit of measurement. */
+            readonly quantity_unit: string;
+            /** @description Safe counterparty display name. */
+            readonly counterparty_name: string;
+            /** @description Whether this allocation belongs to an external counterparty offer. */
+            readonly is_external: boolean;
+            /**
+             * Format: date-time
+             * @description Allocation creation timestamp.
+             */
+            readonly created_at: string;
+        };
+        /** @description Payload for creating a Draft Award aggregate on an RFQ. */
+        AwardCreateRequest: {
+            /**
+             * Format: uuid
+             * @description Target RFQ UUID (optional if provided in route path).
+             */
+            rfq_id?: string;
+        };
+        /** @description Authoritative read projection for an Award aggregate (Contract §63, T0813). */
+        AwardDetailResponse: {
+            /**
+             * Format: uuid
+             * @description Award UUID.
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description Target RFQ UUID.
+             */
+            rfq_id: string;
+            /**
+             * Format: decimal
+             * @description RFQ requested procurement quantity.
+             */
+            readonly rfq_quantity: string;
+            /** @description RFQ procurement unit of measurement. */
+            readonly rfq_unit: string;
+            /** @description Lifecycle status of the award: DRAFT or FINALIZED. */
+            status: string;
+            /** @description Optimistic concurrency aggregate version counter. */
+            version: number;
+            /**
+             * Format: uuid
+             * @description UUID of the platform user who created the draft award.
+             */
+            created_by_id: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when the draft award was created.
+             */
+            created_at: string;
+            /**
+             * Format: uuid
+             * @description UUID of the platform user who finalized the award.
+             */
+            finalized_by_id: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when the award was finalized.
+             */
+            finalized_at: string | null;
+            /** @description Commercial allocations contained within this award. */
+            readonly allocations: components["schemas"]["AwardAllocationResponse"][];
+            /**
+             * Format: double
+             * @description Sum of all awarded quantities across allocations.
+             */
+            readonly total_awarded_quantity: number;
+            /**
+             * Format: double
+             * @description RFQ requested quantity minus total awarded quantity.
+             */
+            readonly remaining_quantity: number;
+            /** @description True if total awarded quantity exactly equals RFQ requested quantity. */
+            readonly is_fully_allocated: boolean;
+        };
+        /** @description Payload for authoritatively finalizing an Award. */
+        AwardFinalizeRequest: {
+            /** @description Expected aggregate version of the Award for optimistic locking. */
+            expected_version: number;
+        };
         /**
          * @description * `SUPPLY_LISTING` - Supply Listing
          *     * `SUPPLY_OPPORTUNITY` - Supply Opportunity
@@ -3814,6 +4243,16 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["OpportunityDetail"][];
         };
+        /** @description Payload for updating quantity of an existing AwardAllocation. */
+        PatchedAwardAllocationUpdateRequest: {
+            /**
+             * Format: decimal
+             * @description Updated awarded commercial quantity.
+             */
+            awarded_quantity?: string;
+            /** @description Expected aggregate version of the Award for optimistic locking. */
+            expected_version?: number;
+        };
         /**
          * @description Explicit serializer for ExternalCounterparty.
          *
@@ -5526,6 +5965,410 @@ export interface operations {
             };
         };
     };
+    award_allocations_destroy: {
+        parameters: {
+            query?: {
+                /** @description Expected aggregate version of parent Award. */
+                expected_version?: number;
+            };
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Allocation successfully deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    award_allocations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAwardAllocationUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_allocations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardAllocationCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award or OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_finalize_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardFinalizeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - already finalized or stale version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_allocations_destroy: {
+        parameters: {
+            query?: {
+                /** @description Expected aggregate version of parent Award. */
+                expected_version?: number;
+            };
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Allocation successfully deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    awards_allocations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAwardAllocationUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     commodities_list: {
         parameters: {
             query?: never;
@@ -6262,6 +7105,290 @@ export interface operations {
             };
         };
     };
+    offers_awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_allocations_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardAllocationCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award or OfferVersion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_finalize_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardFinalizeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - already finalized or stale version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_allocations_destroy: {
+        parameters: {
+            query?: {
+                /** @description Expected aggregate version of parent Award. */
+                expected_version?: number;
+            };
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Allocation successfully deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_awards_allocations_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                allocation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAwardAllocationUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardAllocationResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Allocation not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict or Stale Version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     offers_decision_runs_retrieve: {
         parameters: {
             query?: never;
@@ -6737,6 +7864,212 @@ export interface operations {
             };
             /** @description RFQ not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_award_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_award_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AwardCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - Award already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    offers_rfqs_awards_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AwardCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - Award already exists */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9449,6 +10782,212 @@ export interface operations {
                 content?: never;
             };
             /** @description Conflict - stale expected_version or request not in OPEN status */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_award_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_award_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AwardCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - Award already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_awards_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ or Award not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rfqs_awards_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rfq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AwardCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardDetailResponse"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description RFQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict - Award already exists */
             409: {
                 headers: {
                     [name: string]: unknown;

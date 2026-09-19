@@ -121,3 +121,52 @@ class RevisionRequestNotFoundError(OfferDomainError, ObjectDoesNotExist):
     pass
 
 
+class AwardDomainError(OfferDomainError):
+    """Base domain exception for Award operations (T0813)."""
+
+    pass
+
+
+class AwardNotFoundError(AwardDomainError, ObjectDoesNotExist):
+    """Raised when an Award cannot be found."""
+
+    pass
+
+
+class AwardAllocationNotFoundError(AwardDomainError, ObjectDoesNotExist):
+    """Raised when an AwardAllocation cannot be found."""
+
+    pass
+
+
+class AwardPermissionDeniedError(OfferPermissionDeniedError, AwardDomainError):
+    """Raised when an actor lacks authorization to create, mutate, or finalize an Award."""
+
+    pass
+
+
+class AwardValidationError(AwardDomainError, ValueError):
+    """Raised when domain validation, quantity limits, or schema constraints fail on Award."""
+
+    pass
+
+
+class AwardConflictError(OfferConflictError, AwardDomainError):
+    """Raised when a concurrent award conflict or duplicate allocation occurs."""
+
+    pass
+
+
+class AwardImmutableError(AwardDomainError):
+    """Raised when an attempt is made to mutate or re-finalize an already FINALIZED Award."""
+
+    pass
+
+
+class AwardEligibilityError(AwardDomainError, ValueError):
+    """Raised when an offer version fails technical, trust, expiry, or provenance eligibility during award finalization."""
+
+    pass
+
+
+

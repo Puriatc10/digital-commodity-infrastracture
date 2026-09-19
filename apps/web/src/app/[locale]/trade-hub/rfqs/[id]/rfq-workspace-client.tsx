@@ -26,6 +26,7 @@ import {
 import {
   AlertTriangle,
   ArrowRight,
+  Award,
   CheckCircle2,
   Clock,
   FileText,
@@ -46,6 +47,7 @@ import {
 import { RFQMatchingTab } from "@/components/matching/rfq-matching-tab";
 import { RFQComparisonTab } from "@/components/comparison/rfq-comparison-tab";
 import { RFQNegotiationTab } from "@/components/negotiation/rfq-negotiation-tab";
+import { RFQAwardTab } from "@/components/award/rfq-award-tab";
 
 type RFQBuilderResponse = components["schemas"]["RFQBuilderResponse"];
 type RFQPublicResponse = components["schemas"]["RFQPublicResponse"];
@@ -62,7 +64,8 @@ export type WorkspaceTab =
   | "comparison"
   | "negotiation"
   | "documents"
-  | "matches";
+  | "matches"
+  | "award";
 
 export interface RFQWorkspaceClientProps {
   locale?: EnabledLocale;
@@ -131,6 +134,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
   const isExternal = Boolean(rfq && !isOperatorOrAdmin && !isOwnerOrg);
   const canAccessMatching = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
   const canAccessComparison = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
+  const canAccessAward = Boolean(rfq && (isOperatorOrAdmin || isOwnerOrg));
 
   // Track previous organization ID to invalidate cache on switch
   const previousOrgIdRef = useRef<string | null>(null);
@@ -144,6 +148,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
       queryClient.removeQueries({ queryKey: ["rfq", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-comparison", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-decision-run", rfqId] });
+      queryClient.removeQueries({ queryKey: ["rfq-award", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-invitations", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-activity", rfqId] });
       queryClient.removeQueries({ queryKey: ["rfq-invitation-me", rfqId] });
@@ -510,6 +515,8 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
         return "outline";
       case "cancelled":
         return "destructive";
+      case "awarded":
+        return "default";
       default:
         return "secondary";
     }
@@ -747,6 +754,21 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
           >
             <Sparkles className="h-4 w-4" />
             {t.tabs.matches}
+          </button>
+        )}
+
+        {canAccessAward && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("award")}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              activeTab === "award"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Award className="h-4 w-4" />
+            {t.tabs.award}
           </button>
         )}
       </div>
@@ -1275,6 +1297,20 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
             </CardContent>
           </Card>
         )
+      )}
+
+      {/* --- AWARD TAB --- */}
+      {activeTab === "award" && canAccessAward && (
+        <RFQAwardTab
+          rfqId={rfqId}
+          rfqStatus={rfq.status}
+          rfqQuantity={rfq.quantity}
+          rfqUnit={rfq.unit}
+          canManage={canManage}
+          isOperator={Boolean(isOperatorOrAdmin)}
+          locale={locale}
+          onAwardFinalized={triggerRefresh}
+        />
       )}
 
       {/* --- MODAL: CLOSE RFQ CONFIRMATION --- */}

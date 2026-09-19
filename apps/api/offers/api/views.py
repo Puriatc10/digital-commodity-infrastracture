@@ -1,12 +1,19 @@
 from typing import Any
 
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from identity.models import SystemRoleAssignment
 from offers.api.serializers import (
+    AwardAllocationCreateRequestSerializer,
+    AwardAllocationDeleteRequestSerializer,
+    AwardAllocationResponseSerializer,
+    AwardAllocationUpdateRequestSerializer,
+    AwardCreateRequestSerializer,
+    AwardDetailResponseSerializer,
+    AwardFinalizeRequestSerializer,
     BuyerOfferProjectionResponseSerializer,
     DecisionRunCreateRequestSerializer,
     DecisionRunDetailResponseSerializer,
@@ -26,6 +33,13 @@ from offers.api.serializers import (
 )
 from offers.enums import LogisticsCostStatus, OfferVersionStatus
 from offers.exceptions import (
+    AwardAllocationNotFoundError,
+    AwardConflictError,
+    AwardEligibilityError,
+    AwardImmutableError,
+    AwardNotFoundError,
+    AwardPermissionDeniedError,
+    AwardValidationError,
     DecisionPermissionDeniedError,
     DecisionPolicyError,
     DecisionValidationError,
@@ -40,11 +54,20 @@ from offers.exceptions import (
     StaleVersionError,
 )
 from offers.models import (
+    Award,
+    AwardAllocation,
     DecisionProfileVersion,
     DecisionRun,
     Offer,
     OfferVersion,
     RevisionRequest,
+)
+from offers.services.award_service import (
+    add_award_allocation,
+    create_draft_award,
+    finalize_award,
+    remove_award_allocation,
+    update_award_allocation,
 )
 from offers.services.comparison import compare_rfq_offers
 from offers.services.decision_service import (
@@ -61,6 +84,7 @@ from offers.services.revision_service import (
 from offers.services.submission import submit_internal_offer_version
 from organizations.models import OrganizationMembership
 from trade_hub.models import RFQ
+
 
 
 
@@ -1424,6 +1448,400 @@ class RevisionRequestSubmitView(APIView):
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(OfferVersionResponseSerializer(submitted_version).data, status=status.HTTP_200_OK)
+
+
+class RFQAwardDetailView(APIView):
+    """
+    Retrieve or initialize the Award aggregate for an RFQ (Contract §63, T0813).
+
+    Authorized exclusively for the owning Buyer organization members and platform Operators/Admins.
+    Competitor participants and unauthorized actors receive 403 Forbidden.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Retrieve Award for an RFQ",
+        description=(
+            "Retrieves the single authoritative Award aggregate (and its allocations) for an RFQ. "
+            "Authorized for RFQ Buyer organization members and platform Operators/Admins. "
+            "Returns 404 if no Award has been created yet."
+        ),
+        responses={
+            200: AwardDetailResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden"),
+            404: OpenApiResponse(description="RFQ or Award not found"),
+        },
+    )
+    def get(self, request, rfq_id):
+        rfq = RFQ.objects.filter(pk=rfq_id).first()
+        if not rfq:
+            return Response({"detail": f"RFQ '{rfq_id}' does not exist."}, status=status.HTTP_404_NOT_FOUND)
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_buyer = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+        if not is_operator and not is_buyer:
+            return Response(
+                {"detail": "You do not have permission to view award deliberation for this RFQ."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        award = (
+            Award.objects.filter(rfq=rfq)
+            .select_related("rfq", "created_by", "finalized_by")
+            .prefetch_related(
+                "allocations",
+                "allocations__offer",
+                "allocations__offer__offering_organization",
+                "allocations__offer__external_counterparty",
+                "allocations__offer_version",
+            )
+            .first()
+        )
+        if not award:
+            return Response({"detail": f"No Award aggregate found for RFQ '{rfq_id}'."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = AwardDetailResponseSerializer(award)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Create Draft Award for an RFQ",
+        description=(
+            "Initializes the single authoritative Draft Award aggregate for an RFQ. "
+            "Authorized for RFQ Buyer organization members and platform Operators/Admins. "
+            "Permitted only when RFQ is in Collecting Offers or Negotiating status."
+        ),
+        request=AwardCreateRequestSerializer,
+        responses={
+            201: AwardDetailResponseSerializer,
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden"),
+            404: OpenApiResponse(description="RFQ not found"),
+            409: OpenApiResponse(description="Conflict - Award already exists"),
+        },
+    )
+    def post(self, request, rfq_id):
+        try:
+            award = create_draft_award(rfq_id=rfq_id, actor=request.user)
+        except (AwardPermissionDeniedError, OfferPermissionDeniedError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except OfferNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (AwardConflictError, OfferConflictError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (AwardValidationError, OfferValidationError, OfferStateError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        award_loaded = (
+            Award.objects.filter(pk=award.pk)
+            .select_related("rfq", "created_by", "finalized_by")
+            .prefetch_related(
+                "allocations",
+                "allocations__offer",
+                "allocations__offer__offering_organization",
+                "allocations__offer__external_counterparty",
+                "allocations__offer_version",
+            )
+            .first()
+        )
+        return Response(AwardDetailResponseSerializer(award_loaded).data, status=status.HTTP_201_CREATED)
+
+
+class AwardDetailView(APIView):
+    """
+    Retrieve an Award aggregate by ID (Contract §63, T0813).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Retrieve Award by ID",
+        description="Retrieves an Award aggregate and its allocations by UUID.",
+        responses={
+            200: AwardDetailResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden"),
+            404: OpenApiResponse(description="Award not found"),
+        },
+    )
+    def get(self, request, award_id):
+        award = (
+            Award.objects.filter(pk=award_id)
+            .select_related("rfq", "created_by", "finalized_by")
+            .prefetch_related(
+                "allocations",
+                "allocations__offer",
+                "allocations__offer__offering_organization",
+                "allocations__offer__external_counterparty",
+                "allocations__offer_version",
+            )
+            .first()
+        )
+        if not award:
+            return Response({"detail": f"Award '{award_id}' does not exist."}, status=status.HTTP_404_NOT_FOUND)
+
+        is_operator = _is_operator_or_admin(request.user)
+        is_buyer = OrganizationMembership.objects.filter(
+            user=request.user,
+            organization_id=award.rfq.organization_id,
+            is_active=True,
+            organization__is_active=True,
+        ).exists()
+        if not is_operator and not is_buyer:
+            return Response(
+                {"detail": "You do not have permission to view award deliberation for this RFQ."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = AwardDetailResponseSerializer(award)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AwardAllocationCreateView(APIView):
+    """
+    Add a commercial allocation to a Draft Award (Contract §64, T0813).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Add allocation to Draft Award",
+        description=(
+            "Adds an exact OfferVersion allocation to a Draft Award. "
+            "Requires expected_version for optimistic concurrency control. "
+            "Validates quantity limits, unit compatibility, and exact current submitted version."
+        ),
+        request=AwardAllocationCreateRequestSerializer,
+        responses={
+            201: AwardAllocationResponseSerializer,
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden"),
+            404: OpenApiResponse(description="Award or OfferVersion not found"),
+            409: OpenApiResponse(description="Conflict or Stale Version"),
+        },
+    )
+    def post(self, request, award_id):
+        serializer = AwardAllocationCreateRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated = serializer.validated_data
+        try:
+            allocation = add_award_allocation(
+                award_id=award_id,
+                offer_version_id=validated["offer_version_id"],
+                awarded_quantity=validated["awarded_quantity"],
+                quantity_unit=validated.get("quantity_unit") or None,
+                expected_version=validated["expected_version"],
+                actor=request.user,
+            )
+        except (AwardPermissionDeniedError, OfferPermissionDeniedError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except (AwardNotFoundError, OfferNotFoundError, OfferVersionNotFoundError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (AwardConflictError, StaleVersionError, AwardImmutableError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (AwardValidationError, InvalidVersionError, OfferValidationError, OfferStateError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        alloc_loaded = (
+            AwardAllocation.objects.filter(pk=allocation.pk)
+            .select_related(
+                "award",
+                "offer",
+                "offer__offering_organization",
+                "offer__external_counterparty",
+                "offer_version",
+            )
+            .first()
+        )
+        return Response(AwardAllocationResponseSerializer(alloc_loaded).data, status=status.HTTP_201_CREATED)
+
+
+class AwardAllocationDetailView(APIView):
+    """
+    Update or delete an existing AwardAllocation within a Draft Award (Contract §65, T0813).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Update AwardAllocation quantity",
+        description=(
+            "Updates the awarded quantity of an existing allocation in a Draft Award. "
+            "Requires expected_version matching the parent Award version."
+        ),
+        request=AwardAllocationUpdateRequestSerializer,
+        responses={
+            200: AwardAllocationResponseSerializer,
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden"),
+            404: OpenApiResponse(description="Allocation not found"),
+            409: OpenApiResponse(description="Conflict or Stale Version"),
+        },
+    )
+    def patch(self, request, allocation_id):
+        serializer = AwardAllocationUpdateRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validated = serializer.validated_data
+        try:
+            allocation = update_award_allocation(
+                allocation_id=allocation_id,
+                awarded_quantity=validated["awarded_quantity"],
+                expected_version=validated["expected_version"],
+                actor=request.user,
+            )
+        except (AwardPermissionDeniedError, OfferPermissionDeniedError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except AwardAllocationNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (AwardConflictError, StaleVersionError, AwardImmutableError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (AwardValidationError, InvalidVersionError, OfferValidationError, OfferStateError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        alloc_loaded = (
+            AwardAllocation.objects.filter(pk=allocation.pk)
+            .select_related(
+                "award",
+                "offer",
+                "offer__offering_organization",
+                "offer__external_counterparty",
+                "offer_version",
+            )
+            .first()
+        )
+        return Response(AwardAllocationResponseSerializer(alloc_loaded).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Delete AwardAllocation",
+        description=(
+            "Deletes an allocation from a Draft Award. "
+            "Requires expected_version matching the parent Award version (provided in query or body)."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="expected_version",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Expected aggregate version of parent Award.",
+            ),
+        ],
+        request=AwardAllocationDeleteRequestSerializer,
+        responses={
+            204: OpenApiResponse(description="Allocation successfully deleted"),
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden"),
+            404: OpenApiResponse(description="Allocation not found"),
+            409: OpenApiResponse(description="Conflict or Stale Version"),
+        },
+    )
+    def delete(self, request, allocation_id):
+        raw_version = (
+            request.data.get("expected_version")
+            if hasattr(request, "data") and isinstance(request.data, dict)
+            else request.query_params.get("expected_version")
+        )
+        try:
+            expected_version = int(raw_version)
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "expected_version must be an integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            remove_award_allocation(
+                allocation_id=allocation_id,
+                expected_version=expected_version,
+                actor=request.user,
+            )
+        except (AwardPermissionDeniedError, OfferPermissionDeniedError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except AwardAllocationNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (AwardConflictError, StaleVersionError, AwardImmutableError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (AwardValidationError, InvalidVersionError, OfferValidationError, OfferStateError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AwardFinalizeView(APIView):
+    """
+    Authoritatively finalize an Award aggregate and transition RFQ to Awarded (Contract §68, T0813).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Finalize Award",
+        description=(
+            "Authoritatively finalizes a Draft Award aggregate and advances the target RFQ to Awarded. "
+            "Re-verifies technical specifications, organization verification (rejecting Suspended), "
+            "expiry, and external offer qualification under row-level database locks. "
+            "After finalization, the Award and its allocations are strictly immutable. "
+            "No Deal is created."
+        ),
+        request=AwardFinalizeRequestSerializer,
+        responses={
+            200: AwardDetailResponseSerializer,
+            400: OfferErrorResponseSerializer,
+            401: OpenApiResponse(description="Unauthenticated"),
+            403: OpenApiResponse(description="Forbidden"),
+            404: OpenApiResponse(description="Award not found"),
+            409: OpenApiResponse(description="Conflict - already finalized or stale version"),
+        },
+    )
+    def post(self, request, award_id):
+        serializer = AwardFinalizeRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        expected_version = serializer.validated_data["expected_version"]
+        try:
+            award = finalize_award(
+                award_id=award_id,
+                expected_version=expected_version,
+                actor=request.user,
+            )
+        except (AwardPermissionDeniedError, OfferPermissionDeniedError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except AwardNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (AwardConflictError, StaleVersionError, AwardImmutableError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except (AwardValidationError, AwardEligibilityError, InvalidVersionError, OfferValidationError, OfferStateError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        award_loaded = (
+            Award.objects.filter(pk=award.pk)
+            .select_related("rfq", "created_by", "finalized_by")
+            .prefetch_related(
+                "allocations",
+                "allocations__offer",
+                "allocations__offer__offering_organization",
+                "allocations__offer__external_counterparty",
+                "allocations__offer_version",
+            )
+            .first()
+        )
+        return Response(AwardDetailResponseSerializer(award_loaded).data, status=status.HTTP_200_OK)
+
 
 
 

@@ -11,6 +11,8 @@ from offers.enums import (
 )
 from commodities.serializers import CommoditySchemaVersionSerializer
 from offers.models import (
+    Award,
+    AwardAllocation,
     DecisionCandidate,
     DecisionRun,
     DecisionSignal,
@@ -19,6 +21,7 @@ from offers.models import (
     OfferVersion,
     RevisionRequest,
 )
+
 
 
 
@@ -997,5 +1000,256 @@ class OfferNegotiationHistoryResponseSerializer(serializers.Serializer):
     revision_requests = RevisionRequestHistorySerializer(
         many=True, help_text="Chronological formal RevisionRequests."
     )
+
+
+class AwardAllocationResponseSerializer(serializers.ModelSerializer):
+    """
+    Authoritative read projection for an AwardAllocation (Contract §64, T0813).
+    """
+
+    id = serializers.UUIDField(help_text="Allocation UUID.")
+    award_id = serializers.UUIDField(help_text="Parent Award UUID.")
+    offer_id = serializers.UUIDField(help_text="Parent Offer UUID.")
+    offer_version_id = serializers.UUIDField(help_text="Selected OfferVersion UUID.")
+    offer_version_number = serializers.SerializerMethodField(
+        help_text="Sequential version number of the selected OfferVersion."
+    )
+    unit_price = serializers.DecimalField(
+        source="offer_version.unit_price",
+        max_digits=14,
+        decimal_places=2,
+        read_only=True,
+        help_text="Offered unit price.",
+    )
+    currency = serializers.CharField(
+        source="offer_version.currency",
+        read_only=True,
+        help_text="Currency code.",
+    )
+    offered_quantity = serializers.DecimalField(
+        source="offer_version.offered_quantity",
+        max_digits=15,
+        decimal_places=3,
+        read_only=True,
+        help_text="Total offered quantity in snapshot.",
+    )
+    awarded_quantity = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=3,
+        read_only=True,
+        help_text="Awarded commercial quantity.",
+    )
+    quantity_unit = serializers.CharField(
+        read_only=True,
+        help_text="Commercial unit of measurement.",
+    )
+    counterparty_name = serializers.SerializerMethodField(
+        help_text="Safe counterparty display name."
+    )
+    is_external = serializers.SerializerMethodField(
+        help_text="Whether this allocation belongs to an external counterparty offer."
+    )
+    created_at = serializers.DateTimeField(
+        read_only=True,
+        help_text="Allocation creation timestamp.",
+    )
+
+    class Meta:
+        model = AwardAllocation
+        fields = [
+            "id",
+            "award_id",
+            "offer_id",
+            "offer_version_id",
+            "offer_version_number",
+            "unit_price",
+            "currency",
+            "offered_quantity",
+            "awarded_quantity",
+            "quantity_unit",
+            "counterparty_name",
+            "is_external",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_offer_version_number(self, obj: AwardAllocation) -> Optional[int]:
+        if obj.offer_version_id and hasattr(obj, "offer_version") and obj.offer_version:
+            return obj.offer_version.version_number
+        return None
+
+    def get_counterparty_name(self, obj: AwardAllocation) -> str:
+        offer = obj.offer
+        if offer.external_counterparty_id and offer.external_counterparty:
+            return offer.external_counterparty.company_name
+        if offer.offering_organization_id and offer.offering_organization:
+            return offer.offering_organization.name
+        return "طرف تجاری"
+
+    def get_is_external(self, obj: AwardAllocation) -> bool:
+        return bool(obj.offer.external_counterparty_id)
+
+
+class AwardDetailResponseSerializer(serializers.ModelSerializer):
+    """
+    Authoritative read projection for an Award aggregate (Contract §63, T0813).
+    """
+
+    id = serializers.UUIDField(help_text="Award UUID.")
+    rfq_id = serializers.UUIDField(help_text="Target RFQ UUID.")
+    rfq_quantity = serializers.DecimalField(
+        source="rfq.quantity",
+        max_digits=15,
+        decimal_places=3,
+        read_only=True,
+        help_text="RFQ requested procurement quantity.",
+    )
+    rfq_unit = serializers.CharField(
+        source="rfq.unit",
+        read_only=True,
+        help_text="RFQ procurement unit of measurement.",
+    )
+    status = serializers.CharField(
+        help_text="Lifecycle status of the award: DRAFT or FINALIZED."
+    )
+    version = serializers.IntegerField(
+        help_text="Optimistic concurrency aggregate version counter."
+    )
+    created_by_id = serializers.UUIDField(
+        help_text="UUID of the platform user who created the draft award."
+    )
+    created_at = serializers.DateTimeField(
+        help_text="Timestamp when the draft award was created."
+    )
+    finalized_by_id = serializers.UUIDField(
+        allow_null=True,
+        help_text="UUID of the platform user who finalized the award.",
+    )
+    finalized_at = serializers.DateTimeField(
+        allow_null=True,
+        help_text="Authoritative server timestamp when the award was finalized.",
+    )
+    allocations = AwardAllocationResponseSerializer(
+        many=True,
+        read_only=True,
+        help_text="Commercial allocations contained within this award.",
+    )
+    total_awarded_quantity = serializers.SerializerMethodField(
+        help_text="Sum of all awarded quantities across allocations."
+    )
+    remaining_quantity = serializers.SerializerMethodField(
+        help_text="RFQ requested quantity minus total awarded quantity."
+    )
+    is_fully_allocated = serializers.SerializerMethodField(
+        help_text="True if total awarded quantity exactly equals RFQ requested quantity."
+    )
+
+    class Meta:
+        model = Award
+        fields = [
+            "id",
+            "rfq_id",
+            "rfq_quantity",
+            "rfq_unit",
+            "status",
+            "version",
+            "created_by_id",
+            "created_at",
+            "finalized_by_id",
+            "finalized_at",
+            "allocations",
+            "total_awarded_quantity",
+            "remaining_quantity",
+            "is_fully_allocated",
+        ]
+        read_only_fields = fields
+
+    def get_total_awarded_quantity(self, obj: Award) -> Decimal:
+        allocs = obj.allocations.all() if hasattr(obj, "allocations") else []
+        return sum((a.awarded_quantity for a in allocs), Decimal("0"))
+
+    def get_remaining_quantity(self, obj: Award) -> Decimal:
+        total = self.get_total_awarded_quantity(obj)
+        rfq_qty = obj.rfq.quantity if obj.rfq else Decimal("0")
+        return max(rfq_qty - total, Decimal("0"))
+
+    def get_is_fully_allocated(self, obj: Award) -> bool:
+        total = self.get_total_awarded_quantity(obj)
+        rfq_qty = obj.rfq.quantity if obj.rfq else Decimal("0")
+        return total == rfq_qty
+
+
+class AwardCreateRequestSerializer(serializers.Serializer):
+    """Payload for creating a Draft Award aggregate on an RFQ."""
+
+    rfq_id = serializers.UUIDField(
+        required=False,
+        help_text="Target RFQ UUID (optional if provided in route path).",
+    )
+
+
+class AwardAllocationCreateRequestSerializer(serializers.Serializer):
+    """Payload for adding an allocation to a Draft Award."""
+
+    offer_version_id = serializers.UUIDField(
+        required=True,
+        help_text="UUID of the exact current submitted OfferVersion to allocate.",
+    )
+    awarded_quantity = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=3,
+        min_value=Decimal("0.001"),
+        required=True,
+        help_text="Commercial quantity to award (must be > 0 and <= offered quantity).",
+    )
+    quantity_unit = serializers.CharField(
+        max_length=20,
+        required=False,
+        allow_blank=True,
+        help_text="Unit of measurement (optional, defaults to OfferVersion unit).",
+    )
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Expected aggregate version of the Award for optimistic locking.",
+    )
+
+
+class AwardAllocationUpdateRequestSerializer(serializers.Serializer):
+    """Payload for updating quantity of an existing AwardAllocation."""
+
+    awarded_quantity = serializers.DecimalField(
+        max_digits=15,
+        decimal_places=3,
+        min_value=Decimal("0.001"),
+        required=True,
+        help_text="Updated awarded commercial quantity.",
+    )
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Expected aggregate version of the Award for optimistic locking.",
+    )
+
+
+class AwardAllocationDeleteRequestSerializer(serializers.Serializer):
+    """Payload for deleting an AwardAllocation from a Draft Award."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Expected aggregate version of the Award for optimistic locking.",
+    )
+
+
+class AwardFinalizeRequestSerializer(serializers.Serializer):
+    """Payload for authoritatively finalizing an Award."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Expected aggregate version of the Award for optimistic locking.",
+    )
+
 
 

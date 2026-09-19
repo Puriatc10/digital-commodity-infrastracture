@@ -149,3 +149,16 @@ FORBIDDEN_REVISION_FIELDS = frozenset(
     }
 )
 
+
+class AwardStatus(models.TextChoices):
+    """
+    Lifecycle status of an Award aggregate (Contract §63, T0813).
+
+    Lifecycle:
+        DRAFT -> FINALIZED
+    """
+
+    DRAFT = "DRAFT", "Draft"
+    FINALIZED = "FINALIZED", "Finalized"
+
+

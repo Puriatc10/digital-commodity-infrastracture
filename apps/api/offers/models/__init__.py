@@ -1,3 +1,4 @@
+from offers.models.award import Award, AwardAllocation
 from offers.models.decision import (
     DecisionCandidate,
     DecisionDimensionWeight,
@@ -21,5 +22,8 @@ __all__ = [
     "DecisionRun",
     "DecisionCandidate",
     "DecisionSignal",
+    "Award",
+    "AwardAllocation",
 ]
+
 
