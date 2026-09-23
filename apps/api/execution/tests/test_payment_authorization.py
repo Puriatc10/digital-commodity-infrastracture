@@ -214,7 +214,7 @@ class PaymentAuthorizationTests(BaseExecutionTestCase):
         self.assertEqual(resp.data["status"], "EXPECTED")
 
         # Via deal route
-        resp_deal = self.client.get(f"/api/deals/{self.deal.id}/payment/")
+        resp_deal = self.client.get(f"/api/deals/{self.deal.id}/execution/payment/")
         self.assertEqual(resp_deal.status_code, status.HTTP_200_OK)
         self.assertEqual(resp_deal.data["status"], "EXPECTED")
 
