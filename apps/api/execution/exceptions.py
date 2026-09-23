@@ -97,3 +97,11 @@ class PaymentNotFoundError(ExecutionError):
 class InvalidPaymentTransitionError(ExecutionError):
     """Raised when an illegal payment lifecycle transition is requested."""
 
+
+class ExecutionDocumentNotFoundError(ExecutionError):
+    """Raised when an execution document cannot be found."""
+
+
+class ExecutionStorageError(ExecutionError):
+    """Raised when an object storage operation (upload, retrieve, delete) fails."""
+

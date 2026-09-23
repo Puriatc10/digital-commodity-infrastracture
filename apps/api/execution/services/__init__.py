@@ -60,8 +60,18 @@ __all__ = [
     "get_or_create_execution_payment",
     "report_payment",
     "confirm_payment",
+    "upload_execution_document",
+    "get_execution_documents",
+    "get_execution_document_detail",
+    "get_execution_document_download",
 ]
 
+from .document_service import (
+    get_execution_document_detail,
+    get_execution_document_download,
+    get_execution_documents,
+    upload_execution_document,
+)
 from .execution_service import (
     create_or_get_execution_for_deal,
     get_execution_by_id,

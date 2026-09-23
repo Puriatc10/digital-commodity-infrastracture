@@ -1,8 +1,10 @@
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from execution.enums import InspectionResult, TransportMode
+from execution.enums import ExecutionDocumentCategory, InspectionResult, TransportMode
 from execution.models import (
+    ExecutionDocument,
     ExecutionMilestoneDefinition,
     ExecutionWorkflowTemplate,
     ExecutionWorkflowTemplateVersion,
@@ -720,4 +722,60 @@ class ExecutionErrorResponseSerializer(serializers.Serializer):
     """Standard error response."""
 
     detail = serializers.CharField(help_text="Detailed error explanation.")
+
+
+BinaryFileField = extend_schema_field(OpenApiTypes.BINARY)(serializers.FileField)
+
+
+class ExecutionDocumentSerializer(serializers.ModelSerializer):
+    """Authoritative execution document metadata projection (Epic 10 Contract §60–§64, T1007)."""
+
+    execution_id = serializers.UUIDField(source="execution.id", read_only=True)
+    milestone_id = serializers.UUIDField(source="milestone.id", read_only=True, allow_null=True)
+    inspection_id = serializers.UUIDField(source="inspection.id", read_only=True, allow_null=True)
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
+    uploaded_by_id = serializers.UUIDField(source="uploaded_by.id", read_only=True, allow_null=True)
+    uploaded_by_email = serializers.EmailField(source="uploaded_by.email", read_only=True, allow_null=True)
+
+    class Meta:
+        model = ExecutionDocument
+        fields = [
+            "id",
+            "execution_id",
+            "milestone_id",
+            "inspection_id",
+            "category",
+            "category_display",
+            "file_name",
+            "content_type",
+            "size_bytes",
+            "uploaded_by_id",
+            "uploaded_by_email",
+            "uploaded_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class ExecutionDocumentUploadSerializer(serializers.Serializer):
+    """Request payload for authorized multipart execution document upload."""
+
+    file = BinaryFileField(help_text="Binary document file (PDF, JPEG, PNG, max 10MB)")
+    category = serializers.ChoiceField(
+        choices=ExecutionDocumentCategory.choices,
+        help_text="Authoritative operational document category.",
+    )
+    milestone_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Optional associated execution milestone ID.",
+    )
+    inspection_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Optional associated execution quality inspection ID.",
+    )
 

@@ -2,6 +2,10 @@ from django.urls import path
 
 from execution.api.views import (
     ExecutionDetailView,
+    ExecutionDocumentDetailView,
+    ExecutionDocumentDownloadView,
+    ExecutionDocumentListView,
+    ExecutionDocumentUploadView,
     ExecutionInspectionCancelActionView,
     ExecutionInspectionCompleteActionView,
     ExecutionInspectionDetailView,
@@ -49,6 +53,10 @@ urlpatterns = [
     path("<uuid:execution_id>/payment/", ExecutionPaymentDetailView.as_view(), name="execution-payment-detail"),
     path("<uuid:execution_id>/payment/report/", ExecutionPaymentReportActionView.as_view(), name="execution-payment-report"),
     path("<uuid:execution_id>/payment/confirm/", ExecutionPaymentConfirmActionView.as_view(), name="execution-payment-confirm"),
+    path("<uuid:execution_id>/documents/", ExecutionDocumentListView.as_view(), name="execution-document-list"),
+    path("<uuid:execution_id>/documents/upload/", ExecutionDocumentUploadView.as_view(), name="execution-document-upload"),
+    path("<uuid:execution_id>/documents/<uuid:document_id>/", ExecutionDocumentDetailView.as_view(), name="execution-document-detail"),
+    path("<uuid:execution_id>/documents/<uuid:document_id>/download/", ExecutionDocumentDownloadView.as_view(), name="execution-document-download"),
     path("<uuid:execution_id>/timeline/", ExecutionTimelineView.as_view(), name="execution-timeline"),
     path("<uuid:execution_id>/milestones/<uuid:milestone_id>/start/", MilestoneStartActionView.as_view(), name="execution-milestone-start"),
     path("<uuid:execution_id>/milestones/<uuid:milestone_id>/complete/", MilestoneCompleteActionView.as_view(), name="execution-milestone-complete"),
