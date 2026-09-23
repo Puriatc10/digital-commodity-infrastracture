@@ -256,7 +256,7 @@ describe("T0905 — Deal Workspace Component Suite", () => {
     role: "owner" | "manager" | "member" | "viewer" = "owner",
     capability = "buyer",
     isOperator = false,
-    dealData: any = mockDealBase,
+    dealData: Record<string, unknown> | null = mockDealBase,
     dealStatus = 200
   ) {
     vi.mocked(apiClient.GET).mockImplementation(async (url: string, opts?: unknown) => {
@@ -296,7 +296,7 @@ describe("T0905 — Deal Workspace Component Suite", () => {
         }
         return {
           response: { ok: true, status: 200 } as Response,
-          data: { ...dealData, id: id || dealData.id },
+          data: { ...dealData, id: id || (dealData as { id?: string }).id },
         } as never;
       }
 
