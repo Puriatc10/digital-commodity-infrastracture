@@ -10,6 +10,7 @@ from execution.api.serializers import (
     ExecutionInspectionSerializer,
     ExecutionLogisticsSerializer,
     ExecutionMilestoneSerializer,
+    ExecutionPaymentSerializer,
     ExecutionWorkflowTemplateDetailSerializer,
     ExecutionWorkflowTemplateSummarySerializer,
     ExecutionWorkflowTemplateVersionSerializer,
@@ -28,6 +29,8 @@ from execution.api.serializers import (
     MilestoneCompleteRequestSerializer,
     MilestoneSkipRequestSerializer,
     MilestoneStartRequestSerializer,
+    PaymentConfirmRequestSerializer,
+    PaymentReportRequestSerializer,
     TimelineEventSerializer,
 )
 from execution.exceptions import (
@@ -39,11 +42,13 @@ from execution.exceptions import (
     InspectionNotFoundError,
     InvalidInspectionTransitionError,
     InvalidMilestoneTransitionError,
+    InvalidPaymentTransitionError,
     LogisticsNotFoundError,
     MilestoneAlreadyCompletedError,
     MilestoneNotFoundError,
     MilestonePrerequisiteUnmetError,
     NoActiveWorkflowVersionError,
+    PaymentNotFoundError,
     StaleVersionError,
     WorkflowTemplateInactiveError,
     WorkflowTemplateNotFoundError,
@@ -58,12 +63,14 @@ from execution.services import (
     cancel_inspection,
     complete_inspection,
     complete_milestone,
+    confirm_payment,
     create_or_get_execution_for_deal,
     get_active_workflow_template_version,
     get_execution_by_id,
     get_execution_for_deal,
     get_or_create_execution_inspection,
     get_or_create_execution_logistics,
+    get_or_create_execution_payment,
     get_workflow_template,
     get_workflow_version,
     mark_inspection_not_required,
@@ -71,9 +78,9 @@ from execution.services import (
     project_execution_timeline,
     record_delivery,
     record_loading,
+    report_payment,
     schedule_inspection,
     schedule_loading,
-
     skip_milestone,
     start_milestone,
     update_eta,
@@ -1364,6 +1371,213 @@ class DealExecutionInspectionView(APIView):
             return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = ExecutionInspectionSerializer(inspection)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ExecutionPaymentDetailView(APIView):
+    """
+    Retrieve operational payment monitoring record for an Execution (Epic 10 Contract §50–§59, T1006).
+
+    GET /api/execution/{execution_id}/payment/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_payment_detail",
+        tags=["Payment"],
+        summary="Retrieve Execution Payment Monitoring Record",
+        description=(
+            "Retrieves the authoritative operational payment monitoring record for an Execution. "
+            "Returns status (EXPECTED, REPORTED, CONFIRMED), expected amount/currency, "
+            "reported metadata, confirmed metadata, reference, notes, and aggregate version."
+        ),
+        responses={
+            200: ExecutionPaymentSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, execution_id):
+        deal_id = request.query_params.get("deal_id")
+        try:
+            payment = get_or_create_execution_payment(
+                execution_id=execution_id,
+                actor=request.user,
+                deal_id=deal_id,
+            )
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except CrossObjectIntegrityError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = ExecutionPaymentSerializer(payment)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ExecutionPaymentReportActionView(APIView):
+    """
+    Operational action to report payment (Epic 10 Contract §54, §56, §57, T1006).
+
+    POST /api/execution/{execution_id}/payment/report/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_payment_report",
+        tags=["Payment"],
+        summary="Report Execution Payment",
+        description=(
+            "Buyer/Seller/Operator operational action: reports payment occurrence. "
+            "Transitions status: EXPECTED -> REPORTED. "
+            "Server authoritatively derives reported_by and reported_at. "
+            "Guarded by optimistic concurrency (expected_version) and select_for_update row locking."
+        ),
+        request=PaymentReportRequestSerializer,
+        responses={
+            200: ExecutionPaymentSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = PaymentReportRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        deal_id = request.data.get("deal_id")
+
+        try:
+            payment = report_payment(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                reference=data.get("reference"),
+                notes=data.get("notes"),
+                deal_id=deal_id,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionNotFoundError, PaymentNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (
+            ExecutionClosedError,
+            CrossObjectIntegrityError,
+            InvalidPaymentTransitionError,
+            ExecutionValidationError,
+        ) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionPaymentSerializer(payment)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionPaymentConfirmActionView(APIView):
+    """
+    Operational action to confirm payment (Epic 10 Contract §55, §56, §57, T1006).
+
+    POST /api/execution/{execution_id}/payment/confirm/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_payment_confirm",
+        tags=["Payment"],
+        summary="Confirm Execution Payment",
+        description=(
+            "Operator/Admin operational action: authoritatively confirms payment progress. "
+            "Transitions status: REPORTED -> CONFIRMED. "
+            "Normal prerequisite: status == REPORTED (direct EXPECTED -> CONFIRMED is forbidden). "
+            "Server authoritatively derives confirmed_by and confirmed_at. "
+            "Guarded by optimistic concurrency (expected_version) and select_for_update row locking."
+        ),
+        request=PaymentConfirmRequestSerializer,
+        responses={
+            200: ExecutionPaymentSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = PaymentConfirmRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        deal_id = request.data.get("deal_id")
+
+        try:
+            payment = confirm_payment(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                reference=data.get("reference"),
+                notes=data.get("notes"),
+                deal_id=deal_id,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionNotFoundError, PaymentNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (
+            ExecutionClosedError,
+            CrossObjectIntegrityError,
+            InvalidPaymentTransitionError,
+            ExecutionValidationError,
+        ) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionPaymentSerializer(payment)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class DealExecutionPaymentView(APIView):
+    """Retrieve operational payment monitoring record by Deal UUID."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deal_execution_payment",
+        tags=["Payment"],
+        summary="Retrieve Operational Payment for Deal",
+        description="Retrieves operational payment monitoring record for a Deal's execution instance.",
+        responses={
+            200: ExecutionPaymentSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, deal_id):
+        try:
+            execution = get_execution_for_deal(deal_id, actor=request.user)
+        except ExecutionNotFoundError:
+            return Response({"detail": f"Execution for deal '{deal_id}' not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            payment = get_or_create_execution_payment(execution.id, actor=request.user, deal_id=deal_id)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionPaymentSerializer(payment)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

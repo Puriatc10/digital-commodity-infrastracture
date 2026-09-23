@@ -7,6 +7,7 @@ from .models import (
     ExecutionMilestone,
     ExecutionMilestoneDefinition,
     ExecutionMilestoneDependency,
+    ExecutionPayment,
     ExecutionWorkflowTemplate,
     ExecutionWorkflowTemplateVersion,
 )
@@ -70,4 +71,12 @@ class ExecutionInspectionAdmin(admin.ModelAdmin):
     list_display = ("id", "execution", "agency", "status", "result", "required", "scheduled_at", "inspection_at", "version")
     list_filter = ("status", "result", "required")
     search_fields = ("execution__id", "agency", "notes")
+
+
+@admin.register(ExecutionPayment)
+class ExecutionPaymentAdmin(admin.ModelAdmin):
+    list_display = ("id", "execution", "status", "expected_amount", "currency", "reported_at", "confirmed_at", "version")
+    list_filter = ("status", "currency")
+    search_fields = ("execution__id", "reference", "notes")
+    readonly_fields = ("reported_at", "reported_by", "confirmed_at", "confirmed_by", "created_at", "updated_at")
 

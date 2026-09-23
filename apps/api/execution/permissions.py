@@ -288,6 +288,70 @@ def check_inspection_mutation_authority(
         )
 
 
+def check_payment_mutation_authority(
+    user: Any,
+    deal_or_execution: Any,
+    action_type: str,
+) -> None:
+    """
+    Verify operational payment mutation authority (Epic 10 Contract §57, T1006).
+
+    Operational actions:
+    - REPORT:
+      Authorized:
+      - Platform OPERATOR or ADMIN with valid SystemRoleAssignment.
+      - Active non-viewer members (Owner, Manager, Member) of the Deal's Buyer Organization.
+      - Active non-viewer members of the Deal's Seller Organization (if internal seller).
+      Denied:
+      - Viewer role members (strictly read-only).
+      - Attributed-only brokers (attribution is provenance, not authorization).
+      - External counterparty direct sessions (handled exclusively via Operator).
+      - Unrelated organizations.
+    - CONFIRM:
+      Authorized:
+      - Platform OPERATOR or ADMIN with valid SystemRoleAssignment ONLY.
+      Denied:
+      - Buyer organization members (strictly forbidden to confirm payments unilaterally in v1).
+      - Seller organization members (strictly forbidden to confirm payments unilaterally in v1).
+      - Viewer role members.
+      - Attributed-only brokers.
+      - External counterparties.
+      - Unrelated organizations.
+    """
+    deal = getattr(deal_or_execution, "deal", deal_or_execution)
+    if not user or not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
+        raise ExecutionPermissionDeniedError("Authentication required.")
+
+    if is_operator_or_admin(user):
+        return
+
+    # In v1, confirmation is strictly restricted to Operator and Admin (§57)
+    if action_type == "CONFIRM":
+        raise ExecutionPermissionDeniedError(
+            "Payment confirmation is strictly restricted to Platform Operators and Admins."
+        )
+
+    allowed_org_ids = [deal.buyer_organization_id]
+    if deal.seller_organization_id:
+        allowed_org_ids.append(deal.seller_organization_id)
+
+    membership = OrganizationMembership.objects.filter(
+        user=user,
+        organization_id__in=allowed_org_ids,
+        is_active=True,
+        organization__is_active=True,
+    ).first()
+
+    if not membership:
+        raise ExecutionPermissionDeniedError("You do not have permission to mutate payment for this execution.")
+
+    if membership.role == OrganizationMembership.OrganizationRole.VIEWER:
+        raise ExecutionPermissionDeniedError("Viewer role is read-only and cannot mutate execution state.")
+
+    if action_type != "REPORT":
+        raise ExecutionPermissionDeniedError(f"Unsupported payment mutation action '{action_type}'.")
+
+
 class IsOperatorOrAdmin(permissions.BasePermission):
     """DRF permission class restricting view access to Platform Operators and Product Admins."""
 

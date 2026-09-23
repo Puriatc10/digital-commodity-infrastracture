@@ -9,6 +9,7 @@ from .inspection import ExecutionInspection
 from .logistics import ExecutionLogistics
 from .milestone import ExecutionMilestone
 from .milestone_definition import ExecutionMilestoneDefinition
+from .payment import ExecutionPayment
 from .template import ExecutionWorkflowTemplate, lock_workflow_templates
 from .version import ExecutionWorkflowTemplateVersion
 
@@ -65,6 +66,11 @@ def protect_execution_inspection_deletion(sender, instance, **kwargs):
     raise ValidationError("Execution inspection records represent historical operational facts and cannot be deleted.")
 
 
+@receiver(pre_delete, sender=ExecutionPayment)
+def protect_execution_payment_deletion(sender, instance, **kwargs):
+    raise ValidationError("Execution payment records represent historical operational facts and cannot be deleted.")
+
+
 __all__ = [
     "ExecutionWorkflowTemplate",
     "ExecutionWorkflowTemplateVersion",
@@ -74,6 +80,7 @@ __all__ = [
     "ExecutionMilestone",
     "ExecutionLogistics",
     "ExecutionInspection",
+    "ExecutionPayment",
     "lock_workflow_templates",
     "lock_executions",
 ]

@@ -121,6 +121,34 @@ def _check_milestone_inspection_guards(execution: Execution, milestone: Executio
             )
 
 
+def _check_milestone_payment_guards(execution: Execution, milestone: ExecutionMilestone) -> None:
+    """
+    Verify authoritative payment monitoring facts for PAYMENT_REPORTED milestone (Epic 10 Contract §58, T1006).
+
+    Invariants:
+    - Milestone 'PAYMENT_REPORTED' may complete when:
+        1. payment.status == REPORTED; or
+        2. payment.status == CONFIRMED.
+    - If payment record does not exist or status is EXPECTED, rejects completion.
+    - Milestone cannot independently create or alter payment state; ExecutionPayment is source of truth.
+    """
+    code = milestone.definition.code
+    if code == "PAYMENT_REPORTED":
+        from execution.enums import PaymentStatus
+        from execution.models.payment import ExecutionPayment
+
+        payment = ExecutionPayment.objects.filter(execution=execution).first()
+        if not payment:
+            raise ExecutionValidationError(
+                "Milestone 'PAYMENT_REPORTED' requires payment monitoring record to be initialized."
+            )
+        if payment.status not in {PaymentStatus.REPORTED, PaymentStatus.CONFIRMED}:
+            raise ExecutionValidationError(
+                f"Milestone 'PAYMENT_REPORTED' requires payment status to be REPORTED or CONFIRMED "
+                f"(current status: '{payment.status}')."
+            )
+
+
 @transaction.atomic
 def complete_milestone(
     execution_id: Union[UUID, str],
@@ -197,10 +225,19 @@ def complete_milestone(
     # Quality & inspection authoritative facts guard (Epic 10 Contract §49, T1005)
     _check_milestone_inspection_guards(execution, milestone)
 
+    # Payment monitoring authoritative facts guard (Epic 10 Contract §58, T1006)
+    _check_milestone_payment_guards(execution, milestone)
+
     # Authoritative completion transition
     code = milestone.definition.code
     source_time = actual_at
-    if not source_time and code in {"LOADING_SCHEDULED", "LOADED", "DELIVERED", "INSPECTION_COMPLETED"}:
+    if not source_time and code in {
+        "LOADING_SCHEDULED",
+        "LOADED",
+        "DELIVERED",
+        "INSPECTION_COMPLETED",
+        "PAYMENT_REPORTED",
+    }:
         if code in {"LOADING_SCHEDULED", "LOADED", "DELIVERED"}:
             from execution.models.logistics import ExecutionLogistics
 
@@ -218,6 +255,12 @@ def complete_milestone(
             inspection = ExecutionInspection.objects.filter(execution=execution).first()
             if inspection and inspection.inspection_at:
                 source_time = inspection.inspection_at
+        elif code == "PAYMENT_REPORTED":
+            from execution.models.payment import ExecutionPayment
+
+            payment = ExecutionPayment.objects.filter(execution=execution).first()
+            if payment and payment.reported_at:
+                source_time = payment.reported_at
 
 
     completion_time = source_time or timezone.now()

@@ -14,6 +14,7 @@ from execution.services import (
     create_or_get_execution_for_deal,
     mark_inspection_not_required,
     record_loading,
+    report_payment,
     schedule_inspection,
     schedule_loading,
 )
@@ -35,6 +36,7 @@ class InspectionMilestoneIntegrationTests(BaseExecutionTestCase):
         m_contract = ExecutionMilestone.objects.get(execution=execution, definition__code="CONTRACT_SIGNED")
         complete_milestone(execution_id=execution.id, milestone_id=m_contract.id, expected_version=1, actor=self.operator_user)
 
+        report_payment(execution_id=execution.id, expected_version=1, actor=self.buyer_owner)
         m_pay = ExecutionMilestone.objects.get(execution=execution, definition__code="PAYMENT_REPORTED")
         complete_milestone(execution_id=execution.id, milestone_id=m_pay.id, expected_version=1, actor=self.operator_user)
 

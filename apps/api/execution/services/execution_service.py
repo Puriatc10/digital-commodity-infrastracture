@@ -216,6 +216,11 @@ def create_or_get_execution_for_deal(
         },
     )
 
+    # Idempotently initialize ExecutionPayment (Epic 10 Contract §50–§59, T1006)
+    from execution.services.payment_service import get_or_create_execution_payment
+
+    get_or_create_execution_payment(execution.id)
+
     return execution
 
 

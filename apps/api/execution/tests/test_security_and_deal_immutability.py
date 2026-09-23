@@ -18,6 +18,7 @@ from execution.services import (
     create_or_get_execution_for_deal,
     record_delivery,
     record_loading,
+    report_payment,
     schedule_loading,
     start_milestone,
 )
@@ -140,7 +141,13 @@ class SecurityAndDealImmutabilityTests(BaseExecutionTestCase):
         for defn in definitions:
             m = ExecutionMilestone.objects.get(execution=execution, definition=defn)
             if m.status != ExecutionStatus.CLOSED and m.status != "COMPLETED":
-                if defn.code == "LOADING_SCHEDULED":
+                if defn.code == "PAYMENT_REPORTED":
+                    report_payment(
+                        execution_id=execution.id,
+                        expected_version=1,
+                        actor=self.operator_user,
+                    )
+                elif defn.code == "LOADING_SCHEDULED":
                     logistics = ExecutionLogistics.objects.get(execution=execution)
                     schedule_loading(
                         execution.id,

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Optional
 import uuid
 
 from django.contrib.auth import get_user_model
@@ -47,7 +48,13 @@ class BaseExecutionTestMixin(BaseDealsTestMixin):
             is_active=True,
         )
 
-    def create_sample_deal(self, *, external_seller=False) -> Deal:
+    def create_sample_deal(
+        self,
+        *,
+        external_seller: bool = False,
+        logistics_cost_status: Optional[str] = None,
+        logistics_cost_amount: Optional[Decimal] = None,
+    ) -> Deal:
         """Helper to create a fresh, materialized Deal aggregate for execution tests."""
         rfq = RFQ.objects.create(
             organization=self.buyer_org,
@@ -87,6 +94,7 @@ class BaseExecutionTestMixin(BaseDealsTestMixin):
             offeror_role=OfferorRole.SUPPLIER,
             offering_organization=self.supplier_org,
         )
+        l_status = logistics_cost_status or LogisticsCostStatus.INCLUDED_IN_PRICE
         v1 = create_draft_offer_version(
             actor=self.supplier_user,
             offer=offer.id,
@@ -99,7 +107,8 @@ class BaseExecutionTestMixin(BaseDealsTestMixin):
             delivery_terms="FOB Bandar Abbas",
             incoterm="FOB",
             valid_until=timezone.now() + timezone.timedelta(days=14),
-            logistics_cost_status=LogisticsCostStatus.INCLUDED_IN_PRICE,
+            logistics_cost_status=l_status,
+            logistics_cost_amount=logistics_cost_amount,
         )
         offer.refresh_from_db()
         v1 = submit_internal_offer_version(
