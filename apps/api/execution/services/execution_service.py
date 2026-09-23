@@ -190,6 +190,14 @@ def create_or_get_execution_for_deal(
 
     ExecutionMilestone.objects.bulk_create(milestones_to_create)
 
+    # Idempotently initialize ExecutionLogistics (Epic 10 Contract §35, T1004)
+    from execution.models.logistics import ExecutionLogistics
+
+    ExecutionLogistics.objects.get_or_create(
+        execution=execution,
+        defaults={"version": 1},
+    )
+
     return execution
 
 

@@ -58,6 +58,39 @@ def _check_prerequisites_satisfied(execution: Execution, milestone: ExecutionMil
         )
 
 
+def _check_milestone_logistics_guards(execution: Execution, milestone: ExecutionMilestone) -> None:
+    """
+    Verify authoritative T1004 operational logistics facts for corresponding milestones.
+
+    Invariants (Epic 10 Contract §25, §26, §29, T1004):
+    - LOADING_SCHEDULED requires scheduled_loading_at in logistics tracking.
+    - LOADED requires actual_loading_at in logistics tracking.
+    - DELIVERED requires actual_delivery_at in logistics tracking.
+    - DELIVERED does NOT imply ACCEPTED.
+    - Does not branch on commodity code (generic milestone definition code check).
+    """
+    code = milestone.definition.code
+    if code in {"LOADING_SCHEDULED", "LOADED", "DELIVERED"}:
+        from execution.models.logistics import ExecutionLogistics
+
+        logistics = ExecutionLogistics.objects.filter(execution=execution).first()
+        if code == "LOADING_SCHEDULED":
+            if not logistics or not logistics.scheduled_loading_at:
+                raise ExecutionValidationError(
+                    "Milestone 'LOADING_SCHEDULED' requires scheduled loading date/time in logistics tracking."
+                )
+        elif code == "LOADED":
+            if not logistics or not logistics.actual_loading_at:
+                raise ExecutionValidationError(
+                    "Milestone 'LOADED' requires actual loading date/time in logistics tracking."
+                )
+        elif code == "DELIVERED":
+            if not logistics or not logistics.actual_delivery_at:
+                raise ExecutionValidationError(
+                    "Milestone 'DELIVERED' requires actual delivery date/time in logistics tracking."
+                )
+
+
 @transaction.atomic
 def complete_milestone(
     execution_id: Union[UUID, str],
@@ -128,8 +161,25 @@ def complete_milestone(
     # Prerequisites check
     _check_prerequisites_satisfied(execution, milestone)
 
+    # Logistics authoritative facts guard (Epic 10 Contract §25, §26, §29, T1004)
+    _check_milestone_logistics_guards(execution, milestone)
+
     # Authoritative completion transition
-    completion_time = actual_at or timezone.now()
+    code = milestone.definition.code
+    source_time = actual_at
+    if not source_time and code in {"LOADING_SCHEDULED", "LOADED", "DELIVERED"}:
+        from execution.models.logistics import ExecutionLogistics
+
+        logistics = ExecutionLogistics.objects.filter(execution=execution).first()
+        if logistics:
+            if code == "LOADING_SCHEDULED" and logistics.scheduled_loading_at:
+                source_time = logistics.scheduled_loading_at
+            elif code == "LOADED" and logistics.actual_loading_at:
+                source_time = logistics.actual_loading_at
+            elif code == "DELIVERED" and logistics.actual_delivery_at:
+                source_time = logistics.actual_delivery_at
+
+    completion_time = source_time or timezone.now()
     milestone.status = MilestoneStatus.COMPLETED
     milestone.actual_at = completion_time
     milestone.recorded_at = timezone.now()

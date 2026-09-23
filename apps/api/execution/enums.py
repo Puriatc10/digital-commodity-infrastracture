@@ -70,3 +70,21 @@ class TimelineEventType(models.TextChoices):
     MILESTONE_SKIPPED = "MILESTONE_SKIPPED", "Milestone Skipped"
     EXECUTION_CLOSED = "EXECUTION_CLOSED", "Execution Closed"
 
+
+class TransportMode(models.TextChoices):
+    """
+    Canonical transport mode for execution logistics (Epic 10 Contract §37, T1004).
+
+    Invariants:
+    - Canonical enum: ROAD, SEA, RAIL, AIR, MULTIMODAL, OTHER.
+    - Never infer transport mode from geography or commercial delivery terms.
+    - Explicit values only.
+    """
+
+    ROAD = "ROAD", "Road"
+    SEA = "SEA", "Sea"
+    RAIL = "RAIL", "Rail"
+    AIR = "AIR", "Air"
+    MULTIMODAL = "MULTIMODAL", "Multimodal"
+    OTHER = "OTHER", "Other"
+

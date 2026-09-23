@@ -7,10 +7,18 @@ from execution.api.serializers import (
     ExecutionCreateRequestSerializer,
     ExecutionDetailSerializer,
     ExecutionErrorResponseSerializer,
+    ExecutionLogisticsSerializer,
     ExecutionMilestoneSerializer,
     ExecutionWorkflowTemplateDetailSerializer,
     ExecutionWorkflowTemplateSummarySerializer,
     ExecutionWorkflowTemplateVersionSerializer,
+    LogisticsMutateRequestSerializer,
+    LogisticsRecordDeliverySerializer,
+    LogisticsRecordLoadingSerializer,
+    LogisticsScheduleLoadingSerializer,
+    LogisticsUpdateCostSerializer,
+    LogisticsUpdateETASerializer,
+    LogisticsUpdateTransportSerializer,
     MilestoneBlockRequestSerializer,
     MilestoneCompleteRequestSerializer,
     MilestoneSkipRequestSerializer,
@@ -24,6 +32,7 @@ from execution.exceptions import (
     ExecutionPermissionDeniedError,
     ExecutionValidationError,
     InvalidMilestoneTransitionError,
+    LogisticsNotFoundError,
     MilestoneAlreadyCompletedError,
     MilestoneNotFoundError,
     MilestonePrerequisiteUnmetError,
@@ -44,11 +53,19 @@ from execution.services import (
     get_active_workflow_template_version,
     get_execution_by_id,
     get_execution_for_deal,
+    get_or_create_execution_logistics,
     get_workflow_template,
     get_workflow_version,
+    mutate_logistics,
     project_execution_timeline,
+    record_delivery,
+    record_loading,
+    schedule_loading,
     skip_milestone,
     start_milestone,
+    update_eta,
+    update_logistics_cost,
+    update_transport,
 )
 
 
@@ -581,4 +598,422 @@ class DealMilestoneCompleteActionView(APIView):
 
         out = ExecutionMilestoneSerializer(milestone)
         return Response(out.data, status=status.HTTP_200_OK)
+
+
+# =============================================================================
+# Execution Logistics Operational Views (T1004)
+# =============================================================================
+
+
+class ExecutionLogisticsDetailView(APIView):
+    """
+    Operational logistics detail and constrained mutation endpoint (Epic 10 Contract §35, §42, T1004).
+
+    GET   /api/execution/{execution_id}/logistics/
+    PATCH /api/execution/{execution_id}/logistics/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_logistics_detail",
+        tags=["Logistics"],
+        summary="Retrieve Execution Logistics Operational Record",
+        description=(
+            "Idempotently retrieves or initializes the operational ExecutionLogistics aggregate for an Execution. "
+            "Unknown fields remain null/empty without fabricated defaults."
+        ),
+        responses={
+            200: ExecutionLogisticsSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, execution_id):
+        try:
+            logistics = get_or_create_execution_logistics(execution_id, actor=request.user)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ExecutionLogisticsSerializer(logistics)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        operation_id="execution_logistics_patch",
+        tags=["Logistics"],
+        summary="Constrained Mutation of Execution Logistics",
+        description=(
+            "Mutates operational logistics facts under optimistic concurrency control (expected_version). "
+            "Mass-assignment of server-owned fields (id, execution, version, created_at, updated_at) is strictly rejected. "
+            "Side-specific authority is verified field-by-field."
+        ),
+        request=LogisticsMutateRequestSerializer,
+        responses={
+            200: ExecutionLogisticsSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def patch(self, request, execution_id):
+        serializer = LogisticsMutateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        expected_version = data.pop("expected_version")
+
+        try:
+            logistics = mutate_logistics(
+                execution_id=execution_id,
+                expected_version=expected_version,
+                data=data,
+                actor=request.user,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionNotFoundError, LogisticsNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (ExecutionClosedError, CrossObjectIntegrityError, ExecutionValidationError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionLogisticsSerializer(logistics)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionLogisticsScheduleLoadingActionView(APIView):
+    """Schedule loading date/time and locations (Seller/Operator)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_logistics_schedule_loading",
+        tags=["Logistics"],
+        summary="Schedule Operational Loading",
+        description=(
+            "Records scheduled operational loading timestamp and optional pickup/destination locations. "
+            "Requires Seller or Operator authority and optimistic concurrency expected_version."
+        ),
+        request=LogisticsScheduleLoadingSerializer,
+        responses={
+            200: ExecutionLogisticsSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = LogisticsScheduleLoadingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            logistics = schedule_loading(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                scheduled_loading_at=data["scheduled_loading_at"],
+                pickup_area_id=data.get("pickup_area_id"),
+                destination_area_id=data.get("destination_area_id"),
+                pickup_location=data.get("pickup_location"),
+                destination_location=data.get("destination_location"),
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (ExecutionClosedError, ExecutionValidationError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionLogisticsSerializer(logistics)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionLogisticsRecordLoadingActionView(APIView):
+    """Record actual loading occurrence (Seller/Operator)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_logistics_record_loading",
+        tags=["Logistics"],
+        summary="Record Actual Operational Loading",
+        description=(
+            "Records actual operational loading timestamp. "
+            "Guards chronology: actual_delivery_at cannot precede actual_loading_at. "
+            "Requires Seller or Operator authority and optimistic concurrency expected_version."
+        ),
+        request=LogisticsRecordLoadingSerializer,
+        responses={
+            200: ExecutionLogisticsSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = LogisticsRecordLoadingSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            logistics = record_loading(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                actual_loading_at=data["actual_loading_at"],
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (ExecutionClosedError, ExecutionValidationError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionLogisticsSerializer(logistics)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionLogisticsUpdateTransportActionView(APIView):
+    """Update carrier, transport mode, and tracking reference (Seller/Operator)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_logistics_update_transport",
+        tags=["Logistics"],
+        summary="Update Transport Carrier, Mode, and Reference",
+        description=(
+            "Updates transport details. Transport mode must be one of canonical TransportMode enum. "
+            "Requires Seller or Operator authority and optimistic concurrency expected_version."
+        ),
+        request=LogisticsUpdateTransportSerializer,
+        responses={
+            200: ExecutionLogisticsSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = LogisticsUpdateTransportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        carrier_val = data.get("carrier_name") or data.get("carrier")
+
+        try:
+            logistics = update_transport(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                carrier_name=carrier_val,
+                transport_mode=data.get("transport_mode"),
+                transport_reference=data.get("transport_reference"),
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (ExecutionClosedError, ExecutionValidationError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionLogisticsSerializer(logistics)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionLogisticsUpdateETAActionView(APIView):
+    """Update Estimated Time of Arrival (ETA) (Seller/Operator)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_logistics_update_eta",
+        tags=["Logistics"],
+        summary="Update Estimated Time of Arrival (ETA)",
+        description=(
+            "Updates ETA for operational shipment arrival. "
+            "Rejected if actual delivery has already been recorded. "
+            "Requires Seller or Operator authority and optimistic concurrency expected_version."
+        ),
+        request=LogisticsUpdateETASerializer,
+        responses={
+            200: ExecutionLogisticsSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = LogisticsUpdateETASerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            logistics = update_eta(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                eta=data["eta"],
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (ExecutionClosedError, ExecutionValidationError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionLogisticsSerializer(logistics)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionLogisticsRecordDeliveryActionView(APIView):
+    """Record actual delivery receipt (Buyer/Operator)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_logistics_record_delivery",
+        tags=["Logistics"],
+        summary="Record Actual Operational Delivery",
+        description=(
+            "Records actual delivery arrival timestamp. "
+            "Chronology validated: actual_delivery_at cannot precede actual_loading_at. "
+            "Does NOT imply goods acceptance (milestone ACCEPTED remains separate). "
+            "Requires Buyer or Operator authority and optimistic concurrency expected_version."
+        ),
+        request=LogisticsRecordDeliverySerializer,
+        responses={
+            200: ExecutionLogisticsSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = LogisticsRecordDeliverySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            logistics = record_delivery(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                actual_delivery_at=data["actual_delivery_at"],
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (ExecutionClosedError, ExecutionValidationError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionLogisticsSerializer(logistics)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionLogisticsUpdateCostActionView(APIView):
+    """Update operational logistics cost and currency (Seller/Operator)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_logistics_update_cost",
+        tags=["Logistics"],
+        summary="Update Operational Logistics Cost",
+        description=(
+            "Updates actual or reported operational logistics cost in Decimal. "
+            "Currency code is mandatory. No FX conversion. "
+            "Does not mutate commercial Deal cost snapshot. "
+            "Requires Seller or Operator authority and optimistic concurrency expected_version."
+        ),
+        request=LogisticsUpdateCostSerializer,
+        responses={
+            200: ExecutionLogisticsSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = LogisticsUpdateCostSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            logistics = update_logistics_cost(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                logistics_cost=data["logistics_cost"],
+                currency=data["currency"],
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (ExecutionClosedError, ExecutionValidationError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionLogisticsSerializer(logistics)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class DealExecutionLogisticsView(APIView):
+    """Retrieve operational logistics record by Deal UUID."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deal_execution_logistics",
+        tags=["Logistics"],
+        summary="Retrieve Operational Logistics for Deal",
+        description="Retrieves operational logistics record for a Deal's execution instance.",
+        responses={
+            200: ExecutionLogisticsSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, deal_id):
+        try:
+            execution = get_execution_for_deal(deal_id, actor=request.user)
+        except ExecutionNotFoundError:
+            return Response({"detail": f"Execution for deal '{deal_id}' not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            logistics = get_or_create_execution_logistics(execution.id, actor=request.user, deal_id=deal_id)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionLogisticsSerializer(logistics)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
