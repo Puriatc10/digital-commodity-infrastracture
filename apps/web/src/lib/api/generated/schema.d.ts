@@ -347,6 +347,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{deal_id}/execution/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Deal Execution Aggregate
+         * @description Retrieves the Execution aggregate and materialized milestone graph for a Deal.
+         */
+        get: operations["execution_get_by_deal"];
+        put?: never;
+        /**
+         * Create or Retrieve Deal Execution Aggregate
+         * @description Idempotently creates or retrieves the single Execution aggregate for an immutable Deal. Binds to the currently active PUBLISHED workflow template version or an explicitly specified published version. Materializes milestone instances and auto-completes the initial AWARDED milestone using the authoritative Award source timestamp. Subsequent calls return the existing Execution instance without duplicating rows or re-materializing. Concurrency is protected with PostgreSQL database locks.
+         */
+        post: operations["execution_create_or_get"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/milestones/{milestone_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Milestone via Deal Scope
+         * @description Completes an execution milestone scoped to a specific Deal ID.
+         */
+        post: operations["deal_execution_milestone_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{deal_id}/parties/": {
         parameters: {
             query?: never;
@@ -449,6 +493,126 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["documents_upload_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Aggregate by ID
+         * @description Retrieves Execution aggregate and materialized milestone graph by Execution UUID.
+         */
+        get: operations["execution_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/milestones/{milestone_id}/block/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Milestone Blocked
+         * @description Marks an execution milestone BLOCKED with a mandatory non-empty reason.
+         */
+        post: operations["execution_milestone_block"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/milestones/{milestone_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Execution Milestone
+         * @description Authoritatively marks an execution milestone COMPLETED. Requires current expected_version for optimistic concurrency control. If the milestone definition has terminal=True, the execution status is atomically set to CLOSED. Completed milestones are strictly immutable and cannot be reopened.
+         */
+        post: operations["execution_milestone_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/milestones/{milestone_id}/skip/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Milestone Skipped
+         * @description Marks an execution milestone SKIPPED with a mandatory reason.
+         */
+        post: operations["execution_milestone_skip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/milestones/{milestone_id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Milestone Execution
+         * @description Transitions a milestone from PENDING to IN_PROGRESS. Requires current expected_version for optimistic concurrency control.
+         */
+        post: operations["execution_milestone_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/timeline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Deterministic Execution Timeline
+         * @description Projects the deterministic domain timeline for an Execution instance. Combines execution creation, milestone status facts, and execution closure. Sorted strictly by (event_at ASC, stable_type_priority, stable_id ASC). Rendered historically using the bound workflow template version's definition metadata.
+         */
+        get: operations["execution_timeline"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3388,6 +3552,133 @@ export interface components {
          * @enum {string}
          */
         EventTypeEnum: "rfq_created" | "rfq_published" | "participant_invited" | "participant_viewed" | "participant_declined" | "participant_responded" | "rfq_closed" | "rfq_cancelled";
+        /** @description Request payload for explicit idempotent execution creation. */
+        ExecutionCreateRequest: {
+            /** @description Canonical workflow template code (e.g. bitumen_standard). */
+            workflow_template_code?: string | null;
+            /**
+             * Format: uuid
+             * @description Explicit workflow template UUID.
+             */
+            workflow_template_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Explicit workflow template version UUID (must be PUBLISHED).
+             */
+            workflow_template_version_id?: string | null;
+        };
+        /** @description Full execution aggregate detail serializer. */
+        ExecutionDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Authoritative source Deal aggregate (1 Deal -> exactly 1 Execution).
+             */
+            readonly deal_id: string;
+            /**
+             * Format: uuid
+             * @description Immutable workflow template version bound at creation time.
+             */
+            readonly workflow_template_version_id: string;
+            readonly workflow_template_code: string;
+            readonly workflow_template_name_fa: string;
+            readonly workflow_template_name_en: string;
+            readonly workflow_version_number: number;
+            /**
+             * @description Execution operational lifecycle status (OPEN or CLOSED).
+             *
+             *     * `OPEN` - Open
+             *     * `CLOSED` - Closed
+             */
+            status?: components["schemas"]["ExecutionDetailStatusEnum"];
+            /** @description Optimistic concurrency aggregate version counter. */
+            version?: number;
+            /**
+             * Format: date-time
+             * @description Timestamp when execution monitoring started.
+             */
+            started_at?: string;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when execution reached CLOSED status.
+             */
+            closed_at?: string | null;
+            readonly milestones: components["schemas"]["ExecutionMilestone"][];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `CLOSED` - Closed
+         * @enum {string}
+         */
+        ExecutionDetailStatusEnum: "OPEN" | "CLOSED";
+        /** @description Standard error response. */
+        ExecutionErrorResponse: {
+            /** @description Detailed error explanation. */
+            detail: string;
+        };
+        /** @description Execution milestone instance presentation serializer. */
+        ExecutionMilestone: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent execution instance.
+             */
+            readonly execution_id: string;
+            /**
+             * Format: uuid
+             * @description Milestone definition from the bound workflow template version.
+             */
+            readonly definition_id: string;
+            readonly code: string;
+            readonly name_fa: string;
+            readonly name_en: string;
+            readonly sort_order: number;
+            readonly required: boolean;
+            readonly blocking: boolean;
+            readonly terminal: boolean;
+            /**
+             * @description Runtime status of this milestone instance.
+             *
+             *     * `PENDING` - Pending
+             *     * `IN_PROGRESS` - In Progress
+             *     * `COMPLETED` - Completed
+             *     * `BLOCKED` - Blocked
+             *     * `SKIPPED` - Skipped
+             */
+            status?: components["schemas"]["ExecutionMilestoneStatusEnum"];
+            /**
+             * Format: date-time
+             * @description Target expected completion date/time.
+             */
+            expected_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Actual historical occurrence timestamp.
+             */
+            actual_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when milestone completion was recorded.
+             */
+            recorded_at?: string | null;
+            /** @description User who authoritatively recorded completion. */
+            readonly completed_by_id: number | null;
+            readonly completed_by_email: string | null;
+            /** @description Operational notes or transition reasons. */
+            notes?: string;
+            /** @description Optimistic concurrency version counter. */
+            version?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         ExecutionMilestoneDefinition: {
             /** Format: uuid */
             readonly id: string;
@@ -3411,6 +3702,15 @@ export interface components {
             category?: string;
             readonly prerequisite_codes: string[];
         };
+        /**
+         * @description * `PENDING` - Pending
+         *     * `IN_PROGRESS` - In Progress
+         *     * `COMPLETED` - Completed
+         *     * `BLOCKED` - Blocked
+         *     * `SKIPPED` - Skipped
+         * @enum {string}
+         */
+        ExecutionMilestoneStatusEnum: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "BLOCKED" | "SKIPPED";
         ExecutionWorkflowTemplateDetail: {
             /** Format: uuid */
             readonly id: string;
@@ -3778,6 +4078,45 @@ export interface components {
          * @enum {string}
          */
         MatchingSignalResponseOutcomeEnum: "PASS" | "PARTIAL" | "FAIL" | "UNKNOWN" | "NOT_APPLICABLE";
+        /** @description Request payload to mark milestone BLOCKED. */
+        MilestoneBlockRequest: {
+            /** @description Current expected milestone version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory reason describing the blocking issue. */
+            reason: string;
+        };
+        /** @description Request payload to complete an execution milestone. */
+        MilestoneCompleteRequest: {
+            /** @description Current expected milestone version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Reported historical occurrence timestamp. Defaults to server now if omitted.
+             */
+            actual_at?: string | null;
+            /**
+             * @description Optional completion notes or evidence summary.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to mark milestone SKIPPED. */
+        MilestoneSkipRequest: {
+            /** @description Current expected milestone version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory reason explaining why the milestone was skipped. */
+            reason: string;
+        };
+        /** @description Request payload to transition milestone to IN_PROGRESS. */
+        MilestoneStartRequest: {
+            /** @description Current expected milestone version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional operational notes.
+             * @default
+             */
+            notes: string;
+        };
         /** @enum {unknown} */
         NullEnum: null;
         /** @description Input payload for a child cost component. */
@@ -6352,6 +6691,41 @@ export interface components {
          * @enum {string}
          */
         TechnicalComplianceEnum: "PASS" | "FAIL" | "UNKNOWN";
+        /** @description Single deterministic event in the derived Execution Timeline. */
+        TimelineEvent: {
+            /** @description Deterministic event identifier. */
+            event_id: string;
+            /** @description Canonical domain event type. */
+            event_type: string;
+            /** @description Tie-breaking type priority. */
+            type_priority: number;
+            /**
+             * Format: date-time
+             * @description Actual domain occurrence timestamp.
+             */
+            event_at: string;
+            /**
+             * Format: date-time
+             * @description Server record timestamp.
+             */
+            recorded_at: string;
+            /** @description Actor UUID if available. */
+            actor_id: string | null;
+            /** @description Actor email if available. */
+            actor_email: string | null;
+            /** @description Milestone code if applicable. */
+            milestone_code: string | null;
+            /** @description Persian milestone name. */
+            milestone_name_fa: string | null;
+            /** @description English milestone name. */
+            milestone_name_en: string | null;
+            /** @description Associated event notes or reasons. */
+            notes: string;
+            /** @description Additional structured event metadata. */
+            metadata: {
+                [key: string]: unknown;
+            };
+        };
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
@@ -7450,6 +7824,163 @@ export interface operations {
             };
         };
     };
+    execution_get_by_deal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_create_or_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExecutionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Execution aggregate created or retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetail"];
+                };
+            };
+            /** @description Execution aggregate newly materialized. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetail"];
+                };
+            };
+            /** @description Validation failure or inactive workflow template. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Actor lacks authorization for this Deal's execution. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Referenced Deal or workflow version not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_milestone_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneCompleteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
     deals_parties_list: {
         parameters: {
             query?: never;
@@ -7698,6 +8229,315 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    execution_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_milestone_block: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneBlockRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_milestone_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneCompleteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version) or already completed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_milestone_skip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneSkipRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_milestone_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneStartRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_timeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deterministic timeline event list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEvent"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
             };
         };
     };

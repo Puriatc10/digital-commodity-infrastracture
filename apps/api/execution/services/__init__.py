@@ -35,4 +35,26 @@ __all__ = [
     "detect_dependency_cycles",
     "validate_version_for_publish",
     "get_active_workflow_template_version",
+    "create_or_get_execution_for_deal",
+    "get_execution_for_deal",
+    "get_execution_by_id",
+    "start_milestone",
+    "complete_milestone",
+    "block_milestone",
+    "skip_milestone",
+    "project_execution_timeline",
 ]
+
+from .execution_service import (
+    create_or_get_execution_for_deal,
+    get_execution_by_id,
+    get_execution_for_deal,
+)
+from .milestone_action_service import (
+    block_milestone,
+    complete_milestone,
+    skip_milestone,
+    start_milestone,
+)
+from .timeline_service import project_execution_timeline
+

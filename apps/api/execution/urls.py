@@ -1,10 +1,16 @@
 from django.urls import path
 
 from execution.api.views import (
+    ExecutionDetailView,
+    ExecutionTimelineView,
     ExecutionWorkflowTemplateActiveVersionView,
     ExecutionWorkflowTemplateDetailView,
     ExecutionWorkflowTemplateListView,
     ExecutionWorkflowTemplateVersionDetailView,
+    MilestoneBlockActionView,
+    MilestoneCompleteActionView,
+    MilestoneSkipActionView,
+    MilestoneStartActionView,
 )
 
 urlpatterns = [
@@ -12,4 +18,11 @@ urlpatterns = [
     path("templates/<str:code_or_id>/", ExecutionWorkflowTemplateDetailView.as_view(), name="execution-workflow-template-detail"),
     path("templates/<str:code>/active-version/", ExecutionWorkflowTemplateActiveVersionView.as_view(), name="execution-workflow-template-active-version"),
     path("versions/<uuid:version_id>/", ExecutionWorkflowTemplateVersionDetailView.as_view(), name="execution-workflow-version-detail"),
+    path("<uuid:execution_id>/", ExecutionDetailView.as_view(), name="execution-detail"),
+    path("<uuid:execution_id>/timeline/", ExecutionTimelineView.as_view(), name="execution-timeline"),
+    path("<uuid:execution_id>/milestones/<uuid:milestone_id>/start/", MilestoneStartActionView.as_view(), name="execution-milestone-start"),
+    path("<uuid:execution_id>/milestones/<uuid:milestone_id>/complete/", MilestoneCompleteActionView.as_view(), name="execution-milestone-complete"),
+    path("<uuid:execution_id>/milestones/<uuid:milestone_id>/block/", MilestoneBlockActionView.as_view(), name="execution-milestone-block"),
+    path("<uuid:execution_id>/milestones/<uuid:milestone_id>/skip/", MilestoneSkipActionView.as_view(), name="execution-milestone-skip"),
 ]
+

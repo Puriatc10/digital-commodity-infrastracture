@@ -4,6 +4,8 @@ from django.dispatch import receiver
 
 from execution.enums import WorkflowVersionStatus
 from .dependency import ExecutionMilestoneDependency
+from .execution import Execution, lock_executions
+from .milestone import ExecutionMilestone
 from .milestone_definition import ExecutionMilestoneDefinition
 from .template import ExecutionWorkflowTemplate, lock_workflow_templates
 from .version import ExecutionWorkflowTemplateVersion
@@ -19,6 +21,8 @@ def protect_template_deletion(sender, instance, **kwargs):
 def protect_version_deletion(sender, instance, **kwargs):
     if instance.status in [WorkflowVersionStatus.PUBLISHED, WorkflowVersionStatus.RETIRED]:
         raise ValidationError("Cannot delete published or retired workflow version history.")
+    if instance.executions.exists():
+        raise ValidationError("Cannot delete workflow versions bound to existing execution instances.")
 
 
 @receiver(pre_delete, sender=ExecutionMilestoneDefinition)
@@ -26,6 +30,8 @@ def protect_milestone_deletion(sender, instance, **kwargs):
     version = getattr(instance, "workflow_template_version", None)
     if version and version.status in [WorkflowVersionStatus.PUBLISHED, WorkflowVersionStatus.RETIRED]:
         raise ValidationError("Cannot delete milestones belonging to a published or retired workflow version.")
+    if instance.instances.exists():
+        raise ValidationError("Cannot delete milestone definitions referenced by runtime milestone instances.")
 
 
 @receiver(pre_delete, sender=ExecutionMilestoneDependency)
@@ -37,10 +43,24 @@ def protect_dependency_deletion(sender, instance, **kwargs):
             raise ValidationError("Cannot delete dependencies belonging to a published or retired workflow version.")
 
 
+@receiver(pre_delete, sender=Execution)
+def protect_execution_deletion(sender, instance, **kwargs):
+    raise ValidationError("Execution aggregates represent historical operational audit trails and cannot be deleted.")
+
+
+@receiver(pre_delete, sender=ExecutionMilestone)
+def protect_execution_milestone_deletion(sender, instance, **kwargs):
+    raise ValidationError("Execution milestones represent historical operational facts and cannot be deleted.")
+
+
 __all__ = [
     "ExecutionWorkflowTemplate",
     "ExecutionWorkflowTemplateVersion",
     "ExecutionMilestoneDefinition",
     "ExecutionMilestoneDependency",
+    "Execution",
+    "ExecutionMilestone",
     "lock_workflow_templates",
+    "lock_executions",
 ]
+
