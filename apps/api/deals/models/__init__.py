@@ -1,3 +1,12 @@
 from deals.models.deal import Deal
+from deals.models.party_snapshot import DealPartySnapshot, PartyRole, PartyType
+from deals.models.terms_snapshot import DealCostSnapshot, DealTermsSnapshot
 
-__all__ = ["Deal"]
+__all__ = [
+    "Deal",
+    "DealTermsSnapshot",
+    "DealCostSnapshot",
+    "DealPartySnapshot",
+    "PartyRole",
+    "PartyType",
+]

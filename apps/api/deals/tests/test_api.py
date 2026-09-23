@@ -6,11 +6,19 @@ from rest_framework.test import APIClient
 
 from deals.models import Deal
 from deals.tests.base import BaseDealsTestCase
-from offers.services import add_award_allocation, create_draft_award
+from offers.enums import CostComponentKind
+from offers.models import OfferCostComponent
+from offers.services import (
+    add_award_allocation,
+    create_draft_award,
+    create_draft_offer_version,
+    finalize_award,
+    submit_internal_offer_version,
+)
 
 
 class DealAPITests(BaseDealsTestCase):
-    """Integration API tests for Deal materialization and read endpoints."""
+    """Integration API tests for Deal materialization and read endpoints (T0901, T0902)."""
 
     def setUp(self):
         super().setUp()
@@ -35,6 +43,8 @@ class DealAPITests(BaseDealsTestCase):
         self.assertEqual(deal["buyer_organization_id"], str(self.buyer_org.id))
         self.assertIsNotNone(deal["created_by_id"])
         self.assertIsNotNone(deal["created_at"])
+        self.assertIn("terms", deal)
+        self.assertIn("parties", deal)
 
     def test_materialize_deals_api_idempotent_duplicate_call(self):
         """Repeated duplicate call returns 200 OK with exact same Deal identities and no duplicates."""
@@ -237,3 +247,143 @@ class DealAPITests(BaseDealsTestCase):
         # POST /deals/ -> 405 Method Not Allowed
         res_post = self.client.post("/api/deals/", {"award_id": str(award.id)}, format="json")
         self.assertEqual(res_post.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    # =========================================================================
+    # Explicit T0902 Snapshot Read Endpoints Tests
+    # =========================================================================
+
+    def test_deal_terms_snapshot_api_scoping_and_accuracy(self):
+        """GET /deals/{id}/terms/ returns complete commercial terms snapshot to authorized actors."""
+        v2 = create_draft_offer_version(
+            actor=self.supplier_user,
+            offer=self.supplier_offer.id,
+            offered_quantity=Decimal("500.000"),
+            quantity_unit="MT",
+            unit_price=Decimal("350.00"),
+            currency="USD",
+            specifications={"penetration_grade": "60/70"},
+        )
+        OfferCostComponent.objects.create(
+            offer_version=v2,
+            kind=CostComponentKind.LOGISTICS,
+            amount=Decimal("12000.00"),
+            currency="USD",
+            description="Freight charge",
+        )
+        self.supplier_offer.refresh_from_db()
+        v2 = submit_internal_offer_version(
+            actor=self.supplier_user,
+            offer_version=v2.id,
+            expected_version=self.supplier_offer.aggregate_version,
+        )
+
+        draft_award = create_draft_award(self.rfq.id, actor=self.buyer_owner)
+        add_award_allocation(
+            draft_award.id,
+            offer_version_id=v2.id,
+            awarded_quantity=Decimal("500.000"),
+            quantity_unit="MT",
+            expected_version=draft_award.version,
+            actor=self.buyer_owner,
+        )
+        draft_award.refresh_from_db()
+        award = finalize_award(draft_award.id, actor=self.buyer_owner, expected_version=draft_award.version)
+        url_mat = f"/api/awards/{award.id}/materialize-deals/"
+        self.client.force_authenticate(user=self.buyer_owner)
+        res_mat = self.client.post(url_mat, {}, format="json")
+        deal_id = res_mat.json()[0]["id"]
+
+        terms_url = f"/api/deals/{deal_id}/terms/"
+
+        # 1. Buyer Member -> 200 OK
+        self.client.force_authenticate(user=self.buyer_member)
+        res = self.client.get(terms_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.json()
+        self.assertEqual(data["deal_id"], deal_id)
+        self.assertEqual(data["quantity"], "500.000")
+        self.assertEqual(data["unit_price"], "350.00")
+        self.assertEqual(data["currency"], "USD")
+        self.assertEqual(data["product_cost_snapshot"], "175000.00")
+        self.assertIn("specifications", data)
+        self.assertEqual(len(data["cost_snapshots"]), 1)
+        self.assertEqual(data["cost_snapshots"][0]["amount"], "12000.00")
+
+        # 2. Seller Supplier -> 200 OK
+        self.client.force_authenticate(user=self.supplier_user)
+        res = self.client.get(terms_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        # 3. Foreign Buyer -> 403 Forbidden
+        self.client.force_authenticate(user=self.foreign_buyer_user)
+        res = self.client.get(terms_url)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 4. Unauthenticated -> 401 Unauthorized
+        self.client.force_authenticate(user=None)
+        res = self.client.get(terms_url)
+        self.assertIn(res.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+
+        # 5. Nonexistent deal -> 404
+        self.client.force_authenticate(user=self.buyer_owner)
+        res = self.client.get(f"/api/deals/{uuid.uuid4()}/terms/")
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+        # 6. Mutation methods forbidden
+        res_patch = self.client.patch(terms_url, {"unit_price": "200.00"}, format="json")
+        self.assertEqual(res_patch.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        res_del = self.client.delete(terms_url)
+        self.assertEqual(res_del.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_deal_parties_snapshot_api_scoping_and_privacy(self):
+        """GET /deals/{id}/parties/ returns minimal commercial party identities without private CRM fields."""
+        award, _ = self.create_and_finalize_single_award()
+        url_mat = f"/api/awards/{award.id}/materialize-deals/"
+        self.client.force_authenticate(user=self.buyer_owner)
+        res_mat = self.client.post(url_mat, {}, format="json")
+        deal_id = res_mat.json()[0]["id"]
+
+        parties_url = f"/api/deals/{deal_id}/parties/"
+
+        # 1. Buyer Owner -> 200 OK
+        self.client.force_authenticate(user=self.buyer_owner)
+        res = self.client.get(parties_url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        parties = res.json()
+        self.assertEqual(len(parties), 2)
+
+        roles = [p["role"] for p in parties]
+        self.assertIn("BUYER", roles)
+        self.assertIn("SELLER", roles)
+
+        # 2. Strict Privacy Verification: NO phone, email, notes, auth, verification fields
+        forbidden_privacy_keys = [
+            "phone",
+            "email",
+            "notes",
+            "private_notes",
+            "contact_name",
+            "contact_attempts",
+            "memberships",
+            "capabilities",
+            "verification_documents",
+            "password",
+        ]
+        for party in parties:
+            for key in forbidden_privacy_keys:
+                self.assertNotIn(
+                    key,
+                    party,
+                    f"DealPartySnapshot API leaked sensitive/CRM field '{key}' in public response.",
+                )
+
+        # 3. Foreign Buyer -> 403 Forbidden
+        self.client.force_authenticate(user=self.foreign_buyer_user)
+        res = self.client.get(parties_url)
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+        # 4. Mutation methods forbidden
+        res_post = self.client.post(parties_url, {}, format="json")
+        self.assertEqual(res_post.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        res_del = self.client.delete(parties_url)
+        self.assertEqual(res_del.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

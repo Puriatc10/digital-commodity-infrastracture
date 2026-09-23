@@ -3,9 +3,11 @@ from deals.services.materialization import (
     _is_operator_or_admin,
     materialize_deals_from_award,
 )
+from deals.services.specifications import project_deal_specifications
 
 __all__ = [
     "materialize_deals_from_award",
-    "_check_deal_materialize_authority",
+    "project_deal_specifications",
     "_is_operator_or_admin",
+    "_check_deal_materialize_authority",
 ]
