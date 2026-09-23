@@ -1,3 +1,5 @@
+import copy
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Optional
 
 from django.db import transaction
@@ -10,7 +12,14 @@ from deals.exceptions import (
     DealValidationError,
     StaleVersionError,
 )
-from deals.models import Deal
+from deals.models import (
+    Deal,
+    DealCostSnapshot,
+    DealPartySnapshot,
+    DealTermsSnapshot,
+    PartyRole,
+    PartyType,
+)
 from identity.models import SystemRoleAssignment
 from offers.enums import AwardStatus
 from offers.models import Award, AwardAllocation
@@ -78,7 +87,7 @@ def materialize_deals_from_award(
     expected_version: Optional[int] = None,
 ) -> tuple[list[Deal], bool]:
     """
-    Materialize authoritative commercial Deals from a FINALIZED Award (Epic 9 Contract §60, T0901).
+    Materialize authoritative commercial Deals from a FINALIZED Award (Epic 9 Contract §60, T0901, T0902).
 
     Responsibilities:
     1. Lock RFQ and Award rows with select_for_update.
@@ -87,11 +96,14 @@ def materialize_deals_from_award(
     4. If expected_version provided, enforce optimistic concurrency check.
     5. Load AwardAllocations deterministically in stable order under row locks.
     6. Validate source graph integrity (allocation -> award -> rfq -> offer -> offer_version).
-    7. Return existing Deals for already materialized allocations (idempotent).
+    7. Return existing Deals for already materialized allocations (idempotent, never refreshes snapshots).
     8. Derive Buyer strictly from RFQ owning Organization.
     9. Derive Seller strictly from Offer economic party (Supplier/Broker Organization or ExternalCounterparty).
     10. Create missing Deal identities atomically.
-    11. Commit atomically; midway failure rolls back newly materialized deals without touching existing ones.
+    11. Create immutable DealTermsSnapshot with awarded_quantity (never offered_quantity) and Decimal product cost.
+    12. Create independent DealCostSnapshot rows from OfferCostComponents (no live FK).
+    13. Create immutable DealPartySnapshot for BUYER and SELLER with minimal legal identity.
+    14. Commit atomically; failure at any stage rolls back newly materialized deals without touching existing ones.
 
     Returns:
         tuple[list[Deal], bool]: (all_deals_for_award, newly_created_flag)
@@ -103,7 +115,7 @@ def materialize_deals_from_award(
     # 1. Lock RFQ & Award
     locked_rfq = (
         RFQ.objects.select_for_update()
-        .select_related("organization")
+        .select_related("organization", "commodity")
         .get(pk=award_pre.rfq_id)
     )
     locked_award = Award.objects.select_for_update().get(pk=award_id)
@@ -148,7 +160,9 @@ def materialize_deals_from_award(
             "offer__offering_organization",
             "offer__external_counterparty",
             "offer_version",
+            "offer_version__schema_version",
         )
+        .prefetch_related("offer_version__cost_components")
         .order_by("created_at", "id")
     )
 
@@ -160,7 +174,7 @@ def materialize_deals_from_award(
 
     newly_created = False
 
-    # 7. Create missing Deals
+    # 7. Create missing Deals and their immutable snapshots
     for allocation in allocations:
         if allocation.id in existing_deals:
             continue
@@ -200,7 +214,7 @@ def materialize_deals_from_award(
             )
 
         # Create Deal identity
-        Deal.objects.create(
+        deal = Deal.objects.create(
             award=locked_award,
             award_allocation=allocation,
             rfq=locked_rfq,
@@ -211,9 +225,89 @@ def materialize_deals_from_award(
             seller_external_counterparty=seller_ext,
             created_by=actor,
         )
+
+        # 8. Create DealTermsSnapshot
+        offer_ver = allocation.offer_version
+        awarded_qty = allocation.awarded_quantity
+        unit_price = offer_ver.unit_price
+
+        # Exact Decimal product cost snapshot (strictly Decimal arithmetic)
+        product_cost = (unit_price * awarded_qty).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+
+        terms_snapshot = DealTermsSnapshot.objects.create(
+            deal=deal,
+            commodity=locked_rfq.commodity,
+            schema_version=offer_ver.schema_version,
+            specifications=copy.deepcopy(offer_ver.specifications or {}),
+            quantity=awarded_qty,
+            quantity_unit=allocation.quantity_unit,
+            unit_price=unit_price,
+            currency=offer_ver.currency,
+            product_cost_snapshot=product_cost,
+            payment_terms=offer_ver.payment_terms or "",
+            delivery_terms=offer_ver.delivery_terms or "",
+            incoterm=offer_ver.incoterm or "",
+            delivery_start=offer_ver.delivery_start,
+            delivery_end=offer_ver.delivery_end,
+            origin=locked_rfq.origin or "",
+            destination=locked_rfq.destination or "",
+            origin_area=locked_rfq.origin_area,
+            destination_area=locked_rfq.destination_area,
+            logistics_cost_status=offer_ver.logistics_cost_status,
+            logistics_cost_amount=offer_ver.logistics_cost_amount,
+        )
+
+        # 9. Create DealCostSnapshot rows from OfferCostComponents (independent copy)
+        for cost_comp in offer_ver.cost_components.all():
+            DealCostSnapshot.objects.create(
+                deal_terms_snapshot=terms_snapshot,
+                kind=cost_comp.kind,
+                amount=cost_comp.amount,
+                currency=cost_comp.currency,
+                description_snapshot=cost_comp.description or "",
+            )
+
+        # 10. Create DealPartySnapshot for BUYER
+        DealPartySnapshot.objects.create(
+            deal=deal,
+            role=PartyRole.BUYER,
+            party_type=PartyType.ORGANIZATION,
+            organization=buyer_org,
+            external_counterparty=None,
+            name_snapshot=buyer_org.name,
+            country_snapshot=getattr(buyer_org, "country", "") or "",
+            registration_identifier_snapshot=getattr(buyer_org, "registration_identifier", "") or "",
+        )
+
+        # 11. Create DealPartySnapshot for SELLER
+        if seller_org:
+            DealPartySnapshot.objects.create(
+                deal=deal,
+                role=PartyRole.SELLER,
+                party_type=PartyType.ORGANIZATION,
+                organization=seller_org,
+                external_counterparty=None,
+                name_snapshot=seller_org.name,
+                country_snapshot=getattr(seller_org, "country", "") or "",
+                registration_identifier_snapshot=getattr(seller_org, "registration_identifier", "") or "",
+            )
+        else:
+            DealPartySnapshot.objects.create(
+                deal=deal,
+                role=PartyRole.SELLER,
+                party_type=PartyType.EXTERNAL_COUNTERPARTY,
+                organization=None,
+                external_counterparty=seller_ext,
+                name_snapshot=seller_ext.company_name,
+                country_snapshot=getattr(seller_ext, "geography", "") or "",
+                registration_identifier_snapshot="",
+            )
+
         newly_created = True
 
-    # 8. Load and return all Deals for the Award
+    # 12. Load and return all Deals for the Award with snapshots prefetched
     all_deals = list(
         Deal.objects.filter(award=locked_award)
         .select_related(
@@ -226,6 +320,17 @@ def materialize_deals_from_award(
             "seller_organization",
             "seller_external_counterparty",
             "created_by",
+            "terms_snapshot",
+            "terms_snapshot__commodity",
+            "terms_snapshot__schema_version",
+            "terms_snapshot__origin_area",
+            "terms_snapshot__destination_area",
+        )
+        .prefetch_related(
+            "terms_snapshot__cost_snapshots",
+            "party_snapshots",
+            "party_snapshots__organization",
+            "party_snapshots__external_counterparty",
         )
         .order_by("award_allocation__created_at", "award_allocation__id")
     )

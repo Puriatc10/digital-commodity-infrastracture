@@ -1,3 +1,5 @@
+from typing import Any
+
 from django.db import models
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import permissions, status
@@ -7,7 +9,9 @@ from rest_framework.views import APIView
 from deals.api.serializers import (
     DealErrorResponseSerializer,
     DealMaterializeRequestSerializer,
+    DealPartySnapshotSerializer,
     DealResponseSerializer,
+    DealTermsSnapshotSerializer,
 )
 from deals.exceptions import (
     AwardNotFinalizedError,
@@ -25,9 +29,44 @@ from deals.services.materialization import (
 from organizations.models import OrganizationMembership
 
 
+def _check_deal_read_access(deal: Deal, user: Any) -> None:
+    """
+    Verify read authorization for a Deal aggregate and its snapshots.
+
+    Authorized:
+    - Platform OPERATOR or ADMIN with valid SystemRoleAssignment.
+    - Active members of the Buyer Organization.
+    - Active members of the Seller Organization (if internal).
+
+    Denied:
+    - Unrelated organizations / competitor participants.
+    - Anonymous users.
+    - External sellers (no platform user account).
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        raise DealPermissionDeniedError("Authentication required.")
+
+    if _is_operator_or_admin(user):
+        return
+
+    allowed_org_ids = [deal.buyer_organization_id]
+    if deal.seller_organization_id:
+        allowed_org_ids.append(deal.seller_organization_id)
+
+    is_party_member = OrganizationMembership.objects.filter(
+        user=user,
+        organization_id__in=allowed_org_ids,
+        is_active=True,
+        organization__is_active=True,
+    ).exists()
+
+    if not is_party_member:
+        raise DealPermissionDeniedError("You do not have permission to access this deal.")
+
+
 class DealMaterializeActionView(APIView):
     """
-    Authoritative Deal materialization domain action (Epic 9 Contract §10, §60, T0901).
+    Authoritative Deal materialization domain action (Epic 9 Contract §10, §60, T0901, T0902).
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -38,10 +77,12 @@ class DealMaterializeActionView(APIView):
         summary="Materialize Deals from Finalized Award",
         description=(
             "Authoritatively materializes one immutable Deal aggregate per AwardAllocation "
-            "from a finalized Award. "
+            "from a finalized Award, including immutable DealTermsSnapshot, DealCostSnapshot rows, "
+            "and DealPartySnapshots. "
             "Enforces server-side derivation of Buyer and Seller identities from authoritative "
             "source records without accepting client commercial fields. "
-            "Guarantees idempotency: repeated calls return existing Deals without creating duplicates. "
+            "Guarantees idempotency: repeated calls return existing Deals without creating duplicates "
+            "or refreshing snapshots from mutated sources. "
             "Rejects unfinalized (DRAFT) Awards with a 400 Bad Request. "
             "Execution is serialized under PostgreSQL row-level locks."
         ),
@@ -142,14 +183,25 @@ class DealListView(APIView):
                 | models.Q(seller_organization_id__in=user_org_ids)
             )
 
-        qs = qs.order_by("-created_at")
+        qs = (
+            qs.select_related(
+                "terms_snapshot",
+                "terms_snapshot__commodity",
+                "terms_snapshot__schema_version",
+            )
+            .prefetch_related(
+                "terms_snapshot__cost_snapshots",
+                "party_snapshots",
+            )
+            .order_by("-created_at")
+        )
         serializer = DealResponseSerializer(qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class DealDetailView(APIView):
     """
-    Retrieve minimal Deal aggregate by ID (Contract §76, §98, T0901).
+    Retrieve minimal Deal aggregate by ID (Contract §76, §98, T0901, T0902).
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -159,7 +211,7 @@ class DealDetailView(APIView):
         tags=["Deals"],
         summary="Retrieve Deal by ID",
         description=(
-            "Retrieves a minimal Deal aggregate by UUID. "
+            "Retrieves a Deal aggregate by UUID, including immutable terms and party snapshots. "
             "Access is strictly scoped to authorized members of the Buyer Organization, "
             "the Seller Organization, or platform Operators/Admins. "
             "Normal product APIs expose no mutation (PATCH/DELETE) on Deals."
@@ -178,30 +230,139 @@ class DealDetailView(APIView):
         },
     )
     def get(self, request, deal_id):
-        deal = Deal.objects.filter(pk=deal_id).first()
+        deal = (
+            Deal.objects.filter(pk=deal_id)
+            .select_related(
+                "terms_snapshot",
+                "terms_snapshot__commodity",
+                "terms_snapshot__schema_version",
+            )
+            .prefetch_related(
+                "terms_snapshot__cost_snapshots",
+                "party_snapshots",
+            )
+            .first()
+        )
         if not deal:
             return Response(
                 {"detail": f"Deal '{deal_id}' does not exist."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if not _is_operator_or_admin(request.user):
-            allowed_org_ids = [deal.buyer_organization_id]
-            if deal.seller_organization_id:
-                allowed_org_ids.append(deal.seller_organization_id)
-
-            is_party_member = OrganizationMembership.objects.filter(
-                user=request.user,
-                organization_id__in=allowed_org_ids,
-                is_active=True,
-                organization__is_active=True,
-            ).exists()
-
-            if not is_party_member:
-                return Response(
-                    {"detail": "You do not have permission to access this deal."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+        try:
+            _check_deal_read_access(deal, request.user)
+        except DealPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = DealResponseSerializer(deal)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DealTermsSnapshotView(APIView):
+    """
+    Retrieve immutable commercial terms snapshot for a Deal (Contract §13, §69, §98, T0902).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deals_terms_retrieve",
+        tags=["Deals"],
+        summary="Retrieve Deal Terms Snapshot",
+        description=(
+            "Retrieves the immutable accepted commercial terms snapshot of a Deal, "
+            "including awarded quantity, unit price, currency, payment terms, delivery terms, "
+            "Incoterm, logistics cost status, and child cost component snapshots. "
+            "Strictly read-only; no mutation endpoints exist."
+        ),
+        responses={
+            200: DealTermsSnapshotSerializer,
+            401: OpenApiResponse(description="Unauthenticated."),
+            403: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Forbidden: actor lacks access to this Deal.",
+            ),
+            404: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Deal or terms snapshot not found.",
+            ),
+        },
+    )
+    def get(self, request, deal_id):
+        deal = (
+            Deal.objects.filter(pk=deal_id)
+            .select_related("terms_snapshot")
+            .prefetch_related("terms_snapshot__cost_snapshots")
+            .first()
+        )
+        if not deal:
+            return Response(
+                {"detail": f"Deal '{deal_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            _check_deal_read_access(deal, request.user)
+        except DealPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            terms = deal.terms_snapshot
+        except Deal.terms_snapshot.RelatedObjectDoesNotExist:
+            return Response(
+                {"detail": f"Deal '{deal_id}' has no terms snapshot."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = DealTermsSnapshotSerializer(terms)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DealPartiesSnapshotView(APIView):
+    """
+    Retrieve immutable principal party snapshots for a Deal (Contract §27-§32, §98, T0902).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deals_parties_list",
+        tags=["Deals"],
+        summary="List Deal Party Snapshots",
+        description=(
+            "Retrieves the immutable principal party snapshots (BUYER and SELLER) for a Deal. "
+            "Enforces minimal commercial identity projection (names, countries, registration identifiers). "
+            "Strictly read-only; no mutation endpoints exist."
+        ),
+        responses={
+            200: OpenApiResponse(
+                response=DealPartySnapshotSerializer(many=True),
+                description="List of principal party snapshots (BUYER and SELLER).",
+            ),
+            401: OpenApiResponse(description="Unauthenticated."),
+            403: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Forbidden: actor lacks access to this Deal.",
+            ),
+            404: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Deal not found.",
+            ),
+        },
+    )
+    def get(self, request, deal_id):
+        deal = Deal.objects.filter(pk=deal_id).prefetch_related("party_snapshots").first()
+        if not deal:
+            return Response(
+                {"detail": f"Deal '{deal_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            _check_deal_read_access(deal, request.user)
+        except DealPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+
+        parties = deal.party_snapshots.all().order_by("role")
+        serializer = DealPartySnapshotSerializer(parties, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
