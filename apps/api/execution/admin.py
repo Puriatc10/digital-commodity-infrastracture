@@ -1,6 +1,9 @@
 from django.contrib import admin
 
 from .models import (
+    Execution,
+    ExecutionLogistics,
+    ExecutionMilestone,
     ExecutionMilestoneDefinition,
     ExecutionMilestoneDependency,
     ExecutionWorkflowTemplate,
@@ -38,3 +41,24 @@ class ExecutionMilestoneDefinitionAdmin(admin.ModelAdmin):
 @admin.register(ExecutionMilestoneDependency)
 class ExecutionMilestoneDependencyAdmin(admin.ModelAdmin):
     list_display = ("milestone", "prerequisite", "created_at")
+
+
+@admin.register(Execution)
+class ExecutionAdmin(admin.ModelAdmin):
+    list_display = ("id", "deal", "workflow_template_version", "status", "version", "started_at", "closed_at")
+    list_filter = ("status",)
+    search_fields = ("id", "deal__id")
+
+
+@admin.register(ExecutionMilestone)
+class ExecutionMilestoneAdmin(admin.ModelAdmin):
+    list_display = ("id", "execution", "definition", "status", "expected_at", "actual_at", "version")
+    list_filter = ("status",)
+    search_fields = ("execution__id", "definition__code")
+
+
+@admin.register(ExecutionLogistics)
+class ExecutionLogisticsAdmin(admin.ModelAdmin):
+    list_display = ("id", "execution", "carrier_name", "transport_mode", "scheduled_loading_at", "actual_loading_at", "eta", "actual_delivery_at", "version")
+    list_filter = ("transport_mode",)
+    search_fields = ("execution__id", "carrier_name", "transport_reference")

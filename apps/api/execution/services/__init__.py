@@ -43,12 +43,30 @@ __all__ = [
     "block_milestone",
     "skip_milestone",
     "project_execution_timeline",
+    "get_or_create_execution_logistics",
+    "schedule_loading",
+    "record_loading",
+    "update_transport",
+    "update_eta",
+    "record_delivery",
+    "update_logistics_cost",
+    "mutate_logistics",
 ]
 
 from .execution_service import (
     create_or_get_execution_for_deal,
     get_execution_by_id,
     get_execution_for_deal,
+)
+from .logistics_service import (
+    get_or_create_execution_logistics,
+    mutate_logistics,
+    record_delivery,
+    record_loading,
+    schedule_loading,
+    update_eta,
+    update_logistics_cost,
+    update_transport,
 )
 from .milestone_action_service import (
     block_milestone,

@@ -142,6 +142,83 @@ def check_execution_mutation_access(
             )
 
 
+def check_logistics_mutation_authority(
+    user: Any,
+    deal_or_execution: Any,
+    action_type: str,
+) -> None:
+    """
+    Verify side-specific operational logistics mutation authority (Epic 10 Contract §77–§82, T1004).
+
+    Operational actions:
+    - Seller operational actions:
+      SCHEDULE_LOADING, RECORD_LOADING, UPDATE_TRANSPORT, UPDATE_ETA, UPDATE_COST
+    - Buyer operational actions:
+      RECORD_DELIVERY
+
+    Authorized:
+    - Platform OPERATOR or ADMIN with valid SystemRoleAssignment.
+    - Active non-viewer members (Owner, Manager, Member) of the authorized side.
+
+    Denied:
+    - Anonymous users.
+    - Django staff/superusers without SystemRoleAssignment.
+    - Viewer role members (strictly read-only).
+    - Attributed-only brokers.
+    - Buyer attempting seller operational actions.
+    - Seller attempting buyer delivery recording.
+    - External counterparty direct sessions (handled exclusively via Operator).
+    - Unrelated organizations.
+    """
+    deal = getattr(deal_or_execution, "deal", deal_or_execution)
+    if not user or not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
+        raise ExecutionPermissionDeniedError("Authentication required.")
+
+    if is_operator_or_admin(user):
+        return
+
+    allowed_org_ids = [deal.buyer_organization_id]
+    if deal.seller_organization_id:
+        allowed_org_ids.append(deal.seller_organization_id)
+
+    membership = OrganizationMembership.objects.filter(
+        user=user,
+        organization_id__in=allowed_org_ids,
+        is_active=True,
+        organization__is_active=True,
+    ).first()
+
+    if not membership:
+        raise ExecutionPermissionDeniedError("You do not have permission to mutate logistics for this execution.")
+
+    if membership.role == OrganizationMembership.OrganizationRole.VIEWER:
+        raise ExecutionPermissionDeniedError("Viewer role is read-only and cannot mutate execution state.")
+
+    is_buyer = membership.organization_id == deal.buyer_organization_id
+    is_seller = bool(deal.seller_organization_id and (membership.organization_id == deal.seller_organization_id))
+
+    SELLER_ACTIONS = {
+        "SCHEDULE_LOADING",
+        "RECORD_LOADING",
+        "UPDATE_TRANSPORT",
+        "UPDATE_ETA",
+        "UPDATE_COST",
+    }
+    BUYER_ACTIONS = {
+        "RECORD_DELIVERY",
+    }
+
+    if is_buyer and action_type in SELLER_ACTIONS:
+        raise ExecutionPermissionDeniedError(
+            f"Logistics action '{action_type}' can only be performed by the Seller or Operator."
+        )
+
+    if is_seller and action_type in BUYER_ACTIONS:
+        raise ExecutionPermissionDeniedError(
+            f"Logistics action '{action_type}' can only be performed by the Buyer or Operator."
+        )
+
+
 class IsOperatorOrAdmin(permissions.BasePermission):
     """DRF permission class restricting view access to Platform Operators and Product Admins."""
 

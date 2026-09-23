@@ -77,3 +77,7 @@ class StaleVersionError(ExecutionError):
 class CrossObjectIntegrityError(ExecutionError):
     """Raised when cross-referencing objects across disjoint deals or executions."""
 
+
+class LogisticsNotFoundError(ExecutionError):
+    """Raised when an execution logistics instance cannot be found."""
+

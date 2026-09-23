@@ -371,6 +371,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{deal_id}/execution/logistics/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Operational Logistics for Deal
+         * @description Retrieves operational logistics record for a Deal's execution instance.
+         */
+        get: operations["deal_execution_logistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{deal_id}/execution/milestones/{milestone_id}/complete/": {
         parameters: {
             query?: never;
@@ -513,6 +533,150 @@ export interface paths {
         get: operations["execution_detail"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Logistics Operational Record
+         * @description Idempotently retrieves or initializes the operational ExecutionLogistics aggregate for an Execution. Unknown fields remain null/empty without fabricated defaults.
+         */
+        get: operations["execution_logistics_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Constrained Mutation of Execution Logistics
+         * @description Mutates operational logistics facts under optimistic concurrency control (expected_version). Mass-assignment of server-owned fields (id, execution, version, created_at, updated_at) is strictly rejected. Side-specific authority is verified field-by-field.
+         */
+        patch: operations["execution_logistics_patch"];
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/record-delivery/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Actual Operational Delivery
+         * @description Records actual delivery arrival timestamp. Chronology validated: actual_delivery_at cannot precede actual_loading_at. Does NOT imply goods acceptance (milestone ACCEPTED remains separate). Requires Buyer or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_record_delivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/record-loading/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Actual Operational Loading
+         * @description Records actual operational loading timestamp. Guards chronology: actual_delivery_at cannot precede actual_loading_at. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_record_loading"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/schedule-loading/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule Operational Loading
+         * @description Records scheduled operational loading timestamp and optional pickup/destination locations. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_schedule_loading"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/update-cost/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Operational Logistics Cost
+         * @description Updates actual or reported operational logistics cost in Decimal. Currency code is mandatory. No FX conversion. Does not mutate commercial Deal cost snapshot. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_update_cost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/update-eta/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Estimated Time of Arrival (ETA)
+         * @description Updates ETA for operational shipment arrival. Rejected if actual delivery has already been recorded. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_update_eta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/update-transport/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Transport Carrier, Mode, and Reference
+         * @description Updates transport details. Transport mode must be one of canonical TransportMode enum. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_update_transport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2754,6 +2918,8 @@ export interface components {
             /** @description Expected aggregate version of the Award for optimistic locking. */
             expected_version: number;
         };
+        /** @enum {unknown} */
+        BlankEnum: "";
         /**
          * @description * `SUPPLY_LISTING` - Supply Listing
          *     * `SUPPLY_OPPORTUNITY` - Supply Opportunity
@@ -3605,6 +3771,7 @@ export interface components {
              */
             closed_at?: string | null;
             readonly milestones: components["schemas"]["ExecutionMilestone"][];
+            readonly logistics: components["schemas"]["ExecutionLogistics"];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -3620,6 +3787,85 @@ export interface components {
         ExecutionErrorResponse: {
             /** @description Detailed error explanation. */
             detail: string;
+        };
+        /** @description Operational execution logistics detail serializer (Epic 10 Contract §35, T1004). */
+        ExecutionLogistics: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent execution instance (1 Execution -> max 1 ExecutionLogistics).
+             */
+            readonly execution_id: string;
+            /** @description Carrier name or operational freight operator. */
+            carrier_name?: string;
+            readonly carrier: string;
+            /**
+             * @description Canonical transport mode. Must not be inferred automatically.
+             *
+             *     * `ROAD` - Road
+             *     * `SEA` - Sea
+             *     * `RAIL` - Rail
+             *     * `AIR` - Air
+             *     * `MULTIMODAL` - Multimodal
+             *     * `OTHER` - Other
+             */
+            transport_mode?: (components["schemas"]["TransportModeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /**
+             * Format: uuid
+             * @description Structured pickup geographic area reference.
+             */
+            readonly pickup_area_id: string | null;
+            readonly pickup_area_code: string | null;
+            readonly pickup_area_name_fa: string | null;
+            readonly pickup_area_name_en: string | null;
+            /**
+             * Format: uuid
+             * @description Structured destination geographic area reference.
+             */
+            readonly destination_area_id: string | null;
+            readonly destination_area_code: string | null;
+            readonly destination_area_name_fa: string | null;
+            readonly destination_area_name_en: string | null;
+            /** @description Operational pickup facility description or local address. */
+            pickup_location?: string;
+            /** @description Operational destination facility description or local address. */
+            destination_location?: string;
+            /**
+             * Format: date-time
+             * @description Scheduled operational loading timestamp.
+             */
+            scheduled_loading_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Reported actual operational loading timestamp.
+             */
+            actual_loading_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Estimated time of arrival (ETA) at destination.
+             */
+            eta?: string | null;
+            /**
+             * Format: date-time
+             * @description Reported actual operational delivery timestamp.
+             */
+            actual_delivery_at?: string | null;
+            /** @description Operational transport reference (e.g. B/L, CMR, tracking number). */
+            transport_reference?: string;
+            /**
+             * Format: decimal
+             * @description Actual or reported operational logistics cost in Decimal.
+             */
+            logistics_cost?: string | null;
+            /** @description ISO 4217 3-letter currency code for logistics cost. */
+            currency?: string;
+            /** @description Optimistic concurrency aggregate version counter. */
+            version?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
         };
         /** @description Execution milestone instance presentation serializer. */
         ExecutionMilestone: {
@@ -3916,6 +4162,106 @@ export interface components {
          * @enum {string}
          */
         LogisticsCostStatusEnum: "KNOWN_SEPARATE" | "INCLUDED_IN_PRICE" | "NOT_APPLICABLE" | "UNKNOWN";
+        /** @description Request payload to record actual delivery receipt. */
+        LogisticsRecordDelivery: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Reported actual operational delivery timestamp.
+             */
+            actual_delivery_at: string;
+        };
+        /** @description Request payload to record actual loading occurrence. */
+        LogisticsRecordLoading: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Reported actual operational loading timestamp.
+             */
+            actual_loading_at: string;
+        };
+        /** @description Request payload to schedule operational loading. */
+        LogisticsScheduleLoading: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Scheduled operational loading timestamp.
+             */
+            scheduled_loading_at: string;
+            /**
+             * Format: uuid
+             * @description Optional structured pickup geographic area UUID.
+             */
+            pickup_area_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Optional structured destination geographic area UUID.
+             */
+            destination_area_id?: string | null;
+            /**
+             * @description Optional pickup facility or address description.
+             * @default
+             */
+            pickup_location: string;
+            /**
+             * @description Optional destination facility or address description.
+             * @default
+             */
+            destination_location: string;
+        };
+        /** @description Request payload to update logistics cost and currency. */
+        LogisticsUpdateCost: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: decimal
+             * @description Actual or reported operational logistics cost in Decimal.
+             */
+            logistics_cost: string;
+            /** @description ISO 4217 3-letter currency code. */
+            currency: string;
+        };
+        /** @description Request payload to update ETA. */
+        LogisticsUpdateETA: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Estimated time of arrival (ETA) at destination.
+             */
+            eta: string;
+        };
+        /** @description Request payload to update carrier, transport mode, and reference. */
+        LogisticsUpdateTransport: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Carrier name or freight operator.
+             * @default
+             */
+            carrier_name: string;
+            /** @description Roadmap alias for carrier_name. */
+            carrier?: string;
+            /**
+             * @description Canonical transport mode (ROAD, SEA, RAIL, AIR, MULTIMODAL, OTHER).
+             *
+             *     * `ROAD` - Road
+             *     * `SEA` - Sea
+             *     * `RAIL` - Rail
+             *     * `AIR` - Air
+             *     * `MULTIMODAL` - Multimodal
+             *     * `OTHER` - Other
+             */
+            transport_mode?: (components["schemas"]["TransportModeEnum"] | components["schemas"]["NullEnum"]) | null;
+            /**
+             * @description Operational transport tracking reference (B/L, CMR, etc.).
+             * @default
+             */
+            transport_reference: string;
+        };
         /**
          * @description Audience-safe matching candidate projection.
          *
@@ -5324,6 +5670,32 @@ export interface components {
             /** Format: date-time */
             readonly updated_at?: string;
         };
+        /** @description Constrained request payload for PATCH on execution logistics. */
+        PatchedLogisticsMutateRequest: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version?: number;
+            carrier_name?: string;
+            carrier?: string;
+            transport_mode?: (components["schemas"]["TransportModeEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: uuid */
+            pickup_area_id?: string | null;
+            /** Format: uuid */
+            destination_area_id?: string | null;
+            pickup_location?: string;
+            destination_location?: string;
+            /** Format: date-time */
+            scheduled_loading_at?: string | null;
+            /** Format: date-time */
+            actual_loading_at?: string | null;
+            /** Format: date-time */
+            eta?: string | null;
+            /** Format: date-time */
+            actual_delivery_at?: string | null;
+            transport_reference?: string;
+            /** Format: decimal */
+            logistics_cost?: string | null;
+            currency?: string;
+        };
         /**
          * @description Payload for updating mutable attributes of an OPEN Opportunity follow-up task.
          *     Protects status, completed_at, created_by, opportunity, id, timestamps against modification.
@@ -6726,6 +7098,16 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * @description * `ROAD` - Road
+         *     * `SEA` - Sea
+         *     * `RAIL` - Rail
+         *     * `AIR` - Air
+         *     * `MULTIMODAL` - Multimodal
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        TransportModeEnum: "ROAD" | "SEA" | "RAIL" | "AIR" | "MULTIMODAL" | "OTHER";
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
@@ -7923,6 +8305,43 @@ export interface operations {
             };
         };
     };
+    deal_execution_logistics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
     deal_execution_milestone_complete: {
         parameters: {
             query?: never;
@@ -8260,6 +8679,443 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLogisticsMutateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_record_delivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsRecordDelivery"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_record_loading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsRecordLoading"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_schedule_loading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsScheduleLoading"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_update_cost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsUpdateCost"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_update_eta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsUpdateETA"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_update_transport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsUpdateTransport"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
