@@ -1,6 +1,8 @@
 from django.urls import path
 
 from deals.api.views import (
+    DealAttributionDetailView,
+    DealAttributionResolveView,
     DealDetailView,
     DealListView,
     DealPartiesSnapshotView,
@@ -30,4 +32,15 @@ urlpatterns = [
         DealPartiesSnapshotView.as_view(),
         name="deal-parties-snapshot",
     ),
+    path(
+        "<uuid:deal_id>/attribution/",
+        DealAttributionDetailView.as_view(),
+        name="deal-attribution",
+    ),
+    path(
+        "<uuid:deal_id>/attribution/resolve/",
+        DealAttributionResolveView.as_view(),
+        name="deal-attribution-resolve",
+    ),
 ]
+

@@ -307,6 +307,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{deal_id}/attribution/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Deal Attribution
+         * @description Retrieves the DealAttribution record for a Deal. Customer actors (Buyer/Seller) receive a privacy-preserving projection where internal evidence_snapshot, resolved_by, and resolution_reason are withheld. Internal Platform Operators and Product Admins receive the complete provenance projection. Attributed Brokers who are not a commercial party receive 403 Forbidden.
+         */
+        get: operations["deals_attribution_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/attribution/resolve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve Deal Attribution
+         * @description Internal operational action to manually resolve a PENDING DealAttribution. Strictly restricted to Platform Operators and Product Admins via SystemRoleAssignment. Customer actors (Buyer, Supplier, Broker) and Django staff-only/superuser-only are denied. Requires primary_channel (one of 5 canonical categories) and resolution reason. Once RESOLVED, attribution becomes permanently immutable; subsequent attempts return 409 Conflict. Protected against concurrent races via PostgreSQL row-level locks and version checking.
+         */
+        post: operations["deals_attribution_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{deal_id}/parties/": {
         parameters: {
             query?: never;
@@ -2686,6 +2726,84 @@ export interface components {
          * @enum {string}
          */
         DataTypeEnum: "string" | "number" | "integer" | "boolean" | "enum";
+        /**
+         * @description Role-scoped DealAttribution representation (Epic 9 Contract §78, §79, T0903).
+         *
+         *     Projection rules:
+         *     - Internal (Operator / Product Admin): Full provenance view including evidence_snapshot,
+         *       resolved_by_id, and resolution_reason.
+         *     - Customer (Buyer / Seller): Privacy-preserving customer projection exposing only
+         *       status, primary_channel, resolution_method, resolved_at, version, created_at.
+         *       Private evidence_snapshot, resolved_by_id, and resolution_reason are withheld (null).
+         */
+        DealAttribution: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly deal_id: string;
+            /**
+             * @description Attribution resolution status (PENDING or RESOLVED).
+             *
+             *     * `PENDING` - Pending
+             *     * `RESOLVED` - Resolved
+             */
+            readonly status: components["schemas"]["DealAttributionStatusEnum"];
+            /**
+             * @description Authoritative primary attribution business category (null when PENDING).
+             *
+             *     * `PLATFORM_NETWORK` - Platform Network
+             *     * `DIRECT_SUPPLIER` - Direct Supplier
+             *     * `BROKER` - Broker
+             *     * `OPPORTUNITY_DESK` - Opportunity Desk
+             *     * `BUYER_EXISTING_SUPPLIER` - Buyer Existing Supplier
+             */
+            readonly primary_channel: (components["schemas"]["PrimaryChannelEnum"] | components["schemas"]["NullEnum"]) | null;
+            /**
+             * @description Method by which attribution was resolved (AUTOMATIC or MANUAL).
+             *
+             *     * `AUTOMATIC` - Automatic
+             *     * `MANUAL` - Manual
+             */
+            readonly resolution_method: (components["schemas"]["ResolutionMethodEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: uuid */
+            readonly resolved_by_id: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative timestamp when attribution was resolved.
+             */
+            readonly resolved_at: string | null;
+            readonly resolution_reason: string | null;
+            readonly evidence_snapshot: unknown;
+            /** @description Optimistic concurrency aggregate version counter. */
+            readonly version: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Payload for manual resolution of a PENDING DealAttribution (Contract §47, §101, T0903). */
+        DealAttributionResolveRequest: {
+            /**
+             * @description Primary origin attribution category to assign.
+             *
+             *     * `PLATFORM_NETWORK` - Platform Network
+             *     * `DIRECT_SUPPLIER` - Direct Supplier
+             *     * `BROKER` - Broker
+             *     * `OPPORTUNITY_DESK` - Opportunity Desk
+             *     * `BUYER_EXISTING_SUPPLIER` - Buyer Existing Supplier
+             */
+            primary_channel: components["schemas"]["PrimaryChannelEnum"];
+            /** @description Operational explanation or justification for the manual resolution decision. */
+            reason: string;
+            /** @description Optional expected version of DealAttribution for optimistic locking. */
+            expected_version?: number | null;
+        };
+        /**
+         * @description * `PENDING` - Pending
+         *     * `RESOLVED` - Resolved
+         * @enum {string}
+         */
+        DealAttributionStatusEnum: "PENDING" | "RESOLVED";
         /** @description Immutable child cost component snapshot (T0902). */
         DealCostSnapshot: {
             /** Format: uuid */
@@ -2761,7 +2879,7 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
-        /** @description Minimal durable Deal aggregate representation (T0901, T0902). */
+        /** @description Minimal durable Deal aggregate representation (T0901, T0902, T0903). */
         DealResponse: {
             /** Format: uuid */
             readonly id: string;
@@ -2809,6 +2927,7 @@ export interface components {
             readonly created_by_id: number;
             readonly terms: components["schemas"]["DealTermsSnapshot"];
             readonly parties: components["schemas"]["DealPartySnapshot"][];
+            readonly attribution: components["schemas"]["DealAttribution"];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -4864,6 +4983,15 @@ export interface components {
          * @enum {string}
          */
         PersonaEnum: "buyer" | "supplier" | "broker" | "operator" | "admin";
+        /**
+         * @description * `PLATFORM_NETWORK` - Platform Network
+         *     * `DIRECT_SUPPLIER` - Direct Supplier
+         *     * `BROKER` - Broker
+         *     * `OPPORTUNITY_DESK` - Opportunity Desk
+         *     * `BUYER_EXISTING_SUPPLIER` - Buyer Existing Supplier
+         * @enum {string}
+         */
+        PrimaryChannelEnum: "PLATFORM_NETWORK" | "DIRECT_SUPPLIER" | "BROKER" | "OPPORTUNITY_DESK" | "BUYER_EXISTING_SUPPLIER";
         /** @description Machine-readable qualification issue for readiness inspection and error responses. */
         QualificationIssue: {
             /** @description Field name associated with the qualification issue. */
@@ -5444,6 +5572,12 @@ export interface components {
          * @enum {string}
          */
         RequestedFieldsEnum: "unit_price" | "offered_quantity" | "payment_terms" | "delivery_terms" | "incoterm" | "delivery_start" | "delivery_end" | "valid_until" | "specifications" | "logistics_cost_amount" | "notes";
+        /**
+         * @description * `AUTOMATIC` - Automatic
+         *     * `MANUAL` - Manual
+         * @enum {string}
+         */
+        ResolutionMethodEnum: "AUTOMATIC" | "MANUAL";
         /** @description Payload for declining or cancelling an open RevisionRequest (T0810). */
         RevisionRequestAction: {
             /** @description Expected Offer aggregate_version for optimistic concurrency control. */
@@ -6950,6 +7084,121 @@ export interface operations {
             };
             /** @description Deal not found. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+        };
+    };
+    deals_attribution_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealAttribution"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden: actor lacks access to this Deal. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+            /** @description Deal or attribution not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+        };
+    };
+    deals_attribution_resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DealAttributionResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Attribution successfully resolved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealAttribution"];
+                };
+            };
+            /** @description Validation error on input fields. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden: only Platform Operators and Product Admins may resolve attribution. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+            /** @description Deal or attribution not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+            /** @description Conflict: attribution is already resolved or version conflict. */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

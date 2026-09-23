@@ -563,22 +563,26 @@ class DealMaterializationServiceTests(BaseDealsTestCase):
         deal_fields = [f.name for f in Deal._meta.get_fields()]
         terms_fields = [f.name for f in DealTermsSnapshot._meta.get_fields()]
 
-        # Verified presence of approved T0902 snapshot relations
+        # Verified presence of approved T0902 snapshot relations and T0903 attribution
         self.assertIn("terms_snapshot", deal_fields)
         self.assertIn("party_snapshots", deal_fields)
+        self.assertIn("attribution", deal_fields)
 
-        # Forbidden premature Attribution fields (T0903)
-        forbidden_attribution = [
-            "attribution",
-            "deal_attribution",
-            "broker_attribution",
-            "opportunity_attribution",
-            "primary_channel",
-            "resolution_method",
+        # Forbidden premature T0904 Broker/Opportunity attribution and Commission fields
+        forbidden_t0904_and_commission = [
+            "broker_attributions",
+            "opportunity_attributions",
+            "deal_broker_attributions",
+            "deal_opportunity_attributions",
+            "commission",
+            "commission_rate",
+            "revenue_share",
+            "fee_amount",
         ]
-        for keyword in forbidden_attribution:
+        for keyword in forbidden_t0904_and_commission:
             self.assertNotIn(keyword, deal_fields)
             self.assertNotIn(keyword, terms_fields)
+
 
         # Forbidden premature Execution fields (Epic 10)
         forbidden_execution = [

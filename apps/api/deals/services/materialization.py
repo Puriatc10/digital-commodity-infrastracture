@@ -20,6 +20,8 @@ from deals.models import (
     PartyRole,
     PartyType,
 )
+from deals.services.attribution_resolver import create_initial_deal_attribution
+
 from identity.models import SystemRoleAssignment
 from offers.enums import AwardStatus
 from offers.models import Award, AwardAllocation
@@ -305,9 +307,12 @@ def materialize_deals_from_award(
                 registration_identifier_snapshot="",
             )
 
+        # 12. Create DealAttribution with deterministic provenance resolution (Contract §38, §60, T0903)
+        create_initial_deal_attribution(deal)
+
         newly_created = True
 
-    # 12. Load and return all Deals for the Award with snapshots prefetched
+    # 13. Load and return all Deals for the Award with snapshots prefetched
     all_deals = list(
         Deal.objects.filter(award=locked_award)
         .select_related(
@@ -325,6 +330,7 @@ def materialize_deals_from_award(
             "terms_snapshot__schema_version",
             "terms_snapshot__origin_area",
             "terms_snapshot__destination_area",
+            "attribution",
         )
         .prefetch_related(
             "terms_snapshot__cost_snapshots",
@@ -336,3 +342,4 @@ def materialize_deals_from_award(
     )
 
     return all_deals, newly_created
+
