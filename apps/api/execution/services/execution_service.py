@@ -198,7 +198,26 @@ def create_or_get_execution_for_deal(
         defaults={"version": 1},
     )
 
+    # Idempotently initialize ExecutionInspection (Epic 10 Contract §43, §46, T1005)
+    from execution.enums import InspectionResult, InspectionStatus
+    from execution.models.inspection import ExecutionInspection
+
+    rfq = getattr(deal, "rfq", None)
+    is_required = bool(rfq and getattr(rfq, "inspection_required", False))
+    init_status = InspectionStatus.PENDING if is_required else InspectionStatus.NOT_REQUIRED
+
+    ExecutionInspection.objects.get_or_create(
+        execution=execution,
+        defaults={
+            "required": is_required,
+            "status": init_status,
+            "result": InspectionResult.UNKNOWN,
+            "version": 1,
+        },
+    )
+
     return execution
+
 
 
 def get_execution_for_deal(deal_id: Union[UUID, str], *, actor: Any = None) -> Execution:

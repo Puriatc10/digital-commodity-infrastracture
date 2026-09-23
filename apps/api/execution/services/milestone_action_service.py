@@ -91,6 +91,36 @@ def _check_milestone_logistics_guards(execution: Execution, milestone: Execution
                 )
 
 
+def _check_milestone_inspection_guards(execution: Execution, milestone: ExecutionMilestone) -> None:
+    """
+    Verify authoritative quality inspection facts for INSPECTION_COMPLETED milestone (Epic 10 Contract §49, T1005).
+
+    Invariants:
+    - Milestone 'INSPECTION_COMPLETED' may complete when:
+        1. inspection.status == NOT_REQUIRED; or
+        2. inspection.status == COMPLETED.
+    - If status is PENDING, SCHEDULED, or CANCELLED, milestone cannot complete.
+    - Result PASS is NOT required to complete milestone; COMPLETED + FAIL is valid
+      (represents that inspection occurred; downstream acceptance/issues handle quality failure).
+    - If inspection record does not exist, status cannot be verified -> rejects completion.
+    """
+    code = milestone.definition.code
+    if code == "INSPECTION_COMPLETED":
+        from execution.enums import InspectionStatus
+        from execution.models.inspection import ExecutionInspection
+
+        inspection = ExecutionInspection.objects.filter(execution=execution).first()
+        if not inspection:
+            raise ExecutionValidationError(
+                "Milestone 'INSPECTION_COMPLETED' requires inspection record to be initialized."
+            )
+        if inspection.status not in {InspectionStatus.NOT_REQUIRED, InspectionStatus.COMPLETED}:
+            raise ExecutionValidationError(
+                f"Milestone 'INSPECTION_COMPLETED' requires inspection status to be COMPLETED or NOT_REQUIRED "
+                f"(current status: '{inspection.status}')."
+            )
+
+
 @transaction.atomic
 def complete_milestone(
     execution_id: Union[UUID, str],
@@ -164,20 +194,31 @@ def complete_milestone(
     # Logistics authoritative facts guard (Epic 10 Contract §25, §26, §29, T1004)
     _check_milestone_logistics_guards(execution, milestone)
 
+    # Quality & inspection authoritative facts guard (Epic 10 Contract §49, T1005)
+    _check_milestone_inspection_guards(execution, milestone)
+
     # Authoritative completion transition
     code = milestone.definition.code
     source_time = actual_at
-    if not source_time and code in {"LOADING_SCHEDULED", "LOADED", "DELIVERED"}:
-        from execution.models.logistics import ExecutionLogistics
+    if not source_time and code in {"LOADING_SCHEDULED", "LOADED", "DELIVERED", "INSPECTION_COMPLETED"}:
+        if code in {"LOADING_SCHEDULED", "LOADED", "DELIVERED"}:
+            from execution.models.logistics import ExecutionLogistics
 
-        logistics = ExecutionLogistics.objects.filter(execution=execution).first()
-        if logistics:
-            if code == "LOADING_SCHEDULED" and logistics.scheduled_loading_at:
-                source_time = logistics.scheduled_loading_at
-            elif code == "LOADED" and logistics.actual_loading_at:
-                source_time = logistics.actual_loading_at
-            elif code == "DELIVERED" and logistics.actual_delivery_at:
-                source_time = logistics.actual_delivery_at
+            logistics = ExecutionLogistics.objects.filter(execution=execution).first()
+            if logistics:
+                if code == "LOADING_SCHEDULED" and logistics.scheduled_loading_at:
+                    source_time = logistics.scheduled_loading_at
+                elif code == "LOADED" and logistics.actual_loading_at:
+                    source_time = logistics.actual_loading_at
+                elif code == "DELIVERED" and logistics.actual_delivery_at:
+                    source_time = logistics.actual_delivery_at
+        elif code == "INSPECTION_COMPLETED":
+            from execution.models.inspection import ExecutionInspection
+
+            inspection = ExecutionInspection.objects.filter(execution=execution).first()
+            if inspection and inspection.inspection_at:
+                source_time = inspection.inspection_at
+
 
     completion_time = source_time or timezone.now()
     milestone.status = MilestoneStatus.COMPLETED

@@ -1,7 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from execution.enums import TransportMode
+from execution.enums import InspectionResult, TransportMode
 from execution.models import (
     ExecutionMilestoneDefinition,
     ExecutionWorkflowTemplate,
@@ -210,6 +210,29 @@ class ExecutionLogisticsSerializer(serializers.ModelSerializer):
         ]
 
 
+class ExecutionInspectionSerializer(serializers.ModelSerializer):
+    """Operational execution inspection detail serializer (Epic 10 Contract §43–§49, T1005)."""
+
+    class Meta:
+        from execution.models.inspection import ExecutionInspection
+
+        model = ExecutionInspection
+        fields = [
+            "id",
+            "execution_id",
+            "required",
+            "agency",
+            "scheduled_at",
+            "inspection_at",
+            "status",
+            "result",
+            "notes",
+            "version",
+            "created_at",
+            "updated_at",
+        ]
+
+
 class ExecutionDetailSerializer(serializers.ModelSerializer):
     """Full execution aggregate detail serializer."""
 
@@ -227,6 +250,7 @@ class ExecutionDetailSerializer(serializers.ModelSerializer):
     )
     milestones = ExecutionMilestoneSerializer(many=True, read_only=True)
     logistics = ExecutionLogisticsSerializer(read_only=True)
+    inspection = ExecutionInspectionSerializer(read_only=True)
 
     class Meta:
         from execution.models.execution import Execution
@@ -245,9 +269,11 @@ class ExecutionDetailSerializer(serializers.ModelSerializer):
             "closed_at",
             "milestones",
             "logistics",
+            "inspection",
             "created_at",
             "updated_at",
         ]
+
 
 
 class ExecutionCreateRequestSerializer(serializers.Serializer):
@@ -521,7 +547,97 @@ class LogisticsMutateRequestSerializer(serializers.Serializer):
     currency = serializers.CharField(max_length=3, required=False, allow_blank=True)
 
 
+class InspectionScheduleSerializer(serializers.Serializer):
+    """Request payload to schedule inspection."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Current expected inspection version for optimistic concurrency control.",
+    )
+    scheduled_at = serializers.DateTimeField(
+        required=True,
+        help_text="Scheduled inspection timestamp.",
+    )
+    agency = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Inspection agency or organization name (e.g. SGS, Bureau Veritas).",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Operational notes or instructions.",
+    )
+
+
+class InspectionCompleteSerializer(serializers.Serializer):
+    """Request payload to complete quality inspection."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Current expected inspection version for optimistic concurrency control.",
+    )
+    inspection_at = serializers.DateTimeField(
+        required=True,
+        help_text="Authoritative historical inspection occurrence timestamp.",
+    )
+    result = serializers.ChoiceField(
+        choices=InspectionResult.choices,
+        required=True,
+        help_text="Authoritative quality inspection result (PASS, FAIL, CONDITIONAL, UNKNOWN).",
+    )
+    agency = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Inspection agency or organization name.",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Operational notes or observations.",
+    )
+
+
+class InspectionCancelSerializer(serializers.Serializer):
+    """Request payload to cancel scheduled or pending inspection."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Current expected inspection version for optimistic concurrency control.",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Cancellation reason or notes.",
+    )
+
+
+class InspectionMarkNotRequiredSerializer(serializers.Serializer):
+    """Request payload to mark inspection as not required / waived."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Current expected inspection version for optimistic concurrency control.",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Waiver reason or notes.",
+    )
+
+
 class ExecutionErrorResponseSerializer(serializers.Serializer):
+
     """Standard error response."""
 
     detail = serializers.CharField(help_text="Detailed error explanation.")

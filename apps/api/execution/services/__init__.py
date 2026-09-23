@@ -51,12 +51,26 @@ __all__ = [
     "record_delivery",
     "update_logistics_cost",
     "mutate_logistics",
+    "get_or_create_execution_inspection",
+    "schedule_inspection",
+    "complete_inspection",
+    "cancel_inspection",
+    "mark_inspection_not_required",
+    "render_execution_deal_specifications",
 ]
 
 from .execution_service import (
     create_or_get_execution_for_deal,
     get_execution_by_id,
     get_execution_for_deal,
+)
+from .inspection_service import (
+    cancel_inspection,
+    complete_inspection,
+    get_or_create_execution_inspection,
+    mark_inspection_not_required,
+    render_execution_deal_specifications,
+    schedule_inspection,
 )
 from .logistics_service import (
     get_or_create_execution_logistics,
@@ -75,4 +89,5 @@ from .milestone_action_service import (
     start_milestone,
 )
 from .timeline_service import project_execution_timeline
+
 

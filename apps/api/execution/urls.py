@@ -2,6 +2,11 @@ from django.urls import path
 
 from execution.api.views import (
     ExecutionDetailView,
+    ExecutionInspectionCancelActionView,
+    ExecutionInspectionCompleteActionView,
+    ExecutionInspectionDetailView,
+    ExecutionInspectionMarkNotRequiredActionView,
+    ExecutionInspectionScheduleActionView,
     ExecutionLogisticsDetailView,
     ExecutionLogisticsRecordDeliveryActionView,
     ExecutionLogisticsRecordLoadingActionView,
@@ -33,10 +38,16 @@ urlpatterns = [
     path("<uuid:execution_id>/logistics/update-eta/", ExecutionLogisticsUpdateETAActionView.as_view(), name="execution-logistics-update-eta"),
     path("<uuid:execution_id>/logistics/record-delivery/", ExecutionLogisticsRecordDeliveryActionView.as_view(), name="execution-logistics-record-delivery"),
     path("<uuid:execution_id>/logistics/update-cost/", ExecutionLogisticsUpdateCostActionView.as_view(), name="execution-logistics-update-cost"),
+    path("<uuid:execution_id>/inspection/", ExecutionInspectionDetailView.as_view(), name="execution-inspection-detail"),
+    path("<uuid:execution_id>/inspection/schedule/", ExecutionInspectionScheduleActionView.as_view(), name="execution-inspection-schedule"),
+    path("<uuid:execution_id>/inspection/complete/", ExecutionInspectionCompleteActionView.as_view(), name="execution-inspection-complete"),
+    path("<uuid:execution_id>/inspection/cancel/", ExecutionInspectionCancelActionView.as_view(), name="execution-inspection-cancel"),
+    path("<uuid:execution_id>/inspection/mark-not-required/", ExecutionInspectionMarkNotRequiredActionView.as_view(), name="execution-inspection-mark-not-required"),
     path("<uuid:execution_id>/timeline/", ExecutionTimelineView.as_view(), name="execution-timeline"),
     path("<uuid:execution_id>/milestones/<uuid:milestone_id>/start/", MilestoneStartActionView.as_view(), name="execution-milestone-start"),
     path("<uuid:execution_id>/milestones/<uuid:milestone_id>/complete/", MilestoneCompleteActionView.as_view(), name="execution-milestone-complete"),
     path("<uuid:execution_id>/milestones/<uuid:milestone_id>/block/", MilestoneBlockActionView.as_view(), name="execution-milestone-block"),
     path("<uuid:execution_id>/milestones/<uuid:milestone_id>/skip/", MilestoneSkipActionView.as_view(), name="execution-milestone-skip"),
 ]
+
 

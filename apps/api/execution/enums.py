@@ -68,7 +68,46 @@ class TimelineEventType(models.TextChoices):
     MILESTONE_COMPLETED = "MILESTONE_COMPLETED", "Milestone Completed"
     MILESTONE_BLOCKED = "MILESTONE_BLOCKED", "Milestone Blocked"
     MILESTONE_SKIPPED = "MILESTONE_SKIPPED", "Milestone Skipped"
+    INSPECTION_SCHEDULED = "INSPECTION_SCHEDULED", "Inspection Scheduled"
+    INSPECTION_COMPLETED = "INSPECTION_COMPLETED", "Inspection Completed"
+    INSPECTION_CANCELLED = "INSPECTION_CANCELLED", "Inspection Cancelled"
     EXECUTION_CLOSED = "EXECUTION_CLOSED", "Execution Closed"
+
+
+class InspectionStatus(models.TextChoices):
+    """
+    Authoritative lifecycle status of an ExecutionInspection instance (Epic 10 Contract §44, T1005).
+
+    Exact statuses:
+    - NOT_REQUIRED: Commercial terms or buyer waiver determined inspection is not required.
+    - PENDING: Required inspection awaiting scheduling.
+    - SCHEDULED: Inspection date and agency scheduled.
+    - COMPLETED: Inspection took place; authoritative historical completion facts recorded.
+    - CANCELLED: Scheduled or pending inspection cancelled.
+    """
+
+    NOT_REQUIRED = "NOT_REQUIRED", "Not Required"
+    PENDING = "PENDING", "Pending"
+    SCHEDULED = "SCHEDULED", "Scheduled"
+    COMPLETED = "COMPLETED", "Completed"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class InspectionResult(models.TextChoices):
+    """
+    Authoritative quality outcome of an ExecutionInspection (Epic 10 Contract §45, T1005).
+
+    Exact results:
+    - PASS: Inspection passed quality requirements.
+    - FAIL: Inspection failed quality requirements (milestone completes; issues handled in T1008).
+    - CONDITIONAL: Passed conditionally upon further action or minor variance.
+    - UNKNOWN: Result not yet known or inspection not completed/not required.
+    """
+
+    PASS = "PASS", "Pass"
+    FAIL = "FAIL", "Fail"
+    CONDITIONAL = "CONDITIONAL", "Conditional"
+    UNKNOWN = "UNKNOWN", "Unknown"
 
 
 class TransportMode(models.TextChoices):
@@ -87,4 +126,5 @@ class TransportMode(models.TextChoices):
     AIR = "AIR", "Air"
     MULTIMODAL = "MULTIMODAL", "Multimodal"
     OTHER = "OTHER", "Other"
+
 

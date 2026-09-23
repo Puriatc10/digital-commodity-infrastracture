@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     Execution,
+    ExecutionInspection,
     ExecutionLogistics,
     ExecutionMilestone,
     ExecutionMilestoneDefinition,
@@ -62,3 +63,11 @@ class ExecutionLogisticsAdmin(admin.ModelAdmin):
     list_display = ("id", "execution", "carrier_name", "transport_mode", "scheduled_loading_at", "actual_loading_at", "eta", "actual_delivery_at", "version")
     list_filter = ("transport_mode",)
     search_fields = ("execution__id", "carrier_name", "transport_reference")
+
+
+@admin.register(ExecutionInspection)
+class ExecutionInspectionAdmin(admin.ModelAdmin):
+    list_display = ("id", "execution", "agency", "status", "result", "required", "scheduled_at", "inspection_at", "version")
+    list_filter = ("status", "result", "required")
+    search_fields = ("execution__id", "agency", "notes")
+

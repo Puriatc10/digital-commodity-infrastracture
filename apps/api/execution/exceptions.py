@@ -81,3 +81,11 @@ class CrossObjectIntegrityError(ExecutionError):
 class LogisticsNotFoundError(ExecutionError):
     """Raised when an execution logistics instance cannot be found."""
 
+
+class InspectionNotFoundError(ExecutionError):
+    """Raised when an execution inspection instance cannot be found."""
+
+
+class InvalidInspectionTransitionError(ExecutionError):
+    """Raised when an illegal inspection lifecycle transition is requested."""
+

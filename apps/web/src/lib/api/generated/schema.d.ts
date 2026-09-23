@@ -371,6 +371,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{deal_id}/execution/inspection/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Operational Inspection for Deal
+         * @description Retrieves operational inspection record for a Deal's execution instance.
+         */
+        get: operations["deal_execution_inspection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{deal_id}/execution/logistics/": {
         parameters: {
             query?: never;
@@ -533,6 +553,106 @@ export interface paths {
         get: operations["execution_detail"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Quality & Inspection Record
+         * @description Idempotently retrieves or initializes the operational ExecutionInspection aggregate for an Execution. The required flag is derived strictly from persisted commercial context (RFQ.inspection_required). Status, result, timestamps, and agency are returned without heuristics or active-schema guessing.
+         */
+        get: operations["execution_inspection_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Quality Inspection
+         * @description Seller/Operator operational action: cancels scheduled or pending quality inspection. Transitions status to CANCELLED and resets result to UNKNOWN. Completed inspections cannot be cancelled. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_inspection_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Quality Inspection Completion
+         * @description Seller/Operator operational action: records authoritative quality inspection completion facts. Requires mandatory inspection_at timestamp and valid result (PASS, FAIL, CONDITIONAL, UNKNOWN). Result is never inferred from free-text notes. COMPLETED + FAIL represents a completed inspection whose quality outcome failed; it allows the INSPECTION_COMPLETED milestone to complete. Completed facts are historically immutable (no casual reopen or rewrite).
+         */
+        post: operations["execution_inspection_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/mark-not-required/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Quality Inspection Not Required
+         * @description Buyer/Operator operational action: waives inspection requirement. Seller is strictly denied from unilaterally waiving inspection required by Buyer. Transitions status to NOT_REQUIRED, sets required = False, and preserves result as UNKNOWN. NOT_REQUIRED must never become a fake PASS. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_inspection_mark_not_required"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/schedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule Quality Inspection
+         * @description Seller/Operator operational action: schedules inspection appointment date and agency. Transitions status to SCHEDULED, marks required = True, and preserves result as UNKNOWN. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_inspection_schedule"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3772,6 +3892,7 @@ export interface components {
             closed_at?: string | null;
             readonly milestones: components["schemas"]["ExecutionMilestone"][];
             readonly logistics: components["schemas"]["ExecutionLogistics"];
+            readonly inspection: components["schemas"]["ExecutionInspection"];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -3788,6 +3909,66 @@ export interface components {
             /** @description Detailed error explanation. */
             detail: string;
         };
+        /** @description Operational execution inspection detail serializer (Epic 10 Contract §43–§49, T1005). */
+        ExecutionInspection: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent execution instance (1 Execution -> max 1 ExecutionInspection).
+             */
+            readonly execution_id: string;
+            /** @description Whether quality inspection is required by commercial context. */
+            required?: boolean;
+            /** @description Inspection agency or organization name (e.g. SGS, Bureau Veritas). */
+            agency?: string;
+            /**
+             * Format: date-time
+             * @description Scheduled inspection timestamp.
+             */
+            scheduled_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative historical inspection occurrence timestamp.
+             */
+            inspection_at?: string | null;
+            /**
+             * @description Runtime status of this inspection record.
+             *
+             *     * `NOT_REQUIRED` - Not Required
+             *     * `PENDING` - Pending
+             *     * `SCHEDULED` - Scheduled
+             *     * `COMPLETED` - Completed
+             *     * `CANCELLED` - Cancelled
+             */
+            status?: components["schemas"]["ExecutionInspectionStatusEnum"];
+            /**
+             * @description Authoritative quality inspection result (PASS, FAIL, CONDITIONAL, UNKNOWN).
+             *
+             *     * `PASS` - Pass
+             *     * `FAIL` - Fail
+             *     * `CONDITIONAL` - Conditional
+             *     * `UNKNOWN` - Unknown
+             */
+            result?: components["schemas"]["ResultEnum"];
+            /** @description Operational notes or instructions. Must never be used to infer result or status. */
+            notes?: string;
+            /** @description Optimistic concurrency aggregate version counter. */
+            version?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `NOT_REQUIRED` - Not Required
+         *     * `PENDING` - Pending
+         *     * `SCHEDULED` - Scheduled
+         *     * `COMPLETED` - Completed
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        ExecutionInspectionStatusEnum: "NOT_REQUIRED" | "PENDING" | "SCHEDULED" | "COMPLETED" | "CANCELLED";
         /** @description Operational execution logistics detail serializer (Epic 10 Contract §35, T1004). */
         ExecutionLogistics: {
             /** Format: uuid */
@@ -4125,6 +4306,75 @@ export interface components {
         };
         HealthResponse: {
             status: string;
+        };
+        /** @description Request payload to cancel scheduled or pending inspection. */
+        InspectionCancel: {
+            /** @description Current expected inspection version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Cancellation reason or notes.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to complete quality inspection. */
+        InspectionComplete: {
+            /** @description Current expected inspection version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Authoritative historical inspection occurrence timestamp.
+             */
+            inspection_at: string;
+            /**
+             * @description Authoritative quality inspection result (PASS, FAIL, CONDITIONAL, UNKNOWN).
+             *
+             *     * `PASS` - Pass
+             *     * `FAIL` - Fail
+             *     * `CONDITIONAL` - Conditional
+             *     * `UNKNOWN` - Unknown
+             */
+            result: components["schemas"]["ResultEnum"];
+            /**
+             * @description Inspection agency or organization name.
+             * @default
+             */
+            agency: string;
+            /**
+             * @description Operational notes or observations.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to mark inspection as not required / waived. */
+        InspectionMarkNotRequired: {
+            /** @description Current expected inspection version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Waiver reason or notes.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to schedule inspection. */
+        InspectionSchedule: {
+            /** @description Current expected inspection version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Scheduled inspection timestamp.
+             */
+            scheduled_at: string;
+            /**
+             * @description Inspection agency or organization name (e.g. SGS, Bureau Veritas).
+             * @default
+             */
+            agency: string;
+            /**
+             * @description Operational notes or instructions.
+             * @default
+             */
+            notes: string;
         };
         InternalOrganizationVerificationDetail: {
             /** Format: uuid */
@@ -6537,6 +6787,14 @@ export interface components {
          * @enum {string}
          */
         ResolutionMethodEnum: "AUTOMATIC" | "MANUAL";
+        /**
+         * @description * `PASS` - Pass
+         *     * `FAIL` - Fail
+         *     * `CONDITIONAL` - Conditional
+         *     * `UNKNOWN` - Unknown
+         * @enum {string}
+         */
+        ResultEnum: "PASS" | "FAIL" | "CONDITIONAL" | "UNKNOWN";
         /** @description Payload for declining or cancelling an open RevisionRequest (T0810). */
         RevisionRequestAction: {
             /** @description Expected Offer aggregate_version for optimistic concurrency control. */
@@ -8305,6 +8563,43 @@ export interface operations {
             };
         };
     };
+    deal_execution_inspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
     deal_execution_logistics: {
         parameters: {
             query?: never;
@@ -8679,6 +8974,275 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionCancel"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionComplete"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_mark_not_required: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionMarkNotRequired"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionSchedule"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
