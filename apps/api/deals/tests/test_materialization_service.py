@@ -563,23 +563,23 @@ class DealMaterializationServiceTests(BaseDealsTestCase):
         deal_fields = [f.name for f in Deal._meta.get_fields()]
         terms_fields = [f.name for f in DealTermsSnapshot._meta.get_fields()]
 
-        # Verified presence of approved T0902 snapshot relations and T0903 attribution
+        # Verified presence of approved T0902 snapshot relations, T0903 attribution, and T0904 broker/opportunity provenance
         self.assertIn("terms_snapshot", deal_fields)
         self.assertIn("party_snapshots", deal_fields)
         self.assertIn("attribution", deal_fields)
+        self.assertIn("broker_attributions", deal_fields)
+        self.assertIn("opportunity_attributions", deal_fields)
 
-        # Forbidden premature T0904 Broker/Opportunity attribution and Commission fields
-        forbidden_t0904_and_commission = [
-            "broker_attributions",
-            "opportunity_attributions",
-            "deal_broker_attributions",
-            "deal_opportunity_attributions",
+        # Forbidden premature Commission / Broker Economics fields
+        forbidden_commission = [
             "commission",
             "commission_rate",
             "revenue_share",
             "fee_amount",
+            "referral_fee",
+            "payout",
         ]
-        for keyword in forbidden_t0904_and_commission:
+        for keyword in forbidden_commission:
             self.assertNotIn(keyword, deal_fields)
             self.assertNotIn(keyword, terms_fields)
 
