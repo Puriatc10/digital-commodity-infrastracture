@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from deals.api.serializers import (
+    DealAttributionResolveRequestSerializer,
+    DealAttributionSerializer,
     DealErrorResponseSerializer,
     DealMaterializeRequestSerializer,
     DealPartySnapshotSerializer,
@@ -14,6 +16,8 @@ from deals.api.serializers import (
     DealTermsSnapshotSerializer,
 )
 from deals.exceptions import (
+    AttributionAlreadyResolvedError,
+    AttributionNotFoundError,
     AwardNotFinalizedError,
     AwardNotFoundError,
     DealPermissionDeniedError,
@@ -22,11 +26,13 @@ from deals.exceptions import (
     StaleVersionError,
 )
 from deals.models import Deal
+from deals.services.attribution_manual import manual_resolve_deal_attribution
 from deals.services.materialization import (
     _is_operator_or_admin,
     materialize_deals_from_award,
 )
 from organizations.models import OrganizationMembership
+
 
 
 def _check_deal_read_access(deal: Deal, user: Any) -> None:
@@ -137,7 +143,7 @@ class DealMaterializeActionView(APIView):
         except (AwardNotFinalizedError, DealSourceIntegrityError, DealValidationError) as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        resp_serializer = DealResponseSerializer(deals, many=True)
+        resp_serializer = DealResponseSerializer(deals, many=True, context={"request": request})
         resp_status = status.HTTP_201_CREATED if newly_created else status.HTTP_200_OK
         return Response(resp_serializer.data, status=resp_status)
 
@@ -188,6 +194,7 @@ class DealListView(APIView):
                 "terms_snapshot",
                 "terms_snapshot__commodity",
                 "terms_snapshot__schema_version",
+                "attribution",
             )
             .prefetch_related(
                 "terms_snapshot__cost_snapshots",
@@ -195,7 +202,7 @@ class DealListView(APIView):
             )
             .order_by("-created_at")
         )
-        serializer = DealResponseSerializer(qs, many=True)
+        serializer = DealResponseSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -236,6 +243,7 @@ class DealDetailView(APIView):
                 "terms_snapshot",
                 "terms_snapshot__commodity",
                 "terms_snapshot__schema_version",
+                "attribution",
             )
             .prefetch_related(
                 "terms_snapshot__cost_snapshots",
@@ -254,8 +262,9 @@ class DealDetailView(APIView):
         except DealPermissionDeniedError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
 
-        serializer = DealResponseSerializer(deal)
+        serializer = DealResponseSerializer(deal, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 class DealTermsSnapshotView(APIView):
@@ -366,3 +375,144 @@ class DealPartiesSnapshotView(APIView):
         parties = deal.party_snapshots.all().order_by("role")
         serializer = DealPartySnapshotSerializer(parties, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DealAttributionDetailView(APIView):
+    """
+    Retrieve DealAttribution for a Deal (Contract §38, §78, §79, §98, T0903).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deals_attribution_retrieve",
+        tags=["Deals"],
+        summary="Retrieve Deal Attribution",
+        description=(
+            "Retrieves the DealAttribution record for a Deal. "
+            "Customer actors (Buyer/Seller) receive a privacy-preserving projection "
+            "where internal evidence_snapshot, resolved_by, and resolution_reason are withheld. "
+            "Internal Platform Operators and Product Admins receive the complete provenance projection. "
+            "Attributed Brokers who are not a commercial party receive 403 Forbidden."
+        ),
+        responses={
+            200: DealAttributionSerializer,
+            401: OpenApiResponse(description="Unauthenticated."),
+            403: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Forbidden: actor lacks access to this Deal.",
+            ),
+            404: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Deal or attribution not found.",
+            ),
+        },
+    )
+    def get(self, request, deal_id):
+        deal = (
+            Deal.objects.filter(pk=deal_id)
+            .select_related("attribution")
+            .first()
+        )
+        if not deal:
+            return Response(
+                {"detail": f"Deal '{deal_id}' does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            _check_deal_read_access(deal, request.user)
+        except DealPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            attribution = deal.attribution
+        except Deal.attribution.RelatedObjectDoesNotExist:
+            return Response(
+                {"detail": f"Deal '{deal_id}' has no attribution record."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = DealAttributionSerializer(attribution, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DealAttributionResolveView(APIView):
+    """
+    Manually resolve a PENDING DealAttribution (Contract §47, §101, T0903).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deals_attribution_resolve",
+        tags=["Deals"],
+        summary="Resolve Deal Attribution",
+        description=(
+            "Internal operational action to manually resolve a PENDING DealAttribution. "
+            "Strictly restricted to Platform Operators and Product Admins via SystemRoleAssignment. "
+            "Customer actors (Buyer, Supplier, Broker) and Django staff-only/superuser-only are denied. "
+            "Requires primary_channel (one of 5 canonical categories) and resolution reason. "
+            "Once RESOLVED, attribution becomes permanently immutable; subsequent attempts return 409 Conflict. "
+            "Protected against concurrent races via PostgreSQL row-level locks and version checking."
+        ),
+        request=DealAttributionResolveRequestSerializer,
+        responses={
+            200: OpenApiResponse(
+                response=DealAttributionSerializer,
+                description="Attribution successfully resolved.",
+            ),
+            400: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Validation error on input fields.",
+            ),
+            401: OpenApiResponse(description="Unauthenticated."),
+            403: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Forbidden: only Platform Operators and Product Admins may resolve attribution.",
+            ),
+            404: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Deal or attribution not found.",
+            ),
+            409: OpenApiResponse(
+                response=DealErrorResponseSerializer,
+                description="Conflict: attribution is already resolved or version conflict.",
+            ),
+        },
+    )
+    def post(self, request, deal_id):
+        if not _is_operator_or_admin(request.user):
+            return Response(
+                {"detail": "Only Platform Operators and Product Admins may manually resolve deal attribution."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = DealAttributionResolveRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        primary_channel = serializer.validated_data["primary_channel"]
+        reason = serializer.validated_data["reason"]
+        expected_version = serializer.validated_data.get("expected_version")
+
+        try:
+            attribution = manual_resolve_deal_attribution(
+                deal_id=deal_id,
+                actor=request.user,
+                primary_channel=primary_channel,
+                reason=reason,
+                expected_version=expected_version,
+            )
+        except DealPermissionDeniedError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+        except AttributionNotFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except (AttributionAlreadyResolvedError, StaleVersionError) as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        except DealValidationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        resp_serializer = DealAttributionSerializer(attribution, context={"request": request})
+        return Response(resp_serializer.data, status=status.HTTP_200_OK)
+

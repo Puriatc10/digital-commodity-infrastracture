@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from deals.models import Deal, DealCostSnapshot, DealPartySnapshot, DealTermsSnapshot
+from deals.models import (
+    Deal,
+    DealAttribution,
+    DealCostSnapshot,
+    DealPartySnapshot,
+    DealTermsSnapshot,
+)
 
 
 @admin.register(Deal)
@@ -67,3 +73,21 @@ class DealCostSnapshotAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(DealAttribution)
+class DealAttributionAdmin(admin.ModelAdmin):
+    list_display = ("id", "deal_id", "status", "primary_channel", "resolution_method", "resolved_at", "created_at")
+    list_filter = ("status", "primary_channel", "resolution_method")
+    search_fields = ("id", "deal__id", "resolution_reason")
+    readonly_fields = [f.name for f in DealAttribution._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+

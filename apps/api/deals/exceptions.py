@@ -25,6 +25,16 @@ class DealValidationError(DealDomainError):
     """Raised when Deal data fails domain validation."""
 
 
+class AttributionAlreadyResolvedError(DealDomainError):
+    """Raised when attempting to resolve or modify an attribution that is already RESOLVED."""
+
+
+
+
+class AttributionNotFoundError(DealDomainError):
+    """Raised when an attribution aggregate does not exist for a Deal."""
+
+
 __all__ = [
     "DealDomainError",
     "AwardNotFinalizedError",
@@ -34,4 +44,7 @@ __all__ = [
     "DealValidationError",
     "StaleVersionError",
     "AwardNotFoundError",
+    "AttributionAlreadyResolvedError",
+    "AttributionNotFoundError",
 ]
+
