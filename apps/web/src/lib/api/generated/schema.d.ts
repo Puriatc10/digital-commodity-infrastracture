@@ -3008,6 +3008,9 @@ export interface components {
              * @description Referenced commodity definition.
              */
             readonly commodity_id: string;
+            readonly commodity_name_fa: string;
+            readonly commodity_name_en: string;
+            readonly commodity_code: string;
             /**
              * Format: uuid
              * @description Exact immutable schema version bound at offer/deal creation time.

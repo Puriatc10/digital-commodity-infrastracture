@@ -32,6 +32,9 @@ class DealCostSnapshotSerializer(serializers.ModelSerializer):
 class DealTermsSnapshotSerializer(serializers.ModelSerializer):
     """Immutable commercial terms snapshot (T0902)."""
 
+    commodity_name_fa = serializers.CharField(source="commodity.name_fa", read_only=True)
+    commodity_name_en = serializers.CharField(source="commodity.name_en", read_only=True)
+    commodity_code = serializers.CharField(source="commodity.code", read_only=True)
     cost_snapshots = DealCostSnapshotSerializer(many=True, read_only=True)
 
     class Meta:
@@ -40,6 +43,9 @@ class DealTermsSnapshotSerializer(serializers.ModelSerializer):
             "id",
             "deal_id",
             "commodity_id",
+            "commodity_name_fa",
+            "commodity_name_en",
+            "commodity_code",
             "schema_version_id",
             "specifications",
             "quantity",
