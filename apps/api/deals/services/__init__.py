@@ -9,6 +9,10 @@ from deals.services.materialization import (
     _is_operator_or_admin,
     materialize_deals_from_award,
 )
+from deals.services.provenance import (
+    extract_deal_provenance,
+    persist_deal_provenance,
+)
 from deals.services.specifications import project_deal_specifications
 
 __all__ = [
@@ -20,5 +24,7 @@ __all__ = [
     "resolve_deal_attribution",
     "create_initial_deal_attribution",
     "manual_resolve_deal_attribution",
+    "extract_deal_provenance",
+    "persist_deal_provenance",
 ]
 

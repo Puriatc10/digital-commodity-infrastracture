@@ -74,3 +74,86 @@ class DealMigrationAndUpgradeTests(BaseDealsTestCase):
         self.assertEqual(buyer_party.name_snapshot, self.buyer_org.name)
         seller_party = DealPartySnapshot.objects.get(deal=deal, role=PartyRole.SELLER)
         self.assertEqual(seller_party.name_snapshot, self.supplier_org.name)
+
+    def test_t0903_to_t0904_upgrade_deterministic_provenance_backfill(self):
+        """Simulate T0903 Deals and verify migration 0004 backfills only explicit provenance."""
+        import uuid
+        from opportunities.models import (
+            Opportunity,
+            OpportunityDirection,
+            OpportunitySource,
+            OpportunityStatus,
+        )
+        from deals.models import (
+            DealBrokerAttribution,
+            DealBrokerRole,
+            DealOpportunityAttribution,
+            DealOpportunityRole,
+        )
+        migration_0004 = importlib.import_module(
+            "deals.migrations.0004_dealbrokerattribution_dealopportunityattribution"
+        )
+        backfill_existing_deals_provenance = migration_0004.backfill_existing_deals_provenance
+
+        # Setup supply opp with broker referral
+        supply_opp = Opportunity.objects.create(
+            identifier=f"OPP-MIG-{uuid.uuid4().hex[:6]}",
+            direction=OpportunityDirection.SUPPLY,
+            external_counterparty=self.ext_counterparty,
+            commodity=self.commodity,
+            source=OpportunitySource.BROKER_REFERRAL,
+            broker=self.broker_org,
+            status=OpportunityStatus.QUALIFIED,
+        )
+        self.ext_offer.source_opportunity = supply_opp
+        self.ext_offer.save(update_fields=["source_opportunity"])
+
+        award, allocs = self.create_and_finalize_multi_award()
+        supplier_alloc, broker_alloc, ext_alloc = allocs
+
+        # Create raw Deal from ext_alloc (has broker referral via supply_opp)
+        deal_with_provenance = Deal.objects.create(
+            award=award,
+            award_allocation=ext_alloc,
+            rfq=self.rfq,
+            offer=self.ext_offer,
+            offer_version=self.ext_v1,
+            buyer_organization=self.buyer_org,
+            seller_external_counterparty=self.ext_counterparty,
+            created_by=self.buyer_owner,
+        )
+
+        # Create raw Deal from supplier_alloc (direct supplier, NO broker referral, NO opp)
+        deal_without_provenance = Deal.objects.create(
+            award=award,
+            award_allocation=supplier_alloc,
+            rfq=self.rfq,
+            offer=self.supplier_offer,
+            offer_version=self.supplier_v1,
+            buyer_organization=self.buyer_org,
+            seller_organization=self.supplier_org,
+            created_by=self.buyer_owner,
+        )
+
+        # Ensure no provenance rows yet
+        DealBrokerAttribution.objects.filter(deal__in=[deal_with_provenance, deal_without_provenance]).delete()
+        DealOpportunityAttribution.objects.filter(deal__in=[deal_with_provenance, deal_without_provenance]).delete()
+
+        # Run migration 0004 backfill
+        backfill_existing_deals_provenance(apps, None)
+
+        # Deal with provenance has exact rows
+        self.assertEqual(deal_with_provenance.broker_attributions.count(), 1)
+        b_row = deal_with_provenance.broker_attributions.first()
+        self.assertEqual(b_row.broker_organization, self.broker_org)
+        self.assertEqual(b_row.role, DealBrokerRole.SUPPLY_ORIGINATOR)
+        self.assertEqual(b_row.related_opportunity, supply_opp)
+
+        self.assertEqual(deal_with_provenance.opportunity_attributions.count(), 1)
+        o_row = deal_with_provenance.opportunity_attributions.first()
+        self.assertEqual(o_row.opportunity, supply_opp)
+        self.assertEqual(o_row.role, DealOpportunityRole.SUPPLY_ORIGIN)
+
+        # Deal without provenance has ZERO rows (no guessing, no fabrication)
+        self.assertEqual(deal_without_provenance.broker_attributions.count(), 0)
+        self.assertEqual(deal_without_provenance.opportunity_attributions.count(), 0)

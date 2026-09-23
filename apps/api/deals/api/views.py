@@ -199,6 +199,11 @@ class DealListView(APIView):
             .prefetch_related(
                 "terms_snapshot__cost_snapshots",
                 "party_snapshots",
+                "broker_attributions",
+                "broker_attributions__broker_organization",
+                "broker_attributions__related_opportunity",
+                "opportunity_attributions",
+                "opportunity_attributions__opportunity",
             )
             .order_by("-created_at")
         )
@@ -248,6 +253,11 @@ class DealDetailView(APIView):
             .prefetch_related(
                 "terms_snapshot__cost_snapshots",
                 "party_snapshots",
+                "broker_attributions",
+                "broker_attributions__broker_organization",
+                "broker_attributions__related_opportunity",
+                "opportunity_attributions",
+                "opportunity_attributions__opportunity",
             )
             .first()
         )
@@ -412,6 +422,13 @@ class DealAttributionDetailView(APIView):
         deal = (
             Deal.objects.filter(pk=deal_id)
             .select_related("attribution")
+            .prefetch_related(
+                "broker_attributions",
+                "broker_attributions__broker_organization",
+                "broker_attributions__related_opportunity",
+                "opportunity_attributions",
+                "opportunity_attributions__opportunity",
+            )
             .first()
         )
         if not deal:

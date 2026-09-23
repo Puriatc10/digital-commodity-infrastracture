@@ -2727,14 +2727,15 @@ export interface components {
          */
         DataTypeEnum: "string" | "number" | "integer" | "boolean" | "enum";
         /**
-         * @description Role-scoped DealAttribution representation (Epic 9 Contract §78, §79, T0903).
+         * @description Role-scoped DealAttribution representation (Epic 9 Contract §78, §79, T0903, T0904).
          *
          *     Projection rules:
          *     - Internal (Operator / Product Admin): Full provenance view including evidence_snapshot,
-         *       resolved_by_id, and resolution_reason.
+         *       resolved_by_id, resolution_reason, broker_attributions, and opportunity_attributions.
          *     - Customer (Buyer / Seller): Privacy-preserving customer projection exposing only
          *       status, primary_channel, resolution_method, resolved_at, version, created_at.
-         *       Private evidence_snapshot, resolved_by_id, and resolution_reason are withheld (null).
+         *       Private evidence_snapshot, resolved_by_id, and resolution_reason are withheld (null);
+         *       detailed broker_attributions and opportunity_attributions are sanitized to empty lists ([]).
          */
         DealAttribution: {
             /** Format: uuid */
@@ -2774,6 +2775,8 @@ export interface components {
             readonly resolved_at: string | null;
             readonly resolution_reason: string | null;
             readonly evidence_snapshot: unknown;
+            readonly broker_attributions: components["schemas"]["DealBrokerAttribution"][];
+            readonly opportunity_attributions: components["schemas"]["DealOpportunityAttribution"][];
             /** @description Optimistic concurrency aggregate version counter. */
             readonly version: number;
             /** Format: date-time */
@@ -2804,6 +2807,32 @@ export interface components {
          * @enum {string}
          */
         DealAttributionStatusEnum: "PENDING" | "RESOLVED";
+        /** @description Explicit Broker provenance representation (Contract §52-§59, T0904). */
+        DealBrokerAttribution: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly deal_id: string;
+            /** Format: uuid */
+            readonly broker_organization_id: string;
+            /**
+             * @description Explicit broker originator role (SUPPLY_ORIGINATOR or DEMAND_ORIGINATOR).
+             *
+             *     * `SUPPLY_ORIGINATOR` - Supply Originator
+             *     * `DEMAND_ORIGINATOR` - Demand Originator
+             */
+            readonly role: components["schemas"]["DealBrokerAttributionRoleEnum"];
+            /** Format: uuid */
+            readonly related_opportunity_id: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `SUPPLY_ORIGINATOR` - Supply Originator
+         *     * `DEMAND_ORIGINATOR` - Demand Originator
+         * @enum {string}
+         */
+        DealBrokerAttributionRoleEnum: "SUPPLY_ORIGINATOR" | "DEMAND_ORIGINATOR";
         /** @description Immutable child cost component snapshot (T0902). */
         DealCostSnapshot: {
             /** Format: uuid */
@@ -2837,6 +2866,30 @@ export interface components {
             /** @description Optional expected aggregate version of the finalized Award for optimistic locking. */
             expected_version?: number | null;
         };
+        /** @description Explicit Opportunity provenance representation (Contract §50-§51, T0904). */
+        DealOpportunityAttribution: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly deal_id: string;
+            /** Format: uuid */
+            readonly opportunity_id: string;
+            /**
+             * @description Explicit opportunity provenance role (DEMAND_ORIGIN or SUPPLY_ORIGIN).
+             *
+             *     * `DEMAND_ORIGIN` - Demand Origin
+             *     * `SUPPLY_ORIGIN` - Supply Origin
+             */
+            readonly role: components["schemas"]["DealOpportunityAttributionRoleEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /**
+         * @description * `DEMAND_ORIGIN` - Demand Origin
+         *     * `SUPPLY_ORIGIN` - Supply Origin
+         * @enum {string}
+         */
+        DealOpportunityAttributionRoleEnum: "DEMAND_ORIGIN" | "SUPPLY_ORIGIN";
         /** @description Immutable principal commercial party snapshot (T0902). */
         DealPartySnapshot: {
             /** Format: uuid */
@@ -2852,7 +2905,7 @@ export interface components {
              *     * `BUYER` - Buyer
              *     * `SELLER` - Seller
              */
-            readonly role: components["schemas"]["RoleEnum"];
+            readonly role: components["schemas"]["DealPartySnapshotRoleEnum"];
             /**
              * @description Backing entity type (ORGANIZATION or EXTERNAL_COUNTERPARTY).
              *
@@ -2879,7 +2932,13 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
-        /** @description Minimal durable Deal aggregate representation (T0901, T0902, T0903). */
+        /**
+         * @description * `BUYER` - Buyer
+         *     * `SELLER` - Seller
+         * @enum {string}
+         */
+        DealPartySnapshotRoleEnum: "BUYER" | "SELLER";
+        /** @description Minimal durable Deal aggregate representation (T0901, T0902, T0903, T0904). */
         DealResponse: {
             /** Format: uuid */
             readonly id: string;
@@ -2928,6 +2987,8 @@ export interface components {
             readonly terms: components["schemas"]["DealTermsSnapshot"];
             readonly parties: components["schemas"]["DealPartySnapshot"][];
             readonly attribution: components["schemas"]["DealAttribution"];
+            readonly broker_attributions: components["schemas"]["DealBrokerAttribution"][];
+            readonly opportunity_attributions: components["schemas"]["DealOpportunityAttribution"][];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -5737,12 +5798,6 @@ export interface components {
              */
             draft_version_id?: string | null;
         };
-        /**
-         * @description * `BUYER` - Buyer
-         *     * `SELLER` - Seller
-         * @enum {string}
-         */
-        RoleEnum: "BUYER" | "SELLER";
         /**
          * @description * `broker_referral` - Broker Referral
          *     * `operator_sourcing` - Operator Sourcing
