@@ -40,3 +40,7 @@ class WorkflowLifecycleError(ExecutionError):
 
 class WorkflowDependencyCycleError(ExecutionError):
     """Raised when a cycle is detected in milestone prerequisites."""
+
+
+class WorkflowSeedConflictError(ExecutionError):
+    """Raised when an existing published workflow version conflicts with seed specification, or when re-seeding retired version."""
