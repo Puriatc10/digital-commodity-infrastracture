@@ -168,6 +168,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/awards/{award_id}/materialize-deals/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Materialize Deals from Finalized Award
+         * @description Authoritatively materializes one immutable Deal aggregate per AwardAllocation from a finalized Award. Enforces server-side derivation of Buyer and Seller identities from authoritative source records without accepting client commercial fields. Guarantees idempotency: repeated calls return existing Deals without creating duplicates. Rejects unfinalized (DRAFT) Awards with a 400 Bad Request. Execution is serialized under PostgreSQL row-level locks.
+         */
+        post: operations["deals_materialize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/awards/allocations/{allocation_id}/": {
         parameters: {
             query?: never;
@@ -239,6 +259,46 @@ export interface paths {
          *     Draft definitions are internal and must not be exposed.
          */
         get: operations["commodity_schemas_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Deals
+         * @description List Deal records visible to the authenticated actor. Server-side scoped: Buyer Organization members see their Buyer Deals; Seller Organization members see their Seller Deals; Platform Operators and Admins have global access. Unrelated organizations see an empty set.
+         */
+        get: operations["deals_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Deal by ID
+         * @description Retrieves a minimal Deal aggregate by UUID. Access is strictly scoped to authorized members of the Buyer Organization, the Seller Organization, or platform Operators/Admins. Normal product APIs expose no mutation (PATCH/DELETE) on Deals.
+         */
+        get: operations["deals_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2586,6 +2646,67 @@ export interface components {
          * @enum {string}
          */
         DataTypeEnum: "string" | "number" | "integer" | "boolean" | "enum";
+        /** @description Error response detail schema. */
+        DealErrorResponse: {
+            /** @description Error description or failure reason. */
+            detail: string;
+        };
+        /** @description Payload for materializing Deals from a finalized Award. */
+        DealMaterializeRequest: {
+            /** @description Optional expected aggregate version of the finalized Award for optimistic locking. */
+            expected_version?: number | null;
+        };
+        /** @description Minimal durable Deal aggregate representation (T0901). */
+        DealResponse: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Source Award aggregate.
+             */
+            readonly award_id: string;
+            /**
+             * Format: uuid
+             * @description Authoritative source AwardAllocation (1 allocation -> exactly 1 Deal).
+             */
+            readonly award_allocation_id: string;
+            /**
+             * Format: uuid
+             * @description Target RFQ for this commercial deal.
+             */
+            readonly rfq_id: string;
+            /**
+             * Format: uuid
+             * @description Source Offer negotiation thread.
+             */
+            readonly offer_id: string;
+            /**
+             * Format: uuid
+             * @description Exact selected OfferVersion commercial snapshot.
+             */
+            readonly offer_version_id: string;
+            /**
+             * Format: uuid
+             * @description Buyer Organization (authoritatively derived from RFQ.organization).
+             */
+            readonly buyer_organization_id: string;
+            /**
+             * Format: uuid
+             * @description Internal seller organization (mutually exclusive with seller_external_counterparty).
+             */
+            readonly seller_organization_id: string | null;
+            /**
+             * Format: uuid
+             * @description Off-platform external counterparty seller (mutually exclusive with seller_organization).
+             */
+            readonly seller_external_counterparty_id: string | null;
+            /** @description Platform user who authoritatively materialized this deal. */
+            readonly created_by_id: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         /** @description Representation of an evaluated candidate within a DecisionRun (T0808, T0809). */
         DecisionCandidateResponse: {
             /** Format: uuid */
@@ -6249,6 +6370,84 @@ export interface operations {
             };
         };
     };
+    deals_materialize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                award_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DealMaterializeRequest"];
+            };
+        };
+        responses: {
+            /** @description Idempotent result: existing Deals returned without duplication. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealResponse"][];
+                };
+            };
+            /** @description Newly materialized Deals created from Award allocations. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealResponse"][];
+                };
+            };
+            /** @description Validation error, unfinalized award, or source integrity mismatch. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden: actor lacks authorization for this Award/RFQ. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+            /** @description Award not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+            /** @description Conflict: stale expected_version. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+        };
+    };
     awards_allocations_destroy: {
         parameters: {
             query?: {
@@ -6476,6 +6675,79 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    deals_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of authorized Deals. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealResponse"][];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deals_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealResponse"];
+                };
+            };
+            /** @description Unauthenticated. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden: actor lacks access to this Deal. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
+                };
+            };
+            /** @description Deal not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DealErrorResponse"];
                 };
             };
         };
