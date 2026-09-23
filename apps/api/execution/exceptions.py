@@ -44,3 +44,36 @@ class WorkflowDependencyCycleError(ExecutionError):
 
 class WorkflowSeedConflictError(ExecutionError):
     """Raised when an existing published workflow version conflicts with seed specification, or when re-seeding retired version."""
+
+
+class ExecutionNotFoundError(ExecutionError):
+    """Raised when an execution instance cannot be found."""
+
+
+class MilestoneNotFoundError(ExecutionError):
+    """Raised when a milestone instance cannot be found."""
+
+
+class MilestonePrerequisiteUnmetError(ExecutionError):
+    """Raised when an action is attempted on a milestone whose prerequisites are not completed."""
+
+
+class MilestoneAlreadyCompletedError(ExecutionError):
+    """Raised when an action is attempted on an already COMPLETED milestone."""
+
+
+class ExecutionClosedError(ExecutionError):
+    """Raised when an action is attempted on an Execution that is already CLOSED."""
+
+
+class InvalidMilestoneTransitionError(ExecutionError):
+    """Raised when an illegal milestone lifecycle transition is requested."""
+
+
+class StaleVersionError(ExecutionError):
+    """Raised when optimistic concurrency check fails (expected_version != current version)."""
+
+
+class CrossObjectIntegrityError(ExecutionError):
+    """Raised when cross-referencing objects across disjoint deals or executions."""
+

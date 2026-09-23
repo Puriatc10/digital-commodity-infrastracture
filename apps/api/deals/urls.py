@@ -8,6 +8,11 @@ from deals.api.views import (
     DealPartiesSnapshotView,
     DealTermsSnapshotView,
 )
+from execution.api.views import (
+    DealExecutionCreateOrGetView,
+    DealMilestoneCompleteActionView,
+)
+
 
 app_name = "deals"
 
@@ -42,5 +47,16 @@ urlpatterns = [
         DealAttributionResolveView.as_view(),
         name="deal-attribution-resolve",
     ),
+    path(
+        "<uuid:deal_id>/execution/",
+        DealExecutionCreateOrGetView.as_view(),
+        name="deal-execution",
+    ),
+    path(
+        "<uuid:deal_id>/execution/milestones/<uuid:milestone_id>/complete/",
+        DealMilestoneCompleteActionView.as_view(),
+        name="deal-execution-milestone-complete",
+    ),
 ]
+
 

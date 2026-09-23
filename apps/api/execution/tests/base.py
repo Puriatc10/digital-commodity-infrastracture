@@ -1,118 +1,130 @@
+from decimal import Decimal
 import uuid
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
+from django.utils import timezone
 
+from deals.models import Deal
+from deals.services.materialization import materialize_deals_from_award
+from deals.tests.base import BaseDealsTestMixin
 from execution.services import (
     add_milestone_definition,
     create_draft_version,
     create_workflow_template,
 )
-from identity.models import SystemRoleAssignment
-from organizations.models import (
-    Organization,
-    OrganizationCapability,
-    OrganizationMembership,
+from offers.enums import LogisticsCostStatus, OfferorRole
+from offers.services import (
+    add_award_allocation,
+    create_draft_award,
+    create_draft_offer_version,
+    create_offer,
+    finalize_award,
+    submit_internal_offer_version,
 )
+from organizations.models import OrganizationMembership
+from trade_hub.models import RFQ, RFQStatus, RFQVisibility
 
 User = get_user_model()
 
 
-class BaseExecutionTestCase(TestCase):
-    """Shared test base for Execution Monitor test suites."""
+class BaseExecutionTestMixin(BaseDealsTestMixin):
+    """Shared test base mixin for Execution Monitor test suites."""
 
     def setUp(self):
         super().setUp()
+        self.buyer_user = self.buyer_owner
+        self.supplier_owner = self.supplier_user
 
-        # Platform Operator & Admin
-        self.operator_user = User.objects.create_user(
-            email=f"operator_{uuid.uuid4().hex[:6]}@platform.com",
-            password="testpassword123",
-        )
-        SystemRoleAssignment.objects.create(
-            user=self.operator_user,
-            role=SystemRoleAssignment.SystemRole.OPERATOR,
-        )
-
-        self.admin_user = User.objects.create_user(
-            email=f"admin_{uuid.uuid4().hex[:6]}@platform.com",
-            password="testpassword123",
-        )
-        SystemRoleAssignment.objects.create(
-            user=self.admin_user,
-            role=SystemRoleAssignment.SystemRole.ADMIN,
-        )
-
-        # Staff/superuser only (no SystemRoleAssignment)
-        self.staff_only_user = User.objects.create_user(
-            email=f"staff_{uuid.uuid4().hex[:6]}@platform.com",
-            password="testpassword123",
-            is_staff=True,
-            is_superuser=True,
-        )
-
-        # Customer User (Buyer)
-        self.buyer_org = Organization.objects.create(
-            name="Buyer Organization",
-            country="IR",
-            is_active=True,
-        )
-        OrganizationCapability.objects.create(
-            organization=self.buyer_org,
-            capability=OrganizationCapability.CapabilityType.BUYER,
-        )
-        self.buyer_user = User.objects.create_user(
-            email=f"buyer_{uuid.uuid4().hex[:6]}@buyer.com",
-            password="testpassword123",
-        )
-        OrganizationMembership.objects.create(
-            organization=self.buyer_org,
-            user=self.buyer_user,
-            role=OrganizationMembership.OrganizationRole.OWNER,
-            is_active=True,
-        )
-
-        # Customer User (Supplier)
-        self.supplier_org = Organization.objects.create(
-            name="Supplier Organization",
-            country="IR",
-            is_active=True,
-        )
-        OrganizationCapability.objects.create(
-            organization=self.supplier_org,
-            capability=OrganizationCapability.CapabilityType.SUPPLIER,
-        )
-        self.supplier_user = User.objects.create_user(
-            email=f"supplier_{uuid.uuid4().hex[:6]}@supplier.com",
+        self.supplier_viewer = User.objects.create_user(
+            email=f"supplier_view_{uuid.uuid4().hex[:4]}@supplier.com",
             password="testpassword123",
         )
         OrganizationMembership.objects.create(
             organization=self.supplier_org,
-            user=self.supplier_user,
-            role=OrganizationMembership.OrganizationRole.OWNER,
+            user=self.supplier_viewer,
+            role=OrganizationMembership.OrganizationRole.VIEWER,
             is_active=True,
         )
 
-        # Customer User (Broker)
-        self.broker_org = Organization.objects.create(
-            name="Broker Organization",
-            country="IR",
-            is_active=True,
+    def create_sample_deal(self, *, external_seller=False) -> Deal:
+        """Helper to create a fresh, materialized Deal aggregate for execution tests."""
+        rfq = RFQ.objects.create(
+            organization=self.buyer_org,
+            created_by=self.buyer_owner,
+            commodity=self.commodity,
+            schema_version=self.schema_version,
+            specifications={"penetration_grade": "60/70"},
+            quantity=Decimal("1000.000"),
+            unit="MT",
+            currency="USD",
+            status=RFQStatus.COLLECTING_OFFERS,
+            visibility=RFQVisibility.PUBLIC,
         )
-        OrganizationCapability.objects.create(
-            organization=self.broker_org,
-            capability=OrganizationCapability.CapabilityType.BROKER,
+
+        if external_seller:
+            award = create_draft_award(self.rfq.id, actor=self.buyer_owner)
+            add_award_allocation(
+                award.id,
+                offer_version_id=self.ext_v1.id,
+                awarded_quantity=Decimal("200.000"),
+                quantity_unit="MT",
+                expected_version=award.version,
+                actor=self.buyer_owner,
+            )
+            award.refresh_from_db()
+            finalized_award = finalize_award(
+                award.id,
+                expected_version=award.version,
+                actor=self.buyer_owner,
+            )
+            all_deals, _ = materialize_deals_from_award(finalized_award.id, actor=self.operator_user)
+            return all_deals[0]
+
+        offer = create_offer(
+            actor=self.supplier_user,
+            rfq=rfq,
+            offeror_role=OfferorRole.SUPPLIER,
+            offering_organization=self.supplier_org,
         )
-        self.broker_user = User.objects.create_user(
-            email=f"broker_{uuid.uuid4().hex[:6]}@broker.com",
-            password="testpassword123",
+        v1 = create_draft_offer_version(
+            actor=self.supplier_user,
+            offer=offer.id,
+            offered_quantity=Decimal("500.000"),
+            quantity_unit="MT",
+            unit_price=Decimal("350.00"),
+            currency="USD",
+            specifications={"penetration_grade": "60/70"},
+            payment_terms="LC 90 days",
+            delivery_terms="FOB Bandar Abbas",
+            incoterm="FOB",
+            valid_until=timezone.now() + timezone.timedelta(days=14),
+            logistics_cost_status=LogisticsCostStatus.INCLUDED_IN_PRICE,
         )
-        OrganizationMembership.objects.create(
-            organization=self.broker_org,
-            user=self.broker_user,
-            role=OrganizationMembership.OrganizationRole.OWNER,
-            is_active=True,
+        offer.refresh_from_db()
+        v1 = submit_internal_offer_version(
+            actor=self.supplier_user,
+            offer_version=v1.id,
+            expected_version=offer.aggregate_version,
         )
+
+        award = create_draft_award(rfq.id, actor=self.buyer_owner)
+        add_award_allocation(
+            award.id,
+            offer_version_id=v1.id,
+            awarded_quantity=Decimal("500.000"),
+            quantity_unit="MT",
+            expected_version=award.version,
+            actor=self.buyer_owner,
+        )
+        award.refresh_from_db()
+        finalized_award = finalize_award(
+            award.id,
+            expected_version=award.version,
+            actor=self.buyer_owner,
+        )
+        all_deals, _ = materialize_deals_from_award(finalized_award.id, actor=self.operator_user)
+        return all_deals[0]
 
     def create_sample_template(self, code=None, name_en="Standard Execution", name_fa="اجرای استاندارد"):
         if not code:
@@ -168,3 +180,12 @@ class BaseExecutionTestCase(TestCase):
             actor=self.operator_user,
         )
         return version, (m1, m2, m3)
+
+
+class BaseExecutionTestCase(BaseExecutionTestMixin, TestCase):
+    """Shared test base for Execution Monitor test suites."""
+
+
+class BaseExecutionTransactionTestCase(BaseExecutionTestMixin, TransactionTestCase):
+    """Shared test base for multi-threaded Execution concurrency tests."""
+
