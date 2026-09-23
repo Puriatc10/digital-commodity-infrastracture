@@ -7,11 +7,16 @@ from execution.api.serializers import (
     ExecutionCreateRequestSerializer,
     ExecutionDetailSerializer,
     ExecutionErrorResponseSerializer,
+    ExecutionInspectionSerializer,
     ExecutionLogisticsSerializer,
     ExecutionMilestoneSerializer,
     ExecutionWorkflowTemplateDetailSerializer,
     ExecutionWorkflowTemplateSummarySerializer,
     ExecutionWorkflowTemplateVersionSerializer,
+    InspectionCancelSerializer,
+    InspectionCompleteSerializer,
+    InspectionMarkNotRequiredSerializer,
+    InspectionScheduleSerializer,
     LogisticsMutateRequestSerializer,
     LogisticsRecordDeliverySerializer,
     LogisticsRecordLoadingSerializer,
@@ -31,6 +36,8 @@ from execution.exceptions import (
     ExecutionNotFoundError,
     ExecutionPermissionDeniedError,
     ExecutionValidationError,
+    InspectionNotFoundError,
+    InvalidInspectionTransitionError,
     InvalidMilestoneTransitionError,
     LogisticsNotFoundError,
     MilestoneAlreadyCompletedError,
@@ -48,19 +55,25 @@ from execution.models import (
 from execution.permissions import IsOperatorOrAdmin
 from execution.services import (
     block_milestone,
+    cancel_inspection,
+    complete_inspection,
     complete_milestone,
     create_or_get_execution_for_deal,
     get_active_workflow_template_version,
     get_execution_by_id,
     get_execution_for_deal,
+    get_or_create_execution_inspection,
     get_or_create_execution_logistics,
     get_workflow_template,
     get_workflow_version,
+    mark_inspection_not_required,
     mutate_logistics,
     project_execution_timeline,
     record_delivery,
     record_loading,
+    schedule_inspection,
     schedule_loading,
+
     skip_milestone,
     start_milestone,
     update_eta,
@@ -1016,4 +1029,341 @@ class DealExecutionLogisticsView(APIView):
 
         serializer = ExecutionLogisticsSerializer(logistics)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# =============================================================================
+# Execution Quality & Inspection Operational Views (T1005)
+# =============================================================================
+
+
+class ExecutionInspectionDetailView(APIView):
+    """
+    Operational inspection detail endpoint (Epic 10 Contract §43–§49, T1005).
+
+    GET /api/execution/{execution_id}/inspection/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_inspection_detail",
+        tags=["Inspection"],
+        summary="Retrieve Execution Quality & Inspection Record",
+        description=(
+            "Idempotently retrieves or initializes the operational ExecutionInspection aggregate for an Execution. "
+            "The required flag is derived strictly from persisted commercial context (RFQ.inspection_required). "
+            "Status, result, timestamps, and agency are returned without heuristics or active-schema guessing."
+        ),
+        responses={
+            200: ExecutionInspectionSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, execution_id):
+        try:
+            inspection = get_or_create_execution_inspection(execution_id, actor=request.user)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ExecutionInspectionSerializer(inspection)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ExecutionInspectionScheduleActionView(APIView):
+    """
+    Operational action to schedule quality inspection (Epic 10 Contract §44, §80, T1005).
+
+    POST /api/execution/{execution_id}/inspection/schedule/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_inspection_schedule",
+        tags=["Inspection"],
+        summary="Schedule Quality Inspection",
+        description=(
+            "Seller/Operator operational action: schedules inspection appointment date and agency. "
+            "Transitions status to SCHEDULED, marks required = True, and preserves result as UNKNOWN. "
+            "Guarded by optimistic concurrency (expected_version) and select_for_update row locking."
+        ),
+        request=InspectionScheduleSerializer,
+        responses={
+            200: ExecutionInspectionSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = InspectionScheduleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        deal_id = request.data.get("deal_id")
+
+        try:
+            inspection = schedule_inspection(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                scheduled_at=data["scheduled_at"],
+                agency=data.get("agency"),
+                notes=data.get("notes"),
+                deal_id=deal_id,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionNotFoundError, InspectionNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (
+            ExecutionClosedError,
+            CrossObjectIntegrityError,
+            InvalidInspectionTransitionError,
+            ExecutionValidationError,
+        ) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionInspectionSerializer(inspection)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionInspectionCompleteActionView(APIView):
+    """
+    Operational action to record quality inspection completion (Epic 10 Contract §44, §45, §49, T1005).
+
+    POST /api/execution/{execution_id}/inspection/complete/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_inspection_complete",
+        tags=["Inspection"],
+        summary="Record Quality Inspection Completion",
+        description=(
+            "Seller/Operator operational action: records authoritative quality inspection completion facts. "
+            "Requires mandatory inspection_at timestamp and valid result (PASS, FAIL, CONDITIONAL, UNKNOWN). "
+            "Result is never inferred from free-text notes. COMPLETED + FAIL represents a completed inspection "
+            "whose quality outcome failed; it allows the INSPECTION_COMPLETED milestone to complete. "
+            "Completed facts are historically immutable (no casual reopen or rewrite)."
+        ),
+        request=InspectionCompleteSerializer,
+        responses={
+            200: ExecutionInspectionSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = InspectionCompleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        deal_id = request.data.get("deal_id")
+
+        try:
+            inspection = complete_inspection(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                inspection_at=data["inspection_at"],
+                result=data["result"],
+                agency=data.get("agency"),
+                notes=data.get("notes"),
+                deal_id=deal_id,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionNotFoundError, InspectionNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (
+            ExecutionClosedError,
+            CrossObjectIntegrityError,
+            InvalidInspectionTransitionError,
+            ExecutionValidationError,
+        ) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionInspectionSerializer(inspection)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionInspectionCancelActionView(APIView):
+    """
+    Operational action to cancel scheduled or pending inspection (Epic 10 Contract §44, T1005).
+
+    POST /api/execution/{execution_id}/inspection/cancel/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_inspection_cancel",
+        tags=["Inspection"],
+        summary="Cancel Quality Inspection",
+        description=(
+            "Seller/Operator operational action: cancels scheduled or pending quality inspection. "
+            "Transitions status to CANCELLED and resets result to UNKNOWN. "
+            "Completed inspections cannot be cancelled. "
+            "Guarded by optimistic concurrency (expected_version) and select_for_update row locking."
+        ),
+        request=InspectionCancelSerializer,
+        responses={
+            200: ExecutionInspectionSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = InspectionCancelSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        deal_id = request.data.get("deal_id")
+
+        try:
+            inspection = cancel_inspection(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                notes=data.get("notes"),
+                deal_id=deal_id,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionNotFoundError, InspectionNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (
+            ExecutionClosedError,
+            CrossObjectIntegrityError,
+            InvalidInspectionTransitionError,
+            ExecutionValidationError,
+        ) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionInspectionSerializer(inspection)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionInspectionMarkNotRequiredActionView(APIView):
+    """
+    Operational action to mark inspection not required / waived (Epic 10 Contract §44, §80, T1005).
+
+    POST /api/execution/{execution_id}/inspection/mark-not-required/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_inspection_mark_not_required",
+        tags=["Inspection"],
+        summary="Mark Quality Inspection Not Required",
+        description=(
+            "Buyer/Operator operational action: waives inspection requirement. "
+            "Seller is strictly denied from unilaterally waiving inspection required by Buyer. "
+            "Transitions status to NOT_REQUIRED, sets required = False, and preserves result as UNKNOWN. "
+            "NOT_REQUIRED must never become a fake PASS. "
+            "Guarded by optimistic concurrency (expected_version) and select_for_update row locking."
+        ),
+        request=InspectionMarkNotRequiredSerializer,
+        responses={
+            200: ExecutionInspectionSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = InspectionMarkNotRequiredSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        deal_id = request.data.get("deal_id")
+
+        try:
+            inspection = mark_inspection_not_required(
+                execution_id=execution_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                notes=data.get("notes"),
+                deal_id=deal_id,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionNotFoundError, InspectionNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except (
+            ExecutionClosedError,
+            CrossObjectIntegrityError,
+            InvalidInspectionTransitionError,
+            ExecutionValidationError,
+        ) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionInspectionSerializer(inspection)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class DealExecutionInspectionView(APIView):
+    """Retrieve operational inspection record by Deal UUID."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deal_execution_inspection",
+        tags=["Inspection"],
+        summary="Retrieve Operational Inspection for Deal",
+        description="Retrieves operational inspection record for a Deal's execution instance.",
+        responses={
+            200: ExecutionInspectionSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, deal_id):
+        try:
+            execution = get_execution_for_deal(deal_id, actor=request.user)
+        except ExecutionNotFoundError:
+            return Response({"detail": f"Execution for deal '{deal_id}' not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            inspection = get_or_create_execution_inspection(execution.id, actor=request.user, deal_id=deal_id)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionInspectionSerializer(inspection)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 

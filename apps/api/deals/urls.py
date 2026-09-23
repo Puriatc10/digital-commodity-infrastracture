@@ -10,6 +10,7 @@ from deals.api.views import (
 )
 from execution.api.views import (
     DealExecutionCreateOrGetView,
+    DealExecutionInspectionView,
     DealExecutionLogisticsView,
     DealMilestoneCompleteActionView,
 )
@@ -59,10 +60,16 @@ urlpatterns = [
         name="deal-execution-logistics",
     ),
     path(
+        "<uuid:deal_id>/execution/inspection/",
+        DealExecutionInspectionView.as_view(),
+        name="deal-execution-inspection",
+    ),
+    path(
         "<uuid:deal_id>/execution/milestones/<uuid:milestone_id>/complete/",
         DealMilestoneCompleteActionView.as_view(),
         name="deal-execution-milestone-complete",
     ),
 ]
+
 
 

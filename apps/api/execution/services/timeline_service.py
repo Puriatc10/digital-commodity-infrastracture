@@ -1,20 +1,24 @@
 from typing import Any, Dict, List, Union
 from uuid import UUID
 
-from execution.enums import ExecutionStatus, MilestoneStatus, TimelineEventType
+from execution.enums import ExecutionStatus, InspectionStatus, MilestoneStatus, TimelineEventType
 from execution.exceptions import ExecutionNotFoundError
 from execution.models.execution import Execution
 from execution.permissions import check_execution_read_access
 
-# Authoritative tie-breaker priorities (Epic 10 Contract §34, T1003)
+# Authoritative tie-breaker priorities (Epic 10 Contract §34, T1003, T1005)
 EVENT_TYPE_PRIORITY: Dict[str, int] = {
     TimelineEventType.EXECUTION_CREATED: 10,
     TimelineEventType.MILESTONE_STARTED: 20,
+    TimelineEventType.INSPECTION_SCHEDULED: 25,
     TimelineEventType.MILESTONE_COMPLETED: 30,
+    TimelineEventType.INSPECTION_COMPLETED: 32,
+    TimelineEventType.INSPECTION_CANCELLED: 33,
     TimelineEventType.MILESTONE_BLOCKED: 35,
     TimelineEventType.MILESTONE_SKIPPED: 40,
     TimelineEventType.EXECUTION_CLOSED: 50,
 }
+
 
 
 def project_execution_timeline(
@@ -163,8 +167,81 @@ def project_execution_timeline(
                 },
             })
 
-    # 3. Execution closed event
+    # 3. Quality & Inspection domain facts (Epic 10 Contract §32, §43, T1005)
+    from execution.models.inspection import ExecutionInspection
+    inspection = ExecutionInspection.objects.filter(execution=execution).first()
+
+
+    if inspection:
+        # If scheduled_at is set, project INSPECTION_SCHEDULED
+        if inspection.scheduled_at:
+            events.append({
+                "event_id": f"inspection-{inspection.id}-scheduled",
+                "event_type": TimelineEventType.INSPECTION_SCHEDULED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.INSPECTION_SCHEDULED],
+                "event_at": inspection.scheduled_at,
+                "recorded_at": inspection.created_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": "INSPECTION_COMPLETED",
+                "milestone_name_fa": "بازرسی تکمیل شد",
+                "milestone_name_en": "Inspection Completed",
+                "notes": inspection.notes,
+                "metadata": {
+                    "agency": inspection.agency,
+                    "scheduled_at": inspection.scheduled_at.isoformat() if inspection.scheduled_at else None,
+                    "status": inspection.status,
+                    "required": inspection.required,
+                },
+            })
+
+        # If completed, project INSPECTION_COMPLETED
+        if inspection.status == InspectionStatus.COMPLETED and inspection.inspection_at:
+            events.append({
+                "event_id": f"inspection-{inspection.id}-completed",
+                "event_type": TimelineEventType.INSPECTION_COMPLETED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.INSPECTION_COMPLETED],
+                "event_at": inspection.inspection_at,
+                "recorded_at": inspection.updated_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": "INSPECTION_COMPLETED",
+                "milestone_name_fa": "بازرسی تکمیل شد",
+                "milestone_name_en": "Inspection Completed",
+                "notes": inspection.notes,
+                "metadata": {
+                    "agency": inspection.agency,
+                    "inspection_at": inspection.inspection_at.isoformat() if inspection.inspection_at else None,
+                    "status": inspection.status,
+                    "result": inspection.result,
+                    "required": inspection.required,
+                },
+            })
+
+        # If cancelled, project INSPECTION_CANCELLED
+        elif inspection.status == InspectionStatus.CANCELLED:
+            events.append({
+                "event_id": f"inspection-{inspection.id}-cancelled",
+                "event_type": TimelineEventType.INSPECTION_CANCELLED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.INSPECTION_CANCELLED],
+                "event_at": inspection.updated_at,
+                "recorded_at": inspection.updated_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": "INSPECTION_COMPLETED",
+                "milestone_name_fa": "بازرسی تکمیل شد",
+                "milestone_name_en": "Inspection Completed",
+                "notes": inspection.notes,
+                "metadata": {
+                    "agency": inspection.agency,
+                    "status": inspection.status,
+                    "required": inspection.required,
+                },
+            })
+
+    # 4. Execution closed event
     if execution.status == ExecutionStatus.CLOSED:
+
         events.append({
             "event_id": f"execution-{execution.id}-closed",
             "event_type": TimelineEventType.EXECUTION_CLOSED,

@@ -5,6 +5,7 @@ from django.dispatch import receiver
 from execution.enums import WorkflowVersionStatus
 from .dependency import ExecutionMilestoneDependency
 from .execution import Execution, lock_executions
+from .inspection import ExecutionInspection
 from .logistics import ExecutionLogistics
 from .milestone import ExecutionMilestone
 from .milestone_definition import ExecutionMilestoneDefinition
@@ -59,6 +60,11 @@ def protect_execution_logistics_deletion(sender, instance, **kwargs):
     raise ValidationError("Execution logistics represent historical operational facts and cannot be deleted.")
 
 
+@receiver(pre_delete, sender=ExecutionInspection)
+def protect_execution_inspection_deletion(sender, instance, **kwargs):
+    raise ValidationError("Execution inspection records represent historical operational facts and cannot be deleted.")
+
+
 __all__ = [
     "ExecutionWorkflowTemplate",
     "ExecutionWorkflowTemplateVersion",
@@ -67,7 +73,9 @@ __all__ = [
     "Execution",
     "ExecutionMilestone",
     "ExecutionLogistics",
+    "ExecutionInspection",
     "lock_workflow_templates",
     "lock_executions",
 ]
+
 
