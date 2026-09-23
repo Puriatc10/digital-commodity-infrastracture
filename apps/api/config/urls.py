@@ -19,6 +19,7 @@ from offers.api.views import (
     RevisionRequestDetailView,
     RevisionRequestSubmitView,
 )
+from deals.api.views import DealMaterializeActionView
 from .views import health
 
 urlpatterns = [
@@ -48,6 +49,8 @@ urlpatterns = [
     path("api/award-allocations/<uuid:allocation_id>/", AwardAllocationDetailView.as_view(), name="award-allocation-detail-direct"),
     path("api/awards/allocations/<uuid:allocation_id>/", AwardAllocationDetailView.as_view(), name="award-allocation-detail-alias-direct"),
     path("api/awards/<uuid:award_id>/finalize/", AwardFinalizeView.as_view(), name="award-finalize-direct"),
+    path("api/awards/<uuid:award_id>/materialize-deals/", DealMaterializeActionView.as_view(), name="award-materialize-deals-direct"),
+    path("api/deals/", include("deals.urls")),
 
 
     path("", include("documents.urls")),

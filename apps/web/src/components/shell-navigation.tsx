@@ -23,12 +23,14 @@ export function ShellNavigation({
   const homeHref = `/${locale}`;
   const tradeHubHref = `/${locale}/trade-hub`;
   const directoryHref = `/${locale}/directory`;
+  const dealsHref = `/${locale}/deals`;
   const queueHref = `/${locale}/operator/verification`;
   const opportunitiesHref = `/${locale}/opportunities`;
 
   const isHomeActive = pathname === homeHref;
   const isTradeHubActive = pathname.startsWith(tradeHubHref);
   const isDirectoryActive = pathname.startsWith(directoryHref);
+  const isDealsActive = pathname.startsWith(dealsHref);
   const isQueueActive = pathname.startsWith(queueHref);
   const isOpportunitiesActive = pathname.startsWith(opportunitiesHref);
 
@@ -64,6 +66,15 @@ export function ShellNavigation({
       >
         {isDirectoryActive && <span aria-hidden="true" className="size-2 rounded-sm bg-primary" />}
         {messages.directory}
+      </Link>
+
+      <Link
+        href={dealsHref}
+        aria-current={isDealsActive ? "page" : undefined}
+        className={getLinkClasses(isDealsActive)}
+      >
+        {isDealsActive && <span aria-hidden="true" className="size-2 rounded-sm bg-primary" />}
+        {messages.deals ?? "معاملات"}
       </Link>
 
       {isOperatorOrAdmin && (
