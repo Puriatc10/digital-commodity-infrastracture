@@ -455,6 +455,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/execution/templates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List execution workflow templates
+         * @description List all workflow templates configured on the platform. Restricted to Operator and Admin.
+         */
+        get: operations["execution_templates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/templates/{code_or_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve execution workflow template detail
+         * @description Retrieve details of a workflow template by code or UUID. Restricted to Operator and Admin.
+         */
+        get: operations["execution_templates_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/templates/{code}/active-version/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve active published workflow template version
+         * @description Deterministically retrieves the active published version for a template code.
+         */
+        get: operations["execution_templates_active_version_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/versions/{version_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve workflow template version detail
+         * @description Retrieve full version details with milestone graph and prerequisite dependencies.
+         */
+        get: operations["execution_versions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/geography/areas/": {
         parameters: {
             query?: never;
@@ -3138,6 +3218,13 @@ export interface components {
          * @enum {string}
          */
         DecisionDimensionEnum: "COST" | "QUALITY" | "DELIVERY" | "PAYMENT" | "TRUST" | "COMPLETENESS";
+        /**
+         * @description * `DRAFT` - Draft
+         *     * `PUBLISHED` - Published
+         *     * `RETIRED` - Retired
+         * @enum {string}
+         */
+        DecisionProfileLifecycleStatusEnum: "DRAFT" | "PUBLISHED" | "RETIRED";
         /** @description Optional payload for initiating a DecisionRun foundation (T0808). */
         DecisionRunCreateRequest: {
             /**
@@ -3301,6 +3388,103 @@ export interface components {
          * @enum {string}
          */
         EventTypeEnum: "rfq_created" | "rfq_published" | "participant_invited" | "participant_viewed" | "participant_declined" | "participant_responded" | "rfq_closed" | "rfq_cancelled";
+        ExecutionMilestoneDefinition: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical uppercase machine code (e.g. AWARDED, LOADING_SCHEDULED) */
+            code: string;
+            /** @description Persian display label */
+            name_fa: string;
+            /** @description English display label */
+            name_en: string;
+            /** @description Deterministic display and logical order within the version */
+            sort_order: number;
+            /** @description Whether this milestone is required for workflow completion */
+            required?: boolean;
+            /** @description Whether downstream milestones are blocked until this milestone is completed */
+            blocking?: boolean;
+            /** @description Whether completing this milestone marks the execution as CLOSED */
+            terminal?: boolean;
+            /** @description Default expected offset days from execution start */
+            expected_offset_days?: number | null;
+            /** @description Optional category (e.g. COMMERCIAL, LOGISTICS, QUALITY, PAYMENT, CLOSURE) */
+            category?: string;
+            readonly prerequisite_codes: string[];
+        };
+        ExecutionWorkflowTemplateDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical lowercase machine code (e.g. bitumen_standard) */
+            code: string;
+            /** @description Persian name */
+            name_fa: string;
+            /** @description English name */
+            name_en: string;
+            /** @description Detailed workflow description */
+            description?: string;
+            /** @description Whether this template is active for new executions */
+            is_active?: boolean;
+            readonly active_version: components["schemas"]["ExecutionWorkflowTemplateVersion"];
+            readonly versions: components["schemas"]["ExecutionWorkflowTemplateVersionSummary"][];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        ExecutionWorkflowTemplateSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical lowercase machine code (e.g. bitumen_standard) */
+            code: string;
+            /** @description Persian name */
+            name_fa: string;
+            /** @description English name */
+            name_en: string;
+            /** @description Detailed workflow description */
+            description?: string;
+            /** @description Whether this template is active for new executions */
+            is_active?: boolean;
+            /**
+             * Format: uuid
+             * @description The currently active published version for new execution instances.
+             */
+            readonly active_version_id: string | null;
+            readonly active_version_number: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        ExecutionWorkflowTemplateVersion: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent workflow template
+             */
+            readonly template_id: string;
+            /** @description Monotonically increasing version number within the template */
+            version_number: number;
+            status?: components["schemas"]["DecisionProfileLifecycleStatusEnum"];
+            /** @description Summary of changes in this version */
+            change_summary?: string;
+            readonly is_active: boolean;
+            /** Format: date-time */
+            published_at?: string | null;
+            /** Format: date-time */
+            retired_at?: string | null;
+            readonly milestones: components["schemas"]["ExecutionMilestoneDefinition"][];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        ExecutionWorkflowTemplateVersionSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Monotonically increasing version number within the template */
+            version_number: number;
+            status?: components["schemas"]["DecisionProfileLifecycleStatusEnum"];
+            readonly is_active: boolean;
+        };
         /**
          * @description Explicit serializer for ExternalCounterparty.
          *
@@ -7510,6 +7694,109 @@ export interface operations {
             };
             /** @description Storage or database failure */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    execution_templates_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionWorkflowTemplateSummary"][];
+                };
+            };
+        };
+    };
+    execution_templates_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code_or_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionWorkflowTemplateDetail"];
+                };
+            };
+            /** @description Workflow template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    execution_templates_active_version_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionWorkflowTemplateVersion"];
+                };
+            };
+            /** @description Active version or template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    execution_versions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionWorkflowTemplateVersion"];
+                };
+            };
+            /** @description Workflow version not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

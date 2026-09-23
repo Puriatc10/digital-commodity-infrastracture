@@ -51,6 +51,7 @@ urlpatterns = [
     path("api/awards/<uuid:award_id>/finalize/", AwardFinalizeView.as_view(), name="award-finalize-direct"),
     path("api/awards/<uuid:award_id>/materialize-deals/", DealMaterializeActionView.as_view(), name="award-materialize-deals-direct"),
     path("api/deals/", include("deals.urls")),
+    path("api/execution/", include("execution.urls")),
 
 
     path("", include("documents.urls")),
