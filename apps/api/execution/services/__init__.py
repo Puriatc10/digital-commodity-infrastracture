@@ -57,6 +57,9 @@ __all__ = [
     "cancel_inspection",
     "mark_inspection_not_required",
     "render_execution_deal_specifications",
+    "get_or_create_execution_payment",
+    "report_payment",
+    "confirm_payment",
 ]
 
 from .execution_service import (
@@ -87,6 +90,11 @@ from .milestone_action_service import (
     complete_milestone,
     skip_milestone,
     start_milestone,
+)
+from .payment_service import (
+    confirm_payment,
+    get_or_create_execution_payment,
+    report_payment,
 )
 from .timeline_service import project_execution_timeline
 

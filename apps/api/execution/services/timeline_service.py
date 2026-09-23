@@ -11,7 +11,9 @@ EVENT_TYPE_PRIORITY: Dict[str, int] = {
     TimelineEventType.EXECUTION_CREATED: 10,
     TimelineEventType.MILESTONE_STARTED: 20,
     TimelineEventType.INSPECTION_SCHEDULED: 25,
+    TimelineEventType.PAYMENT_REPORTED: 26,
     TimelineEventType.MILESTONE_COMPLETED: 30,
+    TimelineEventType.PAYMENT_CONFIRMED: 31,
     TimelineEventType.INSPECTION_COMPLETED: 32,
     TimelineEventType.INSPECTION_CANCELLED: 33,
     TimelineEventType.MILESTONE_BLOCKED: 35,
@@ -239,7 +241,59 @@ def project_execution_timeline(
                 },
             })
 
-    # 4. Execution closed event
+    # 4. Payment monitoring domain facts (Epic 10 Contract §54, §55, T1006)
+    from execution.models.payment import ExecutionPayment
+
+    payment = (
+        ExecutionPayment.objects.select_related("reported_by", "confirmed_by")
+        .filter(execution=execution)
+        .first()
+    )
+
+    if payment:
+        if payment.reported_at:
+            events.append({
+                "event_id": f"payment-{payment.id}-reported",
+                "event_type": TimelineEventType.PAYMENT_REPORTED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.PAYMENT_REPORTED],
+                "event_at": payment.reported_at,
+                "recorded_at": payment.reported_at,
+                "actor_id": str(payment.reported_by_id) if payment.reported_by_id else None,
+                "actor_email": payment.reported_by.email if payment.reported_by else None,
+                "milestone_code": "PAYMENT_REPORTED",
+                "milestone_name_fa": "پرداخت گزارش شد",
+                "milestone_name_en": "Payment Reported",
+                "notes": payment.notes,
+                "metadata": {
+                    "status": payment.status,
+                    "expected_amount": str(payment.expected_amount) if payment.expected_amount is not None else None,
+                    "currency": payment.currency,
+                    "reference": payment.reference,
+                },
+            })
+
+        if payment.confirmed_at:
+            events.append({
+                "event_id": f"payment-{payment.id}-confirmed",
+                "event_type": TimelineEventType.PAYMENT_CONFIRMED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.PAYMENT_CONFIRMED],
+                "event_at": payment.confirmed_at,
+                "recorded_at": payment.confirmed_at,
+                "actor_id": str(payment.confirmed_by_id) if payment.confirmed_by_id else None,
+                "actor_email": payment.confirmed_by.email if payment.confirmed_by else None,
+                "milestone_code": "PAYMENT_REPORTED",
+                "milestone_name_fa": "پرداخت تأیید شد",
+                "milestone_name_en": "Payment Confirmed",
+                "notes": payment.notes,
+                "metadata": {
+                    "status": payment.status,
+                    "expected_amount": str(payment.expected_amount) if payment.expected_amount is not None else None,
+                    "currency": payment.currency,
+                    "reference": payment.reference,
+                },
+            })
+
+    # 5. Execution closed event
     if execution.status == ExecutionStatus.CLOSED:
 
         events.append({

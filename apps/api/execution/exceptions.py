@@ -89,3 +89,11 @@ class InspectionNotFoundError(ExecutionError):
 class InvalidInspectionTransitionError(ExecutionError):
     """Raised when an illegal inspection lifecycle transition is requested."""
 
+
+class PaymentNotFoundError(ExecutionError):
+    """Raised when an execution payment instance cannot be found."""
+
+
+class InvalidPaymentTransitionError(ExecutionError):
+    """Raised when an illegal payment lifecycle transition is requested."""
+

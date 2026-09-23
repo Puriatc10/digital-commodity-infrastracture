@@ -71,7 +71,29 @@ class TimelineEventType(models.TextChoices):
     INSPECTION_SCHEDULED = "INSPECTION_SCHEDULED", "Inspection Scheduled"
     INSPECTION_COMPLETED = "INSPECTION_COMPLETED", "Inspection Completed"
     INSPECTION_CANCELLED = "INSPECTION_CANCELLED", "Inspection Cancelled"
+    PAYMENT_REPORTED = "PAYMENT_REPORTED", "Payment Reported"
+    PAYMENT_CONFIRMED = "PAYMENT_CONFIRMED", "Payment Confirmed"
     EXECUTION_CLOSED = "EXECUTION_CLOSED", "Execution Closed"
+
+
+class PaymentStatus(models.TextChoices):
+    """
+    Authoritative lifecycle status of an ExecutionPayment instance (Epic 10 Contract §50–§56, T1006).
+
+    Exact statuses:
+    - EXPECTED: Initial commercial expectation established from Deal terms.
+    - REPORTED: Operational payment fact reported by buyer/seller/operator.
+    - CONFIRMED: Authorized operational confirmation recorded by platform Operator/Admin.
+
+    Invariants:
+    - Exactly EXPECTED -> REPORTED -> CONFIRMED.
+    - No reverse transitions.
+    - No direct EXPECTED -> CONFIRMED.
+    """
+
+    EXPECTED = "EXPECTED", "Expected"
+    REPORTED = "REPORTED", "Reported"
+    CONFIRMED = "CONFIRMED", "Confirmed"
 
 
 class InspectionStatus(models.TextChoices):

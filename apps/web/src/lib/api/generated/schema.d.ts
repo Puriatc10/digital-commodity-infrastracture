@@ -431,6 +431,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{deal_id}/execution/payment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Operational Payment for Deal
+         * @description Retrieves operational payment monitoring record for a Deal's execution instance.
+         */
+        get: operations["deal_execution_payment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{deal_id}/parties/": {
         parameters: {
             query?: never;
@@ -877,6 +897,66 @@ export interface paths {
          * @description Transitions a milestone from PENDING to IN_PROGRESS. Requires current expected_version for optimistic concurrency control.
          */
         post: operations["execution_milestone_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/payment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Payment Monitoring Record
+         * @description Retrieves the authoritative operational payment monitoring record for an Execution. Returns status (EXPECTED, REPORTED, CONFIRMED), expected amount/currency, reported metadata, confirmed metadata, reference, notes, and aggregate version.
+         */
+        get: operations["execution_payment_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/payment/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Execution Payment
+         * @description Operator/Admin operational action: authoritatively confirms payment progress. Transitions status: REPORTED -> CONFIRMED. Normal prerequisite: status == REPORTED (direct EXPECTED -> CONFIRMED is forbidden). Server authoritatively derives confirmed_by and confirmed_at. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_payment_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/payment/report/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report Execution Payment
+         * @description Buyer/Seller/Operator operational action: reports payment occurrence. Transitions status: EXPECTED -> REPORTED. Server authoritatively derives reported_by and reported_at. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_payment_report"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3893,6 +3973,7 @@ export interface components {
             readonly milestones: components["schemas"]["ExecutionMilestone"][];
             readonly logistics: components["schemas"]["ExecutionLogistics"];
             readonly inspection: components["schemas"]["ExecutionInspection"];
+            readonly payment: components["schemas"]["ExecutionPayment"];
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -4138,6 +4219,69 @@ export interface components {
          * @enum {string}
          */
         ExecutionMilestoneStatusEnum: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "BLOCKED" | "SKIPPED";
+        /** @description Authoritative payment monitoring aggregate serializer (Epic 10 Contract §50–§59, T1006). */
+        ExecutionPayment: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent execution instance (1 Execution -> max 1 ExecutionPayment).
+             */
+            readonly execution_id: string;
+            /**
+             * @description Runtime status of this payment monitoring record (EXPECTED, REPORTED, CONFIRMED).
+             *
+             *     * `EXPECTED` - Expected
+             *     * `REPORTED` - Reported
+             *     * `CONFIRMED` - Confirmed
+             */
+            status?: components["schemas"]["ExecutionPaymentStatusEnum"];
+            /**
+             * Format: decimal
+             * @description Authoritative expected payment amount derived from immutable Deal commercial truth.
+             */
+            expected_amount?: string | null;
+            /** @description ISO 4217 3-letter currency code from Deal commercial snapshot. */
+            currency?: string;
+            /**
+             * Format: date-time
+             * @description Expected payment due date/time if deterministically supported.
+             */
+            expected_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when payment was reported.
+             */
+            reported_at?: string | null;
+            /** Format: uuid */
+            readonly reported_by_id: string | null;
+            readonly reported_by_email: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when payment was confirmed by Operator/Admin.
+             */
+            confirmed_at?: string | null;
+            /** Format: uuid */
+            readonly confirmed_by_id: string | null;
+            readonly confirmed_by_email: string | null;
+            /** @description Operational transaction/banking reference. Operational metadata only; never stores secrets. */
+            reference?: string;
+            /** @description Operational notes. Notes do not determine payment status. */
+            notes?: string;
+            /** @description Optimistic concurrency aggregate version counter. */
+            version?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `EXPECTED` - Expected
+         *     * `REPORTED` - Reported
+         *     * `CONFIRMED` - Confirmed
+         * @enum {string}
+         */
+        ExecutionPaymentStatusEnum: "EXPECTED" | "REPORTED" | "CONFIRMED";
         ExecutionWorkflowTemplateDetail: {
             /** Format: uuid */
             readonly id: string;
@@ -6182,6 +6326,36 @@ export interface components {
              *     * `private` - Private
              */
             visibility?: components["schemas"]["RFQVisibilityEnum"];
+        };
+        /** @description Request payload to authoritatively confirm execution payment. */
+        PaymentConfirmRequest: {
+            /** @description Current expected payment aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional operational confirmation or banking reference.
+             * @default
+             */
+            reference: string;
+            /**
+             * @description Optional operational confirmation notes.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to report execution payment. */
+        PaymentReportRequest: {
+            /** @description Current expected payment aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional operational transaction or banking reference.
+             * @default
+             */
+            reference: string;
+            /**
+             * @description Optional operational payment notes.
+             * @default
+             */
+            notes: string;
         };
         /**
          * @description * `buyer` - buyer
@@ -8695,6 +8869,43 @@ export interface operations {
             };
         };
     };
+    deal_execution_payment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionPayment"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
     deals_parties_list: {
         parameters: {
             query?: never;
@@ -9886,6 +10097,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_payment_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionPayment"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_payment_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentConfirmRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionPayment"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_payment_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentReportRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionPayment"];
                 };
             };
             400: {

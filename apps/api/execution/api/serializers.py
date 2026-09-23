@@ -233,6 +233,39 @@ class ExecutionInspectionSerializer(serializers.ModelSerializer):
         ]
 
 
+class ExecutionPaymentSerializer(serializers.ModelSerializer):
+    """Authoritative payment monitoring aggregate serializer (Epic 10 Contract §50–§59, T1006)."""
+
+    reported_by_id = serializers.UUIDField(source="reported_by.id", read_only=True, allow_null=True)
+    reported_by_email = serializers.CharField(source="reported_by.email", read_only=True, allow_null=True)
+    confirmed_by_id = serializers.UUIDField(source="confirmed_by.id", read_only=True, allow_null=True)
+    confirmed_by_email = serializers.CharField(source="confirmed_by.email", read_only=True, allow_null=True)
+
+    class Meta:
+        from execution.models.payment import ExecutionPayment
+
+        model = ExecutionPayment
+        fields = [
+            "id",
+            "execution_id",
+            "status",
+            "expected_amount",
+            "currency",
+            "expected_at",
+            "reported_at",
+            "reported_by_id",
+            "reported_by_email",
+            "confirmed_at",
+            "confirmed_by_id",
+            "confirmed_by_email",
+            "reference",
+            "notes",
+            "version",
+            "created_at",
+            "updated_at",
+        ]
+
+
 class ExecutionDetailSerializer(serializers.ModelSerializer):
     """Full execution aggregate detail serializer."""
 
@@ -251,6 +284,7 @@ class ExecutionDetailSerializer(serializers.ModelSerializer):
     milestones = ExecutionMilestoneSerializer(many=True, read_only=True)
     logistics = ExecutionLogisticsSerializer(read_only=True)
     inspection = ExecutionInspectionSerializer(read_only=True)
+    payment = ExecutionPaymentSerializer(read_only=True)
 
     class Meta:
         from execution.models.execution import Execution
@@ -270,6 +304,7 @@ class ExecutionDetailSerializer(serializers.ModelSerializer):
             "milestones",
             "logistics",
             "inspection",
+            "payment",
             "created_at",
             "updated_at",
         ]
@@ -633,6 +668,50 @@ class InspectionMarkNotRequiredSerializer(serializers.Serializer):
         allow_blank=True,
         default="",
         help_text="Waiver reason or notes.",
+    )
+
+
+class PaymentReportRequestSerializer(serializers.Serializer):
+    """Request payload to report execution payment."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Current expected payment aggregate version for optimistic concurrency control.",
+    )
+    reference = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional operational transaction or banking reference.",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional operational payment notes.",
+    )
+
+
+class PaymentConfirmRequestSerializer(serializers.Serializer):
+    """Request payload to authoritatively confirm execution payment."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        required=True,
+        help_text="Current expected payment aggregate version for optimistic concurrency control.",
+    )
+    reference = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional operational confirmation or banking reference.",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional operational confirmation notes.",
     )
 
 

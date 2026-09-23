@@ -11,6 +11,7 @@ from execution.services import (
     create_or_get_execution_for_deal,
     record_delivery,
     record_loading,
+    report_payment,
     schedule_loading,
 )
 from execution.tests.base import BaseExecutionTestCase
@@ -41,6 +42,7 @@ class LogisticsMilestoneIntegrationTests(BaseExecutionTestCase):
             actor=self.operator_user,
         )
 
+        report_payment(execution_id=self.execution.id, expected_version=1, actor=self.buyer_owner)
         m_payment = ExecutionMilestone.objects.get(execution=self.execution, definition__code="PAYMENT_REPORTED")
         complete_milestone(
             execution_id=self.execution.id,
