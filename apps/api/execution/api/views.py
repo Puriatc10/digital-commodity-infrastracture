@@ -1,11 +1,16 @@
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from django.http import HttpResponse
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import permissions, status
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from execution.api.serializers import (
     ExecutionCreateRequestSerializer,
     ExecutionDetailSerializer,
+    ExecutionDocumentSerializer,
+    ExecutionDocumentUploadSerializer,
     ExecutionErrorResponseSerializer,
     ExecutionInspectionSerializer,
     ExecutionLogisticsSerializer,
@@ -36,8 +41,10 @@ from execution.api.serializers import (
 from execution.exceptions import (
     CrossObjectIntegrityError,
     ExecutionClosedError,
+    ExecutionDocumentNotFoundError,
     ExecutionNotFoundError,
     ExecutionPermissionDeniedError,
+    ExecutionStorageError,
     ExecutionValidationError,
     InspectionNotFoundError,
     InvalidInspectionTransitionError,
@@ -67,6 +74,9 @@ from execution.services import (
     create_or_get_execution_for_deal,
     get_active_workflow_template_version,
     get_execution_by_id,
+    get_execution_document_detail,
+    get_execution_document_download,
+    get_execution_documents,
     get_execution_for_deal,
     get_or_create_execution_inspection,
     get_or_create_execution_logistics,
@@ -86,6 +96,7 @@ from execution.services import (
     update_eta,
     update_logistics_cost,
     update_transport,
+    upload_execution_document,
 )
 
 
@@ -1579,5 +1590,274 @@ class DealExecutionPaymentView(APIView):
 
         serializer = ExecutionPaymentSerializer(payment)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ExecutionDocumentListView(APIView):
+    """List operational execution documents with optional contextual filtering."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_documents_list",
+        tags=["Execution Documents"],
+        summary="List Execution Documents",
+        description="Lists all operational evidence documents belonging to an Execution instance.",
+        parameters=[
+            OpenApiParameter(name="category", type=OpenApiTypes.STR, required=False, description="Filter by document category"),
+            OpenApiParameter(name="milestone_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated milestone ID"),
+            OpenApiParameter(name="inspection_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated inspection ID"),
+        ],
+        responses={
+            200: ExecutionDocumentSerializer(many=True),
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, execution_id):
+        category = request.query_params.get("category")
+        milestone_id = request.query_params.get("milestone_id")
+        inspection_id = request.query_params.get("inspection_id")
+
+        try:
+            docs = get_execution_documents(
+                execution_id,
+                actor=request.user,
+                category=category,
+                milestone_id=milestone_id,
+                inspection_id=inspection_id,
+            )
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionDocumentSerializer(docs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ExecutionDocumentUploadView(APIView):
+    """Authorized multipart upload of operational execution evidence."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    @extend_schema(
+        operation_id="execution_document_upload",
+        tags=["Execution Documents"],
+        summary="Upload Execution Document",
+        description="Uploads a new operational evidence document for an Execution aggregate with side-specific authorization.",
+        request={
+            "multipart/form-data": ExecutionDocumentUploadSerializer,
+        },
+        responses={
+            201: ExecutionDocumentSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            500: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = ExecutionDocumentUploadSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        file_obj = serializer.validated_data["file"]
+        category = serializer.validated_data["category"]
+        milestone_id = serializer.validated_data.get("milestone_id")
+        inspection_id = serializer.validated_data.get("inspection_id")
+
+        try:
+            doc = upload_execution_document(
+                execution_id,
+                file_obj=file_obj,
+                category=category,
+                actor=request.user,
+                milestone_id=milestone_id,
+                inspection_id=inspection_id,
+            )
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionValidationError, CrossObjectIntegrityError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+        except ExecutionStorageError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        out = ExecutionDocumentSerializer(doc)
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+class ExecutionDocumentDetailView(APIView):
+    """Retrieve operational execution document metadata."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_document_detail",
+        tags=["Execution Documents"],
+        summary="Retrieve Execution Document Metadata",
+        description="Retrieves metadata for a single operational evidence document.",
+        responses={
+            200: ExecutionDocumentSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, execution_id, document_id):
+        try:
+            doc = get_execution_document_detail(execution_id, document_id, actor=request.user)
+        except (ExecutionNotFoundError, ExecutionDocumentNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionDocumentSerializer(doc)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ExecutionDocumentDownloadView(APIView):
+    """Authorized download of operational execution document bytes."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_document_download",
+        tags=["Execution Documents"],
+        summary="Download Execution Document Bytes",
+        description="Streams authorized binary document bytes directly with safe Content-Disposition.",
+        responses={
+            (200, "application/octet-stream"): OpenApiResponse(
+                response=OpenApiTypes.BINARY,
+                description="Binary document bytes streaming response.",
+            ),
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            500: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, execution_id, document_id):
+        try:
+            bytes_data, content_type, file_name = get_execution_document_download(
+                execution_id, document_id, actor=request.user
+            )
+        except (ExecutionNotFoundError, ExecutionDocumentNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except ExecutionStorageError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        response = HttpResponse(bytes_data, content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
+        return response
+
+
+class DealExecutionDocumentListView(APIView):
+    """List operational execution documents by Deal UUID."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deal_execution_documents_list",
+        tags=["Execution Documents"],
+        summary="List Execution Documents for Deal",
+        description="Lists all operational execution documents for a Deal's execution instance.",
+        parameters=[
+            OpenApiParameter(name="category", type=OpenApiTypes.STR, required=False, description="Filter by document category"),
+            OpenApiParameter(name="milestone_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated milestone ID"),
+            OpenApiParameter(name="inspection_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated inspection ID"),
+        ],
+        responses={
+            200: ExecutionDocumentSerializer(many=True),
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, deal_id):
+        try:
+            execution = get_execution_for_deal(deal_id, actor=request.user)
+        except ExecutionNotFoundError:
+            return Response({"detail": f"Execution for deal '{deal_id}' not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        category = request.query_params.get("category")
+        milestone_id = request.query_params.get("milestone_id")
+        inspection_id = request.query_params.get("inspection_id")
+
+        try:
+            docs = get_execution_documents(
+                execution.id,
+                actor=request.user,
+                category=category,
+                milestone_id=milestone_id,
+                inspection_id=inspection_id,
+            )
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionDocumentSerializer(docs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DealExecutionDocumentUploadView(APIView):
+    """Authorized multipart upload of operational execution documents by Deal UUID."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    @extend_schema(
+        operation_id="deal_execution_document_upload",
+        tags=["Execution Documents"],
+        summary="Upload Execution Document for Deal",
+        description="Uploads a new operational evidence document for a Deal's execution instance.",
+        request={
+            "multipart/form-data": ExecutionDocumentUploadSerializer,
+        },
+        responses={
+            201: ExecutionDocumentSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            500: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, deal_id):
+        try:
+            execution = get_execution_for_deal(deal_id, actor=request.user)
+        except ExecutionNotFoundError:
+            return Response({"detail": f"Execution for deal '{deal_id}' not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionDocumentUploadSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        file_obj = serializer.validated_data["file"]
+        category = serializer.validated_data["category"]
+        milestone_id = serializer.validated_data.get("milestone_id")
+        inspection_id = serializer.validated_data.get("inspection_id")
+
+        try:
+            doc = upload_execution_document(
+                execution.id,
+                file_obj=file_obj,
+                category=category,
+                actor=request.user,
+                milestone_id=milestone_id,
+                inspection_id=inspection_id,
+            )
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionValidationError, CrossObjectIntegrityError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+        except ExecutionStorageError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        out = ExecutionDocumentSerializer(doc)
+        return Response(out.data, status=status.HTTP_201_CREATED)
 
 

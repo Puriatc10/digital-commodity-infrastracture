@@ -73,7 +73,33 @@ class TimelineEventType(models.TextChoices):
     INSPECTION_CANCELLED = "INSPECTION_CANCELLED", "Inspection Cancelled"
     PAYMENT_REPORTED = "PAYMENT_REPORTED", "Payment Reported"
     PAYMENT_CONFIRMED = "PAYMENT_CONFIRMED", "Payment Confirmed"
+    DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED", "Document Uploaded"
     EXECUTION_CLOSED = "EXECUTION_CLOSED", "Execution Closed"
+
+
+class ExecutionDocumentCategory(models.TextChoices):
+    """
+    Authoritative operational categories for Execution Documents (Epic 10 Contract §61, T1007).
+
+    Exact categories:
+    - CONTRACT: Commercial sales/procurement contract, side agreement, formal amendment.
+    - PAYMENT_PROOF: Bank swift/slip, escrow confirmation, commercial payment receipt.
+    - LOADING_DOCUMENT: Weight bridge slip, bill of lading, loading terminal dispatch note.
+    - INSPECTION_REPORT: Quality certificate, SGS/BV inspection report, lab analysis.
+    - TRANSPORT_DOCUMENT: Consignment note, CMR, railway waybill, truck manifest.
+    - DELIVERY_PROOF: Warehouse receiving receipt, delivery confirmation, handover note.
+    - ACCEPTANCE_DOCUMENT: Formal acceptance certificate, final signoff.
+    - OTHER: Miscellaneous operational trade/execution documentation.
+    """
+
+    CONTRACT = "CONTRACT", "Contract"
+    PAYMENT_PROOF = "PAYMENT_PROOF", "Payment Proof"
+    LOADING_DOCUMENT = "LOADING_DOCUMENT", "Loading Document"
+    INSPECTION_REPORT = "INSPECTION_REPORT", "Inspection Report"
+    TRANSPORT_DOCUMENT = "TRANSPORT_DOCUMENT", "Transport Document"
+    DELIVERY_PROOF = "DELIVERY_PROOF", "Delivery Proof"
+    ACCEPTANCE_DOCUMENT = "ACCEPTANCE_DOCUMENT", "Acceptance Document"
+    OTHER = "OTHER", "Other"
 
 
 class PaymentStatus(models.TextChoices):

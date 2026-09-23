@@ -352,6 +352,99 @@ def check_payment_mutation_authority(
         raise ExecutionPermissionDeniedError(f"Unsupported payment mutation action '{action_type}'.")
 
 
+def check_document_read_authority(
+    user: Any,
+    deal_or_execution: Any,
+) -> None:
+    """
+    Verify read authorization for execution documents.
+
+    Delegates to check_execution_read_access ensuring Deal party (buyer/seller non-external)
+    or Operator/Admin authority is verified.
+    """
+    check_execution_read_access(user, deal_or_execution)
+
+
+def check_document_upload_authority(
+    user: Any,
+    deal_or_execution: Any,
+    category: str,
+) -> None:
+    """
+    Verify side-specific operational authority to upload an ExecutionDocument (Epic 10 Contract §80, T1007).
+
+    Side-specific category ownership matrix:
+    - Seller-exclusive operational document categories:
+      LOADING_DOCUMENT, INSPECTION_REPORT, TRANSPORT_DOCUMENT
+    - Buyer-exclusive operational document categories:
+      DELIVERY_PROOF, ACCEPTANCE_DOCUMENT
+    - Shared operational categories (both Buyer and Seller permitted):
+      CONTRACT, PAYMENT_PROOF, OTHER
+
+    Authorized:
+    - Platform OPERATOR or ADMIN with explicit SystemRoleAssignment (global operational authority).
+    - Active non-viewer members (Owner, Manager, Member) of the authorized side for category.
+
+    Denied:
+    - Anonymous users.
+    - Django staff/superusers without SystemRoleAssignment.
+    - Viewer role members (strictly read-only).
+    - Attributed-only brokers (attribution is provenance, not authorization).
+    - Buyer attempting seller-exclusive document categories.
+    - Seller attempting buyer-exclusive document categories.
+    - External counterparty direct sessions (handled exclusively via Operator).
+    - Unrelated organizations / competitor participants.
+    """
+    from execution.enums import ExecutionDocumentCategory
+
+    deal = getattr(deal_or_execution, "deal", deal_or_execution)
+    if not user or not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
+        raise ExecutionPermissionDeniedError("Authentication required.")
+
+    if is_operator_or_admin(user):
+        return
+
+    allowed_org_ids = [deal.buyer_organization_id]
+    if deal.seller_organization_id:
+        allowed_org_ids.append(deal.seller_organization_id)
+
+    membership = OrganizationMembership.objects.filter(
+        user=user,
+        organization_id__in=allowed_org_ids,
+        is_active=True,
+        organization__is_active=True,
+    ).first()
+
+    if not membership:
+        raise ExecutionPermissionDeniedError("You do not have permission to upload documents for this execution.")
+
+    if membership.role == OrganizationMembership.OrganizationRole.VIEWER:
+        raise ExecutionPermissionDeniedError("Viewer role is read-only and cannot upload execution documents.")
+
+    is_buyer = membership.organization_id == deal.buyer_organization_id
+    is_seller = bool(deal.seller_organization_id and (membership.organization_id == deal.seller_organization_id))
+
+    SELLER_EXCLUSIVE_CATEGORIES = {
+        ExecutionDocumentCategory.LOADING_DOCUMENT,
+        ExecutionDocumentCategory.INSPECTION_REPORT,
+        ExecutionDocumentCategory.TRANSPORT_DOCUMENT,
+    }
+    BUYER_EXCLUSIVE_CATEGORIES = {
+        ExecutionDocumentCategory.DELIVERY_PROOF,
+        ExecutionDocumentCategory.ACCEPTANCE_DOCUMENT,
+    }
+
+    if is_buyer and category in SELLER_EXCLUSIVE_CATEGORIES:
+        raise ExecutionPermissionDeniedError(
+            f"Document category '{category}' can only be uploaded by the Seller or Operator."
+        )
+
+    if is_seller and category in BUYER_EXCLUSIVE_CATEGORIES:
+        raise ExecutionPermissionDeniedError(
+            f"Document category '{category}' can only be uploaded by the Buyer or Operator."
+        )
+
+
 class IsOperatorOrAdmin(permissions.BasePermission):
     """DRF permission class restricting view access to Platform Operators and Product Admins."""
 

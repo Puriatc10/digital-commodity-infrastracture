@@ -12,6 +12,7 @@ EVENT_TYPE_PRIORITY: Dict[str, int] = {
     TimelineEventType.MILESTONE_STARTED: 20,
     TimelineEventType.INSPECTION_SCHEDULED: 25,
     TimelineEventType.PAYMENT_REPORTED: 26,
+    TimelineEventType.DOCUMENT_UPLOADED: 28,
     TimelineEventType.MILESTONE_COMPLETED: 30,
     TimelineEventType.PAYMENT_CONFIRMED: 31,
     TimelineEventType.INSPECTION_COMPLETED: 32,
@@ -293,7 +294,45 @@ def project_execution_timeline(
                 },
             })
 
-    # 5. Execution closed event
+    # 5. Execution Document domain facts (Epic 10 Contract §60–§64, T1007)
+    from execution.models.document import ExecutionDocument
+
+    documents = list(
+        ExecutionDocument.objects.select_related("uploaded_by", "milestone__definition", "inspection")
+        .filter(execution=execution)
+        .order_by("uploaded_at", "id")
+    )
+
+    for doc in documents:
+        doc_actor_id = str(doc.uploaded_by.id) if doc.uploaded_by else None
+        doc_actor_email = getattr(doc.uploaded_by, "email", None) if doc.uploaded_by else None
+        m_code = doc.milestone.definition.code if doc.milestone else None
+        m_name_fa = doc.milestone.definition.name_fa if doc.milestone else None
+        m_name_en = doc.milestone.definition.name_en if doc.milestone else None
+
+        events.append({
+            "event_id": f"document-{doc.id}-uploaded",
+            "event_type": TimelineEventType.DOCUMENT_UPLOADED,
+            "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.DOCUMENT_UPLOADED],
+            "event_at": doc.uploaded_at,
+            "recorded_at": doc.uploaded_at,
+            "actor_id": doc_actor_id,
+            "actor_email": doc_actor_email,
+            "milestone_code": m_code,
+            "milestone_name_fa": m_name_fa,
+            "milestone_name_en": m_name_en,
+            "notes": f"{doc.get_category_display()}: {doc.file_name}",
+            "metadata": {
+                "category": doc.category,
+                "file_name": doc.file_name,
+                "content_type": doc.content_type,
+                "size_bytes": doc.size_bytes,
+                "milestone_id": str(doc.milestone_id) if doc.milestone_id else None,
+                "inspection_id": str(doc.inspection_id) if doc.inspection_id else None,
+            },
+        })
+
+    # 6. Execution closed event
     if execution.status == ExecutionStatus.CLOSED:
 
         events.append({

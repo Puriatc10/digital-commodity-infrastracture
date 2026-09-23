@@ -4,6 +4,7 @@ from django.dispatch import receiver
 
 from execution.enums import WorkflowVersionStatus
 from .dependency import ExecutionMilestoneDependency
+from .document import ExecutionDocument
 from .execution import Execution, lock_executions
 from .inspection import ExecutionInspection
 from .logistics import ExecutionLogistics
@@ -71,6 +72,11 @@ def protect_execution_payment_deletion(sender, instance, **kwargs):
     raise ValidationError("Execution payment records represent historical operational facts and cannot be deleted.")
 
 
+@receiver(pre_delete, sender=ExecutionDocument)
+def protect_execution_document_deletion(sender, instance, **kwargs):
+    raise ValidationError("Execution documents represent historical operational evidence and cannot be deleted.")
+
+
 __all__ = [
     "ExecutionWorkflowTemplate",
     "ExecutionWorkflowTemplateVersion",
@@ -81,6 +87,7 @@ __all__ = [
     "ExecutionLogistics",
     "ExecutionInspection",
     "ExecutionPayment",
+    "ExecutionDocument",
     "lock_workflow_templates",
     "lock_executions",
 ]

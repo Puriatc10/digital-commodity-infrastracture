@@ -371,6 +371,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{deal_id}/execution/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Execution Documents for Deal
+         * @description Lists all operational execution documents for a Deal's execution instance.
+         */
+        get: operations["deal_execution_documents_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/documents/upload/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Execution Document for Deal
+         * @description Uploads a new operational evidence document for a Deal's execution instance.
+         */
+        post: operations["deal_execution_document_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{deal_id}/execution/inspection/": {
         parameters: {
             query?: never;
@@ -573,6 +613,86 @@ export interface paths {
         get: operations["execution_detail"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Execution Documents
+         * @description Lists all operational evidence documents belonging to an Execution instance.
+         */
+        get: operations["execution_documents_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/documents/{document_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Document Metadata
+         * @description Retrieves metadata for a single operational evidence document.
+         */
+        get: operations["execution_document_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/documents/{document_id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Execution Document Bytes
+         * @description Streams authorized binary document bytes directly with safe Content-Disposition.
+         */
+        get: operations["execution_document_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/documents/upload/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Execution Document
+         * @description Uploads a new operational evidence document for an Execution aggregate with side-specific authorization.
+         */
+        post: operations["execution_document_upload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3128,6 +3248,18 @@ export interface components {
          * @enum {string}
          */
         CandidateKindEnum: "SUPPLY_LISTING" | "SUPPLY_OPPORTUNITY" | "SUPPLIER_ORGANIZATION" | "BROKER_ORGANIZATION";
+        /**
+         * @description * `CONTRACT` - Contract
+         *     * `PAYMENT_PROOF` - Payment Proof
+         *     * `LOADING_DOCUMENT` - Loading Document
+         *     * `INSPECTION_REPORT` - Inspection Report
+         *     * `TRANSPORT_DOCUMENT` - Transport Document
+         *     * `DELIVERY_PROOF` - Delivery Proof
+         *     * `ACCEPTANCE_DOCUMENT` - Acceptance Document
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        CategoryEnum: "CONTRACT" | "PAYMENT_PROOF" | "LOADING_DOCUMENT" | "INSPECTION_REPORT" | "TRANSPORT_DOCUMENT" | "DELIVERY_PROOF" | "ACCEPTANCE_DOCUMENT" | "OTHER";
         ChecklistReview: {
             /** Format: uuid */
             document_id: string;
@@ -3985,6 +4117,81 @@ export interface components {
          * @enum {string}
          */
         ExecutionDetailStatusEnum: "OPEN" | "CLOSED";
+        /** @description Authoritative execution document metadata projection (Epic 10 Contract §60–§64, T1007). */
+        ExecutionDocument: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly execution_id: string;
+            /** Format: uuid */
+            readonly milestone_id: string | null;
+            /** Format: uuid */
+            readonly inspection_id: string | null;
+            /**
+             * @description Authoritative operational document category.
+             *
+             *     * `CONTRACT` - Contract
+             *     * `PAYMENT_PROOF` - Payment Proof
+             *     * `LOADING_DOCUMENT` - Loading Document
+             *     * `INSPECTION_REPORT` - Inspection Report
+             *     * `TRANSPORT_DOCUMENT` - Transport Document
+             *     * `DELIVERY_PROOF` - Delivery Proof
+             *     * `ACCEPTANCE_DOCUMENT` - Acceptance Document
+             *     * `OTHER` - Other
+             */
+            readonly category: components["schemas"]["CategoryEnum"];
+            readonly category_display: string;
+            /** @description Safe original filename. */
+            readonly file_name: string;
+            /** @description MIME content type. */
+            readonly content_type: string;
+            /** @description File size in bytes. */
+            readonly size_bytes: number;
+            /** Format: uuid */
+            readonly uploaded_by_id: string | null;
+            /** Format: email */
+            readonly uploaded_by_email: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when document was uploaded.
+             */
+            readonly uploaded_at: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Request payload for authorized multipart execution document upload. */
+        ExecutionDocumentUpload: {
+            /**
+             * Format: binary
+             * @description Binary document file (PDF, JPEG, PNG, max 10MB)
+             */
+            file: string;
+            /**
+             * @description Authoritative operational document category.
+             *
+             *     * `CONTRACT` - Contract
+             *     * `PAYMENT_PROOF` - Payment Proof
+             *     * `LOADING_DOCUMENT` - Loading Document
+             *     * `INSPECTION_REPORT` - Inspection Report
+             *     * `TRANSPORT_DOCUMENT` - Transport Document
+             *     * `DELIVERY_PROOF` - Delivery Proof
+             *     * `ACCEPTANCE_DOCUMENT` - Acceptance Document
+             *     * `OTHER` - Other
+             */
+            category: components["schemas"]["CategoryEnum"];
+            /**
+             * Format: uuid
+             * @description Optional associated execution milestone ID.
+             */
+            milestone_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Optional associated execution quality inspection ID.
+             */
+            inspection_id?: string | null;
+        };
         /** @description Standard error response. */
         ExecutionErrorResponse: {
             /** @description Detailed error explanation. */
@@ -8737,6 +8944,107 @@ export interface operations {
             };
         };
     };
+    deal_execution_documents_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by document category */
+                category?: string;
+                /** @description Filter by associated inspection ID */
+                inspection_id?: string;
+                /** @description Filter by associated milestone ID */
+                milestone_id?: string;
+            };
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_document_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ExecutionDocumentUpload"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
     deal_execution_inspection: {
         parameters: {
             query?: never;
@@ -9185,6 +9493,192 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_documents_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by document category */
+                category?: string;
+                /** @description Filter by associated inspection ID */
+                inspection_id?: string;
+                /** @description Filter by associated milestone ID */
+                milestone_id?: string;
+            };
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_document_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_document_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binary document bytes streaming response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_document_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ExecutionDocumentUpload"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
