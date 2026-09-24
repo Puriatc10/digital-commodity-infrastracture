@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   RefreshCw,
-  ShieldAlert,
   ArrowLeft,
   Building2,
   User,
@@ -36,6 +35,12 @@ import type { components } from "@/lib/api/generated/schema";
 import { useAuth } from "@/lib/auth-context";
 import { getMessages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
+import {
+  LoadingState,
+  NotFoundState,
+  AccessDeniedState,
+  ErrorState,
+} from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -126,6 +131,7 @@ export function OpportunityDetailClient({
     data: opp,
     isLoading: isOppLoading,
     isError: isOppError,
+    error: oppError,
     refetch: refetchOpp,
     isFetching: isOppFetching,
   } = useQuery({
@@ -134,8 +140,20 @@ export function OpportunityDetailClient({
       const resp = await client.GET("/api/opportunities/opportunities/{id}/", {
         params: { path: { id: opportunityId } },
       });
+      if (resp.response.status === 404) {
+        const err = new Error("Opportunity not found");
+        (err as unknown as { status: number }).status = 404;
+        throw err;
+      }
+      if (resp.response.status === 401 || resp.response.status === 403) {
+        const err = new Error("Access denied");
+        (err as unknown as { status: number }).status = resp.response.status;
+        throw err;
+      }
       if (!resp.response.ok || !resp.data) {
-        throw new Error("Opportunity not found");
+        const err = new Error("Failed to load opportunity");
+        (err as unknown as { status: number }).status = resp.response.status;
+        throw err;
       }
       return resp.data as OpportunityDetail;
     },
@@ -184,55 +202,46 @@ export function OpportunityDetailClient({
     enabled: isOperatorOrAdmin && Boolean(opp),
   });
 
+  if (authState.status === "loading" || isOppLoading) {
+    return <LoadingState message={oppMsg.states.loadingDetail} locale={locale} />;
+  }
 
-  if (authState.status === "loading") {
+  const oppStatus = (oppError as unknown as { status?: number })?.status;
+
+  if (!isOperatorOrAdmin || oppStatus === 401 || oppStatus === 403) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="sr-only">{oppMsg.states.loadingDetail}</span>
-      </div>
+      <AccessDeniedState
+        statusCode={(oppStatus as 401 | 403) || 403}
+        title={messages.rfqBuilder.unauthorizedTitle}
+        description={oppMsg.states.unauthorized}
+        backHref={`/${locale}/opportunities`}
+        backLabel={oppMsg.actions.backToList}
+        locale={locale}
+      />
     );
   }
 
-  if (!isOperatorOrAdmin) {
+  if (oppStatus === 404) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h2 className="text-lg font-semibold text-destructive">
-            {messages.rfqBuilder.unauthorizedTitle}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {oppMsg.states.unauthorized}
-          </p>
-        </div>
-      </Card>
-    );
-  }
-
-  if (isOppLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="sr-only">{oppMsg.states.loadingDetail}</span>
-      </div>
+      <NotFoundState
+        resourceType="opportunity"
+        title={oppMsg.states.notFound}
+        backHref={`/${locale}/opportunities`}
+        backLabel={oppMsg.actions.backToList}
+        locale={locale}
+      />
     );
   }
 
   if (isOppError || !opp) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <AlertTriangle className="h-10 w-10 text-amber-500" />
-          <h2 className="text-lg font-semibold">{oppMsg.states.notFound}</h2>
-          <p className="text-sm text-muted-foreground">{oppMsg.states.loadError}</p>
-          <Link href={`/${locale}/opportunities`}>
-            <Button variant="outline" className="min-h-8 px-3 text-xs mt-2">
-              {oppMsg.actions.backToList}
-            </Button>
-          </Link>
-        </div>
-      </Card>
+      <ErrorState
+        errorMessage={oppMsg.states.loadError}
+        onRetry={() => void refetchOpp()}
+        backHref={`/${locale}/opportunities`}
+        backLabel={oppMsg.actions.backToList}
+        locale={locale}
+      />
     );
   }
 

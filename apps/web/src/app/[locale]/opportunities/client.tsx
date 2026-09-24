@@ -4,9 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Loader2,
   RefreshCw,
-  ShieldAlert,
   Inbox,
   UserCheck,
   CheckCircle2,
@@ -26,6 +24,12 @@ import type { components } from "@/lib/api/generated/schema";
 import { useAuth } from "@/lib/auth-context";
 import { getMessages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  AccessDeniedState,
+} from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,27 +133,17 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
   });
 
   if (authState.status === "loading") {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="sr-only">{oppMsg.states.loading}</span>
-      </div>
-    );
+    return <LoadingState message={oppMsg.states.loading} locale={locale} />;
   }
 
   if (!isOperatorOrAdmin) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h2 className="text-lg font-semibold text-destructive">
-            {messages.rfqBuilder.unauthorizedTitle}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {oppMsg.states.unauthorized}
-          </p>
-        </div>
-      </Card>
+      <AccessDeniedState
+        statusCode={403}
+        title={messages.rfqBuilder.unauthorizedTitle}
+        description={oppMsg.states.unauthorized}
+        locale={locale}
+      />
     );
   }
 
@@ -312,26 +306,36 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="sr-only">{oppMsg.states.loading}</span>
-            </div>
+            <LoadingState variant="section" message={oppMsg.states.loading} locale={locale} />
           ) : isError ? (
-            <div className="p-8 text-center text-destructive">
-              <p className="text-sm font-semibold">{oppMsg.states.loadError}</p>
-              <Button
-                variant="outline"
-                onClick={() => void refetch()}
-                className="mt-3 min-h-8 px-3 text-xs"
-              >
-                {oppMsg.actions.refresh}
-              </Button>
-            </div>
+            <ErrorState
+              errorMessage={oppMsg.states.loadError}
+              onRetry={() => void refetch()}
+              locale={locale}
+            />
           ) : results.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <Inbox className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
-              <p className="text-sm font-medium">{oppMsg.states.emptyList}</p>
-            </div>
+            <EmptyState
+              icon={<Inbox className="h-8 w-8 text-muted-foreground/60" />}
+              title={
+                commodityFilter.trim() || identifierFilter.trim() || directionFilter !== "all"
+                  ? messages.states.empty.noFilterResultsTitle
+                  : oppMsg.states.emptyList
+              }
+              description={
+                commodityFilter.trim() || identifierFilter.trim() || directionFilter !== "all"
+                  ? messages.states.empty.noFilterResultsDescription
+                  : undefined
+              }
+              isFilterEmpty={Boolean(
+                commodityFilter.trim() || identifierFilter.trim() || directionFilter !== "all"
+              )}
+              onResetFilters={() => {
+                setDirectionFilter("all");
+                setCommodityFilter("");
+                setIdentifierFilter("");
+              }}
+              locale={locale}
+            />
           ) : (
             <Table>
               <TableHeader>

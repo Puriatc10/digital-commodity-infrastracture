@@ -6,11 +6,16 @@ import type { components } from "@/lib/api/generated/schema";
 import { useAuth } from "@/lib/auth-context";
 import { getMessages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Loader2, RefreshCw, Scale, ShieldAlert } from "lucide-react";
+import { RefreshCw, Scale } from "lucide-react";
 import { DecisionRunCard } from "./decision-run-card";
 import { ComparisonTable } from "./comparison-table";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type RFQComparisonResponse = components["schemas"]["RFQComparisonResponse"];
 type DecisionRunDetailResponse = components["schemas"]["DecisionRunDetailResponse"];
@@ -194,40 +199,29 @@ export function RFQComparisonTab({
 
   // State: Loading Initial
   if (isLoadingComparison && !comparison) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground space-y-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium">{t.loading}</p>
-      </div>
-    );
+    return <LoadingState variant="section" message={t.loading} locale={locale} />;
   }
 
   // State: Access Denied / Unauthorized
   if (isUnauthorized) {
     return (
-      <Card className="border border-amber-500/30 bg-amber-500/5 p-6 text-center">
-        <CardContent className="space-y-3">
-          <ShieldAlert className="h-10 w-10 text-amber-600 mx-auto" />
-          <div className="text-sm font-semibold text-foreground">عدم دسترسی به مقایسه پیشنهادها</div>
-          <p className="text-xs text-muted-foreground max-w-md mx-auto">{t.unauthorized}</p>
-        </CardContent>
-      </Card>
+      <AccessDeniedState
+        statusCode={403}
+        title="عدم دسترسی به مقایسه پیشنهادها"
+        description={t.unauthorized}
+        locale={locale}
+      />
     );
   }
 
   // State: Error
   if (comparisonError && !comparison) {
     return (
-      <Card className="border border-destructive/30 bg-destructive/5 p-6 text-center">
-        <CardContent className="space-y-3">
-          <AlertTriangle className="h-8 w-8 text-destructive mx-auto" />
-          <div className="text-sm font-semibold text-destructive">{comparisonError}</div>
-          <Button variant="outline" onClick={triggerRefresh} className="text-xs min-h-8 gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
-            {t.refresh}
-          </Button>
-        </CardContent>
-      </Card>
+      <ErrorState
+        errorMessage={comparisonError}
+        onRetry={triggerRefresh}
+        locale={locale}
+      />
     );
   }
 
@@ -276,13 +270,12 @@ export function RFQComparisonTab({
 
       {/* Comparison Universe Content */}
       {items.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground space-y-2">
-            <Scale className="h-10 w-10 text-muted-foreground/40 mb-1" />
-            <h4 className="text-sm font-semibold text-foreground">{t.noOffersTitle}</h4>
-            <p className="max-w-md text-xs leading-relaxed">{t.noOffersDesc}</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Scale className="h-10 w-10 text-muted-foreground/40" />}
+          title={t.noOffersTitle}
+          description={t.noOffersDesc}
+          locale={locale}
+        />
       ) : (
         <ComparisonTable
           rows={items}

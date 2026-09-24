@@ -9,8 +9,14 @@ import type { EnabledLocale } from "@/i18n/config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, History, Loader2, MessageSquare, RefreshCw, ShieldAlert } from "lucide-react";
+import { History, MessageSquare, RefreshCw } from "lucide-react";
 import { NegotiationHistoryModal } from "./negotiation-history-modal";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type ComparisonRow = components["schemas"]["ComparisonRow"];
 type RFQComparisonResponse = components["schemas"]["RFQComparisonResponse"];
@@ -159,55 +165,36 @@ export function RFQNegotiationTab({
 
       {/* Unauthorized State */}
       {isUnauthorized && (
-        <Card className="border-rose-500/30 bg-rose-500/5">
-          <CardContent className="p-8 text-center space-y-3">
-            <ShieldAlert className="h-10 w-10 text-rose-600 mx-auto" />
-            <h3 className="font-semibold text-rose-900 dark:text-rose-200">
-              {t.negotiationHistory.tab.unauthorizedTitle}
-            </h3>
-            <p className="text-xs text-rose-700 dark:text-rose-300 max-w-md mx-auto">
-              {t.negotiationHistory.tab.unauthorizedDescription}
-            </p>
-          </CardContent>
-        </Card>
+        <AccessDeniedState
+          statusCode={403}
+          title={t.negotiationHistory.tab.unauthorizedTitle}
+          description={t.negotiationHistory.tab.unauthorizedDescription}
+          locale={locale}
+        />
       )}
 
       {/* Loading State */}
       {isLoading && !comparison && (
-        <Card>
-          <CardContent className="p-12 flex flex-col items-center justify-center space-y-3 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="text-xs">{t.negotiationHistory.tab.loading}</span>
-          </CardContent>
-        </Card>
+        <LoadingState variant="section" message={t.negotiationHistory.tab.loading} locale={locale} />
       )}
 
       {/* Error State */}
       {errorMessage && !isLoading && (
-        <Card className="border-rose-500/30 bg-rose-500/5">
-          <CardContent className="p-6 flex items-start gap-3 text-rose-800 dark:text-rose-200 text-xs">
-            <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">{t.negotiationHistory.tab.errorLoading}</p>
-              <p className="mt-1">{errorMessage}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <ErrorState
+          errorMessage={errorMessage}
+          onRetry={triggerRefresh}
+          locale={locale}
+        />
       )}
 
       {/* Empty State */}
       {!isLoading && !isUnauthorized && !errorMessage && rows.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="p-12 text-center space-y-3 text-muted-foreground">
-            <History className="h-10 w-10 mx-auto text-muted-foreground/50" />
-            <h3 className="font-medium text-sm text-foreground">
-              {t.negotiationHistory.tab.emptyTitle}
-            </h3>
-            <p className="text-xs max-w-md mx-auto">
-              {t.negotiationHistory.tab.emptyDescription}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<History className="h-10 w-10 text-muted-foreground/50" />}
+          title={t.negotiationHistory.tab.emptyTitle}
+          description={t.negotiationHistory.tab.emptyDescription}
+          locale={locale}
+        />
       )}
 
       {/* Offers List */}

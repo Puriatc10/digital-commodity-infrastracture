@@ -23,10 +23,16 @@ import {
 import Link from "next/link";
 import { VerificationBadge } from "@/components/verification-badge";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2, RefreshCw, ShieldAlert } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { components } from "@/lib/api/generated/schema";
 import { getMessages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type VerificationQueueItem = components["schemas"]["VerificationQueue"];
 
@@ -72,23 +78,21 @@ export function VerificationQueueClient({ locale }: { locale: string }) {
 
   if (authState.status === "loading") {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <LoadingState
+        message={messages.states.loading.default}
+        locale={locale as EnabledLocale}
+      />
     );
   }
 
   if (!isOperatorOrAdmin) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h2 className="text-lg font-semibold text-destructive">{t.unauthorizedTitle}</h2>
-          <p className="text-sm text-muted-foreground">
-            {t.unauthorizedDesc}
-          </p>
-        </div>
-      </Card>
+      <AccessDeniedState
+        statusCode={authState.status === "unauthenticated" ? 401 : 403}
+        title={t.unauthorizedTitle}
+        description={t.unauthorizedDesc}
+        locale={locale as EnabledLocale}
+      />
     );
   }
 
@@ -130,17 +134,20 @@ export function VerificationQueueClient({ locale }: { locale: string }) {
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <LoadingState variant="section" locale={locale as EnabledLocale} />
           ) : isError ? (
-            <div className="rounded-md border border-destructive/20 bg-destructive/10 p-4 text-center text-sm text-destructive">
-              {t.table.error}
-            </div>
+            <ErrorState
+              errorMessage={t.table.error}
+              onRetry={() => void refetch()}
+              locale={locale as EnabledLocale}
+            />
           ) : !data || data.length === 0 ? (
-            <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-              {t.table.empty}
-            </div>
+            <EmptyState
+              title={t.table.empty}
+              isFilterEmpty={filterMode !== "all" && filterMode !== "pending"}
+              onResetFilters={() => setFilterMode("pending")}
+              locale={locale as EnabledLocale}
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>

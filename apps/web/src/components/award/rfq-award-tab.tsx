@@ -32,6 +32,11 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import {
+  LoadingState,
+  EmptyState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type AwardDetailResponse = components["schemas"]["AwardDetailResponse"];
 type AwardAllocationResponse = components["schemas"]["AwardAllocationResponse"];
@@ -353,53 +358,46 @@ export function RFQAwardTab({
 
   if (isUnauthorized) {
     return (
-      <Card className="border-destructive/40 bg-destructive/5">
-        <CardContent className="p-8 text-center text-destructive">
-          <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-destructive" />
-          <p className="font-bold">{messages.rfqWorkspace.unauthorizedTitle}</p>
-          <p className="text-xs text-muted-foreground mt-1">{t.unauthorized}</p>
-        </CardContent>
-      </Card>
+      <AccessDeniedState
+        statusCode={403}
+        title={messages.rfqWorkspace.unauthorizedTitle}
+        description={t.unauthorized}
+        locale={locale}
+      />
     );
   }
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span>{messages.rfqWorkspace.loadingRfq}</span>
-        </div>
-      </div>
+      <LoadingState
+        variant="section"
+        message={messages.rfqWorkspace.loadingRfq}
+        locale={locale}
+      />
     );
   }
 
   // If no award exists yet
   if (awardNotFound || !award) {
     return (
-      <Card className="border-dashed">
-        <CardHeader className="text-center pb-2">
-          <CardTitle className="text-base font-semibold flex items-center justify-center gap-2">
-            <Award className="h-5 w-5 text-primary" />
-            {t.title}
-          </CardTitle>
-          <CardDescription className="text-xs">{t.description}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
-          <Award className="h-12 w-12 text-muted-foreground/40" />
-          <p className="max-w-md text-sm text-muted-foreground">
-            {canManageAward
-              ? "هنوز هیچ پیش‌نویس واگذاری برای این استعلام ایجاد نشده است. می‌توانید با ایجاد پیش‌نویس واگذاری، پیشنهادهای موردنظر خود را تخصیص دهید."
-              : "هنوز تصمیمی برای واگذاری این استعلام ثبت نشده است."}
-          </p>
-          {canManageAward && rfqStatus === "published" && (
-            <Button onClick={() => void handleInitializeAward()} className="gap-2">
-              <Plus className="h-4 w-4" />
-              {t.initializeAward}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={<Award className="h-10 w-10 text-muted-foreground/40" />}
+        title={t.title}
+        description={
+          canManageAward
+            ? "هنوز هیچ پیش‌نویس واگذاری برای این استعلام ایجاد نشده است. می‌توانید با ایجاد پیش‌نویس واگذاری، پیشنهادهای موردنظر خود را تخصیص دهید."
+            : "هنوز تصمیمی برای واگذاری این استعلام ثبت نشده است."
+        }
+        action={
+          canManageAward && rfqStatus === "published"
+            ? {
+                label: t.initializeAward,
+                onClick: () => void handleInitializeAward(),
+              }
+            : undefined
+        }
+        locale={locale}
+      />
     );
   }
 

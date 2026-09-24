@@ -15,13 +15,19 @@ import {
   XCircle,
   AlertTriangle,
   FileText,
-  ShieldAlert,
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
 import type { components } from "@/lib/api/generated/schema";
 import { getMessages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  NotFoundState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type InternalVerificationDetail =
   components["schemas"]["InternalOrganizationVerificationDetail"];
@@ -70,15 +76,18 @@ export function VerificationCaseDetailClient({
     data: verificationData,
     isLoading: isVerLoading,
     isError: isVerError,
+    error: verError,
     refetch: refetchVerification,
-  } = useQuery<InternalVerificationDetail>({
+  } = useQuery<InternalVerificationDetail, Error & { status?: number }>({
     queryKey: ["verificationCase", organizationId],
     queryFn: async () => {
       const response = await client.GET("/api/organizations/{org_id}/verification/", {
         params: { path: { org_id: organizationId } },
       });
       if (response.error || (response.response && !response.response.ok) || !response.data) {
-        throw new Error("Failed to load verification case");
+        const error = new Error("Failed to load verification case") as Error & { status?: number };
+        error.status = response.response?.status;
+        throw error;
       }
       return response.data as InternalVerificationDetail;
     },
@@ -319,39 +328,44 @@ export function VerificationCaseDetailClient({
 
   if (authState.status === "loading" || isVerLoading) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="sr-only">{t.loadingSr}</span>
-      </div>
+      <LoadingState
+        message={t.loadingSr || messages.states.loading.default}
+        locale={locale as EnabledLocale}
+      />
     );
   }
 
   if (!isOperatorOrAdmin) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h2 className="text-lg font-semibold text-destructive">{t.unauthorizedTitle}</h2>
-          <span className="sr-only">{t.unauthorizedSr}</span>
-          <p className="text-sm text-muted-foreground">
-            {t.unauthorizedDesc}
-          </p>
-        </div>
-      </Card>
+      <AccessDeniedState
+        statusCode={authState.status === "unauthenticated" ? 401 : 403}
+        title={t.unauthorizedTitle}
+        description={t.unauthorizedDesc}
+        backHref={`/${locale}/operator/verification`}
+        locale={locale as EnabledLocale}
+      />
+    );
+  }
+
+  const verErrorStatus = (verError as { status?: number })?.status;
+  if (verErrorStatus === 404) {
+    return (
+      <NotFoundState
+        backHref={`/${locale}/operator/verification`}
+        locale={locale as EnabledLocale}
+      />
     );
   }
 
   if (isVerError || !verificationData) {
     return (
-      <Card className="p-8 text-center">
-        <p className="text-destructive font-medium">
-          {t.loadError}
-          <span className="sr-only">{t.errorSr}</span>
-        </p>
-        <Button onClick={() => refetchVerification()} variant="outline" className="mt-4">
-          {t.retry}
-        </Button>
-      </Card>
+      <ErrorState
+        errorMessage={t.loadError}
+        srError={t.errorSr}
+        onRetry={() => void refetchVerification()}
+        backHref={`/${locale}/operator/verification`}
+        locale={locale as EnabledLocale}
+      />
     );
   }
 
@@ -505,13 +519,13 @@ export function VerificationCaseDetailClient({
         </CardHeader>
         <CardContent>
           {isDocsLoading ? (
-            <div className="flex items-center justify-center p-6">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
+            <LoadingState variant="section" locale={locale as EnabledLocale} />
           ) : !documentsData || documentsData.length === 0 ? (
-            <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              {t.documents.empty}
-            </div>
+            <EmptyState
+              title={t.documents.empty}
+              variant="card"
+              locale={locale as EnabledLocale}
+            />
           ) : (
             <ul className="divide-y divide-border">
               {documentsData.map((doc) => {

@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/table";
 import {
   AlertTriangle,
-  ArrowLeft,
   Award,
   CheckCircle2,
   Clock,
@@ -48,6 +47,13 @@ import { RFQMatchingTab } from "@/components/matching/rfq-matching-tab";
 import { RFQComparisonTab } from "@/components/comparison/rfq-comparison-tab";
 import { RFQNegotiationTab } from "@/components/negotiation/rfq-negotiation-tab";
 import { RFQAwardTab } from "@/components/award/rfq-award-tab";
+import {
+  LoadingState,
+  NotFoundState,
+  AccessDeniedState,
+  ErrorState,
+  EmptyState,
+} from "@/components/states";
 
 type RFQBuilderResponse = components["schemas"]["RFQBuilderResponse"];
 type RFQPublicResponse = components["schemas"]["RFQPublicResponse"];
@@ -97,6 +103,8 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
   const [isLoadingInvitations, setIsLoadingInvitations] = useState<boolean>(false);
   const [isLoadingActivity, setIsLoadingActivity] = useState<boolean>(false);
   const [isNotFound, setIsNotFound] = useState<boolean>(false);
+  const [unauthorizedStatus, setUnauthorizedStatus] = useState<401 | 403 | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Lifecycle Action States
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
@@ -163,6 +171,9 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
       setStaleConflict(false);
       setActionError(null);
       setActionSuccess(null);
+      setUnauthorizedStatus(null);
+      setLoadError(null);
+      setIsNotFound(false);
       setActiveTab("overview");
     }
     if (currentOrgId) {
@@ -182,6 +193,11 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
   useEffect(() => {
     let ignore = false;
     async function fetchRfq() {
+      setIsLoadingRfq(true);
+      setLoadError(null);
+      setUnauthorizedStatus(null);
+      setIsNotFound(false);
+
       try {
         const { data, response } = await apiClient.GET("/api/trade-hub/rfqs/{rfq_id}/", {
           params: { path: { rfq_id: rfqId } },
@@ -192,13 +208,25 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
           setRfq(null);
           return;
         }
+        if (response.status === 401 || response.status === 403) {
+          setUnauthorizedStatus(response.status as 401 | 403);
+          setRfq(null);
+          return;
+        }
         if (response.ok && data) {
           setRfq(data);
           setIsNotFound(false);
+        } else {
+          setLoadError(
+            response.status >= 500
+              ? messages.states.error.serverError
+              : messages.states.error.defaultDescription
+          );
+          setRfq(null);
         }
       } catch {
         if (!ignore) {
-          setIsNotFound(true);
+          setLoadError(messages.states.error.networkError);
           setRfq(null);
         }
       } finally {
@@ -211,7 +239,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
     return () => {
       ignore = true;
     };
-  }, [rfqId, currentOrgId, refreshTrigger]);
+  }, [rfqId, currentOrgId, refreshTrigger, messages.states.error]);
 
   // 2. Exact Historical Schema Fetch
   const schemaVersionId = rfq?.schema_version_id;
@@ -476,32 +504,46 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
     }
   };
 
-  // 404 / Hidden RFQ Guard
-  if (isNotFound) {
+  // Loading Screen
+  if (isLoadingRfq) {
+    return <LoadingState message={t.loadingRfq} locale={locale} />;
+  }
+
+  // 401 / 403 Access Denied Guard
+  if (unauthorizedStatus) {
     return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center" dir={isRtl ? "rtl" : "ltr"}>
-        <div className="rounded-full bg-destructive/10 p-4">
-          <XCircle className="h-10 w-10 text-destructive" />
-        </div>
-        <h2 className="text-xl font-bold">{t.rfqNotFoundTitle}</h2>
-        <p className="max-w-md text-sm text-muted-foreground">{t.rfqNotFoundDescription}</p>
-        <Button variant="outline" onClick={() => router.push(`/${locale}/trade-hub`)}>
-          <ArrowLeft className="me-2 h-4 w-4 rtl:rotate-180" />
-          {t.backToHub}
-        </Button>
-      </div>
+      <AccessDeniedState
+        statusCode={unauthorizedStatus}
+        backHref={`/${locale}/trade-hub`}
+        backLabel={t.backToHub}
+        locale={locale}
+      />
     );
   }
 
-  // Loading Screen
-  if (isLoadingRfq || !rfq) {
+  // 404 / Hidden RFQ Guard
+  if (isNotFound) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center" dir={isRtl ? "rtl" : "ltr"}>
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span>{t.loadingRfq}</span>
-        </div>
-      </div>
+      <NotFoundState
+        title={t.rfqNotFoundTitle}
+        description={t.rfqNotFoundDescription}
+        backHref={`/${locale}/trade-hub`}
+        backLabel={t.backToHub}
+        locale={locale}
+      />
+    );
+  }
+
+  // Server / Network Error Guard
+  if (loadError || !rfq) {
+    return (
+      <ErrorState
+        errorMessage={loadError ?? undefined}
+        onRetry={triggerRefresh}
+        backHref={`/${locale}/trade-hub`}
+        backLabel={t.backToHub}
+        locale={locale}
+      />
     );
   }
 
@@ -1023,13 +1065,21 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
               </CardHeader>
               <CardContent className="pt-4">
                 {isLoadingInvitations ? (
-                  <div className="flex items-center justify-center p-8 text-muted-foreground">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
+                  <LoadingState variant="section" locale={locale} />
                 ) : invitations.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-muted-foreground">
-                    {t.participants.noParticipants}
-                  </div>
+                  <EmptyState
+                    icon={<Users className="h-8 w-8 text-muted-foreground/60" />}
+                    title={t.participants.noParticipants}
+                    action={
+                      rfq.status !== "closed" && rfq.status !== "cancelled"
+                        ? {
+                            label: t.participants.inviteMore,
+                            onClick: () => setShowInviteModal(true),
+                          }
+                        : undefined
+                    }
+                    locale={locale}
+                  />
                 ) : (
                   <Table>
                     <TableHeader>
@@ -1179,13 +1229,14 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
           </CardHeader>
           <CardContent className="pt-6">
             {isLoadingActivity ? (
-              <div className="flex items-center justify-center p-8 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
+              <LoadingState variant="section" locale={locale} />
             ) : activity.length === 0 ? (
-              <div className="p-8 text-center text-sm text-muted-foreground">
-                {t.activity.noActivity}
-              </div>
+              <EmptyState
+                icon={<History className="h-8 w-8 text-muted-foreground/60" />}
+                title={t.activity.title}
+                description={t.activity.noActivity}
+                locale={locale}
+              />
             ) : (
               <div className="relative border-s border-border ps-4 space-y-6">
                 {activity.map((item) => {
@@ -1289,13 +1340,12 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
             onInvitationCreated={triggerRefresh}
           />
         ) : (
-          <Card className="border-destructive/40 bg-destructive/5">
-            <CardContent className="p-8 text-center text-destructive">
-              <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-destructive" />
-              <p className="font-bold">{t.unauthorizedTitle}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t.unauthorizedDescription}</p>
-            </CardContent>
-          </Card>
+          <AccessDeniedState
+            statusCode={403}
+            title={t.unauthorizedTitle}
+            description={t.unauthorizedDescription}
+            locale={locale}
+          />
         )
       )}
 

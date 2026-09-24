@@ -16,10 +16,15 @@ import {
   AlertTriangle,
   Edit,
   Loader2,
-  Package,
   RefreshCw,
   XCircle,
 } from "lucide-react";
+import {
+  LoadingState,
+  NotFoundState,
+  AccessDeniedState,
+  ErrorState,
+} from "@/components/states";
 
 type SupplyListingSupplierResponse = components["schemas"]["SupplyListingSupplierResponse"];
 type SupplyListingPublicResponse = components["schemas"]["SupplyListingPublicResponse"];
@@ -51,6 +56,8 @@ export function SupplyListingDetailClient({
   const [isLoadingListing, setIsLoadingListing] = useState<boolean>(true);
   const [isLoadingSchema, setIsLoadingSchema] = useState<boolean>(false);
   const [isNotFound, setIsNotFound] = useState<boolean>(false);
+  const [unauthorizedStatus, setUnauthorizedStatus] = useState<401 | 403 | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Lifecycle Action States
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
@@ -80,6 +87,8 @@ export function SupplyListingDetailClient({
       setSchema(null);
       setStaleConflict(false);
       setActionError(null);
+      setUnauthorizedStatus(null);
+      setLoadError(null);
     }
     if (currentOrgId) {
       previousOrgIdRef.current = currentOrgId;
@@ -100,6 +109,8 @@ export function SupplyListingDetailClient({
     async function fetchListing() {
       setIsLoadingListing(true);
       setIsNotFound(false);
+      setUnauthorizedStatus(null);
+      setLoadError(null);
       try {
         const { data, response } = await apiClient.GET(
           "/api/trade-hub/supply-listings/{listing_id}/",
@@ -108,6 +119,11 @@ export function SupplyListingDetailClient({
           }
         );
         if (ignore) return;
+        if (response.status === 401 || response.status === 403) {
+          setUnauthorizedStatus(response.status as 401 | 403);
+          setListing(null);
+          return;
+        }
         if (response.status === 404) {
           setIsNotFound(true);
           setListing(null);
@@ -116,10 +132,13 @@ export function SupplyListingDetailClient({
         if (response.ok && data) {
           setListing(data);
           setIsNotFound(false);
+        } else {
+          setLoadError(messages.states.error.defaultDescription);
+          setListing(null);
         }
       } catch {
         if (!ignore) {
-          setIsNotFound(true);
+          setLoadError(messages.states.error.networkError);
           setListing(null);
         }
       } finally {
@@ -132,7 +151,13 @@ export function SupplyListingDetailClient({
     return () => {
       ignore = true;
     };
-  }, [listingId, currentOrgId, refreshTrigger]);
+  }, [
+    listingId,
+    currentOrgId,
+    refreshTrigger,
+    messages.states.error.defaultDescription,
+    messages.states.error.networkError,
+  ]);
 
   // 2. Fetch Exact Historical Schema (Exact Schema Binding)
   const schemaVersionId = listing?.schema_version_id;
@@ -212,34 +237,46 @@ export function SupplyListingDetailClient({
   // Loading Screen
   if (isLoadingListing) {
     return (
-      <div className="flex h-96 flex-col items-center justify-center gap-4 text-muted-foreground" dir={isRtl ? "rtl" : "ltr"}>
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm font-medium">{t.loadingListing}</p>
-      </div>
+      <LoadingState
+        message={t.loadingListing}
+        locale={locale}
+      />
+    );
+  }
+
+  // Access Denied Screen (401 / 403)
+  if (unauthorizedStatus) {
+    return (
+      <AccessDeniedState
+        statusCode={unauthorizedStatus}
+        backHref={`/${locale}/trade-hub`}
+        locale={locale}
+      />
     );
   }
 
   // Not Found / Safe 404 Screen (covers hidden listings as well)
-  if (isNotFound || !listing) {
+  if (isNotFound) {
     return (
-      <div className="mx-auto my-12 max-w-lg" dir={isRtl ? "rtl" : "ltr"}>
-        <Card className="border-border text-center shadow-md">
-          <CardHeader>
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <Package className="h-6 w-6" />
-            </div>
-            <CardTitle className="text-xl">{t.listingNotFoundTitle}</CardTitle>
-            <CardDescription className="mt-2 text-muted-foreground">
-              {t.listingNotFoundDescription}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex justify-center pb-6">
-            <Button variant="outline" onClick={() => router.push(`/${locale}/trade-hub`)}>
-              {t.backToHub}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <NotFoundState
+        title={t.listingNotFoundTitle}
+        description={t.listingNotFoundDescription}
+        backHref={`/${locale}/trade-hub`}
+        backLabel={t.backToHub}
+        locale={locale}
+      />
+    );
+  }
+
+  // Error / Safe fallback
+  if (loadError || !listing) {
+    return (
+      <ErrorState
+        errorMessage={loadError || messages.states.error.defaultDescription}
+        onRetry={triggerRefresh}
+        backHref={`/${locale}/trade-hub`}
+        locale={locale}
+      />
     );
   }
 
