@@ -18,6 +18,10 @@ EVENT_TYPE_PRIORITY: Dict[str, int] = {
     TimelineEventType.INSPECTION_COMPLETED: 32,
     TimelineEventType.INSPECTION_CANCELLED: 33,
     TimelineEventType.MILESTONE_BLOCKED: 35,
+    TimelineEventType.ISSUE_OPENED: 36,
+    TimelineEventType.ISSUE_STARTED: 37,
+    TimelineEventType.ISSUE_RESOLVED: 38,
+    TimelineEventType.ISSUE_CANCELLED: 39,
     TimelineEventType.MILESTONE_SKIPPED: 40,
     TimelineEventType.EXECUTION_CLOSED: 50,
 }
@@ -294,11 +298,11 @@ def project_execution_timeline(
                 },
             })
 
-    # 5. Execution Document domain facts (Epic 10 Contract §60–§64, T1007)
+    # 5. Execution Document domain facts (Epic 10 Contract §60–§64, T1007, T1008)
     from execution.models.document import ExecutionDocument
 
     documents = list(
-        ExecutionDocument.objects.select_related("uploaded_by", "milestone__definition", "inspection")
+        ExecutionDocument.objects.select_related("uploaded_by", "milestone__definition", "inspection", "issue")
         .filter(execution=execution)
         .order_by("uploaded_at", "id")
     )
@@ -329,10 +333,116 @@ def project_execution_timeline(
                 "size_bytes": doc.size_bytes,
                 "milestone_id": str(doc.milestone_id) if doc.milestone_id else None,
                 "inspection_id": str(doc.inspection_id) if doc.inspection_id else None,
+                "issue_id": str(doc.issue_id) if doc.issue_id else None,
             },
         })
 
-    # 6. Execution closed event
+    # 6. Execution Issue domain facts (Epic 10 Contract §32, §65–§74, T1008)
+    from execution.enums import IssueStatus
+    from execution.models.issue import ExecutionIssue
+
+    issues = list(
+        ExecutionIssue.objects.select_related("opened_by", "resolved_by")
+        .filter(execution=execution)
+        .order_by("opened_at", "id")
+    )
+
+    for issue in issues:
+        opened_actor_id = str(issue.opened_by.id) if issue.opened_by else None
+        opened_actor_email = getattr(issue.opened_by, "email", None) if issue.opened_by else None
+
+        # Always project ISSUE_OPENED
+        events.append({
+            "event_id": f"issue-{issue.id}-opened",
+            "event_type": TimelineEventType.ISSUE_OPENED,
+            "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.ISSUE_OPENED],
+            "event_at": issue.opened_at,
+            "recorded_at": issue.created_at,
+            "actor_id": opened_actor_id,
+            "actor_email": opened_actor_email,
+            "milestone_code": None,
+            "milestone_name_fa": None,
+            "milestone_name_en": None,
+            "notes": issue.title,
+            "metadata": {
+                "issue_id": str(issue.id),
+                "type": issue.type,
+                "status": issue.status,
+                "severity": issue.severity,
+                "blocks_execution": issue.blocks_execution,
+                "description": issue.description,
+            },
+        })
+
+        if issue.status == IssueStatus.IN_PROGRESS:
+            events.append({
+                "event_id": f"issue-{issue.id}-started",
+                "event_type": TimelineEventType.ISSUE_STARTED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.ISSUE_STARTED],
+                "event_at": issue.updated_at,
+                "recorded_at": issue.updated_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": None,
+                "milestone_name_fa": None,
+                "milestone_name_en": None,
+                "notes": f"Investigation started: {issue.title}",
+                "metadata": {
+                    "issue_id": str(issue.id),
+                    "type": issue.type,
+                    "status": issue.status,
+                    "severity": issue.severity,
+                    "blocks_execution": issue.blocks_execution,
+                },
+            })
+        elif issue.status == IssueStatus.RESOLVED:
+            resolved_actor_id = str(issue.resolved_by.id) if issue.resolved_by else None
+            resolved_actor_email = getattr(issue.resolved_by, "email", None) if issue.resolved_by else None
+            events.append({
+                "event_id": f"issue-{issue.id}-resolved",
+                "event_type": TimelineEventType.ISSUE_RESOLVED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.ISSUE_RESOLVED],
+                "event_at": issue.resolved_at or issue.updated_at,
+                "recorded_at": issue.updated_at,
+                "actor_id": resolved_actor_id,
+                "actor_email": resolved_actor_email,
+                "milestone_code": None,
+                "milestone_name_fa": None,
+                "milestone_name_en": None,
+                "notes": issue.resolution_notes or f"Resolved: {issue.title}",
+                "metadata": {
+                    "issue_id": str(issue.id),
+                    "type": issue.type,
+                    "status": issue.status,
+                    "severity": issue.severity,
+                    "blocks_execution": issue.blocks_execution,
+                    "resolved_at": issue.resolved_at.isoformat() if issue.resolved_at else None,
+                    "resolution_notes": issue.resolution_notes,
+                },
+            })
+        elif issue.status == IssueStatus.CANCELLED:
+            events.append({
+                "event_id": f"issue-{issue.id}-cancelled",
+                "event_type": TimelineEventType.ISSUE_CANCELLED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.ISSUE_CANCELLED],
+                "event_at": issue.updated_at,
+                "recorded_at": issue.updated_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": None,
+                "milestone_name_fa": None,
+                "milestone_name_en": None,
+                "notes": f"Cancelled: {issue.title}",
+                "metadata": {
+                    "issue_id": str(issue.id),
+                    "type": issue.type,
+                    "status": issue.status,
+                    "severity": issue.severity,
+                    "blocks_execution": issue.blocks_execution,
+                },
+            })
+
+    # 7. Execution closed event
     if execution.status == ExecutionStatus.CLOSED:
 
         events.append({

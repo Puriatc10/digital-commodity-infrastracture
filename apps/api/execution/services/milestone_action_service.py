@@ -273,8 +273,20 @@ def complete_milestone(
     milestone.version += 1
     milestone.save()
 
-    # Terminal close side-effect (Epic 10 Contract §31)
+    # Terminal close side-effect (Epic 10 Contract §31, §71, T1008)
     if milestone.definition.terminal:
+        from execution.exceptions import ExecutionClosingBlockedError
+        from execution.services.issue_service import get_active_blocking_issues
+
+        active_blockers = list(get_active_blocking_issues(execution.id))
+        if active_blockers:
+            blocker_ids = [str(b.id) for b in active_blockers]
+            raise ExecutionClosingBlockedError(
+                message=f"Cannot close execution '{execution.id}': active blocking issue(s) exist ({', '.join(blocker_ids)}).",
+                code="BLOCKING_ISSUE_OPEN",
+                context={"blocking_issue_ids": blocker_ids},
+            )
+
         execution.status = ExecutionStatus.CLOSED
         execution.closed_at = completion_time
         execution.version += 1

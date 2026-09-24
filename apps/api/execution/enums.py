@@ -74,6 +74,10 @@ class TimelineEventType(models.TextChoices):
     PAYMENT_REPORTED = "PAYMENT_REPORTED", "Payment Reported"
     PAYMENT_CONFIRMED = "PAYMENT_CONFIRMED", "Payment Confirmed"
     DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED", "Document Uploaded"
+    ISSUE_OPENED = "ISSUE_OPENED", "Issue Opened"
+    ISSUE_STARTED = "ISSUE_STARTED", "Issue Started"
+    ISSUE_RESOLVED = "ISSUE_RESOLVED", "Issue Resolved"
+    ISSUE_CANCELLED = "ISSUE_CANCELLED", "Issue Cancelled"
     EXECUTION_CLOSED = "EXECUTION_CLOSED", "Execution Closed"
 
 
@@ -174,5 +178,66 @@ class TransportMode(models.TextChoices):
     AIR = "AIR", "Air"
     MULTIMODAL = "MULTIMODAL", "Multimodal"
     OTHER = "OTHER", "Other"
+
+
+class IssueType(models.TextChoices):
+    """
+    Authoritative types for Execution Issues (Epic 10 Contract §66, T1008).
+
+    Exact types:
+    - QUALITY: Product specification or quality non-conformance.
+    - QUANTITY: Measured loading or delivery quantity discrepancies.
+    - LOGISTICS: Transport delays, carrier, route, or scheduling problems.
+    - PAYMENT: Payment receipt, confirmation, or timing issues.
+    - DOCUMENT: Missing, incorrect, or rejected evidence/documentation.
+    - CONTRACT: Commercial dispute or legal/contractual discrepancies.
+    - OTHER: Miscellaneous operational issues.
+    """
+
+    QUALITY = "QUALITY", "Quality"
+    QUANTITY = "QUANTITY", "Quantity"
+    LOGISTICS = "LOGISTICS", "Logistics"
+    PAYMENT = "PAYMENT", "Payment"
+    DOCUMENT = "DOCUMENT", "Document"
+    CONTRACT = "CONTRACT", "Contract"
+    OTHER = "OTHER", "Other"
+
+
+class IssueStatus(models.TextChoices):
+    """
+    Authoritative lifecycle status of an ExecutionIssue instance (Epic 10 Contract §67, T1008).
+
+    Exact statuses:
+    - OPEN: Newly raised issue awaiting resolution.
+    - IN_PROGRESS: Issue being actively investigated or addressed.
+    - RESOLVED: Issue satisfactorily addressed; terminal state with resolution metadata.
+    - CANCELLED: Issue withdrawn or invalidated; terminal state.
+    """
+
+    OPEN = "OPEN", "Open"
+    IN_PROGRESS = "IN_PROGRESS", "In Progress"
+    RESOLVED = "RESOLVED", "Resolved"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class IssueSeverity(models.TextChoices):
+    """
+    Optional severity level for an ExecutionIssue (Epic 10 Contract §68, T1008).
+
+    Exact severities:
+    - LOW: Minor informational variance or low impact.
+    - MEDIUM: Moderate impact requiring operational attention.
+    - HIGH: Severe operational impediment.
+    - CRITICAL: Urgent critical issue.
+
+    Invariants:
+    - Severity does NOT infer blocks_execution.
+    - Blocking is determined strictly by the explicit blocks_execution boolean flag.
+    """
+
+    LOW = "LOW", "Low"
+    MEDIUM = "MEDIUM", "Medium"
+    HIGH = "HIGH", "High"
+    CRITICAL = "CRITICAL", "Critical"
 
 
