@@ -2,7 +2,7 @@ from decimal import Decimal
 import uuid
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
 from commodities.models import (
@@ -40,8 +40,8 @@ from trade_hub.models import RFQ, RFQStatus, RFQVisibility
 User = get_user_model()
 
 
-class BaseDealsTestCase(TestCase):
-    """Shared test foundation for Deal models, services, and API endpoints."""
+class BaseDealsTestMixin:
+    """Shared test foundation mixin for Deal models, services, and API endpoints."""
 
     def setUp(self):
         super().setUp()
@@ -407,3 +407,12 @@ class BaseDealsTestCase(TestCase):
         alloc2.refresh_from_db()
         alloc3.refresh_from_db()
         return finalized_award, [alloc1, alloc2, alloc3]
+
+
+class BaseDealsTestCase(BaseDealsTestMixin, TestCase):
+    """Shared test foundation for Deal models, services, and API endpoints."""
+
+
+class BaseDealsTransactionTestCase(BaseDealsTestMixin, TransactionTestCase):
+    """Shared test foundation for Deal tests requiring multi-threaded transactions."""
+

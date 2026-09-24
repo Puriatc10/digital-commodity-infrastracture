@@ -8,6 +8,18 @@ from deals.api.views import (
     DealPartiesSnapshotView,
     DealTermsSnapshotView,
 )
+from execution.api.views import (
+    DealExecutionCreateOrGetView,
+    DealExecutionDocumentListView,
+    DealExecutionDocumentUploadView,
+    DealExecutionInspectionView,
+    DealExecutionIssueDetailView,
+    DealExecutionIssueListView,
+    DealExecutionLogisticsView,
+    DealExecutionPaymentView,
+    DealMilestoneCompleteActionView,
+)
+
 
 app_name = "deals"
 
@@ -42,5 +54,52 @@ urlpatterns = [
         DealAttributionResolveView.as_view(),
         name="deal-attribution-resolve",
     ),
+    path(
+        "<uuid:deal_id>/execution/",
+        DealExecutionCreateOrGetView.as_view(),
+        name="deal-execution",
+    ),
+    path(
+        "<uuid:deal_id>/execution/logistics/",
+        DealExecutionLogisticsView.as_view(),
+        name="deal-execution-logistics",
+    ),
+    path(
+        "<uuid:deal_id>/execution/inspection/",
+        DealExecutionInspectionView.as_view(),
+        name="deal-execution-inspection",
+    ),
+    path(
+        "<uuid:deal_id>/execution/payment/",
+        DealExecutionPaymentView.as_view(),
+        name="deal-execution-payment",
+    ),
+    path(
+        "<uuid:deal_id>/execution/documents/",
+        DealExecutionDocumentListView.as_view(),
+        name="deal-execution-documents",
+    ),
+    path(
+        "<uuid:deal_id>/execution/documents/upload/",
+        DealExecutionDocumentUploadView.as_view(),
+        name="deal-execution-document-upload",
+    ),
+    path(
+        "<uuid:deal_id>/execution/issues/",
+        DealExecutionIssueListView.as_view(),
+        name="deal-execution-issues",
+    ),
+    path(
+        "<uuid:deal_id>/execution/issues/<uuid:issue_id>/",
+        DealExecutionIssueDetailView.as_view(),
+        name="deal-execution-issue-detail",
+    ),
+    path(
+        "<uuid:deal_id>/execution/milestones/<uuid:milestone_id>/complete/",
+        DealMilestoneCompleteActionView.as_view(),
+        name="deal-execution-milestone-complete",
+    ),
 ]
+
+
 

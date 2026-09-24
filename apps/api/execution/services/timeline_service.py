@@ -1,0 +1,468 @@
+from typing import Any, Dict, List, Union
+from uuid import UUID
+
+from execution.enums import ExecutionStatus, InspectionStatus, MilestoneStatus, TimelineEventType
+from execution.exceptions import ExecutionNotFoundError
+from execution.models.execution import Execution
+from execution.permissions import check_execution_read_access
+
+# Authoritative tie-breaker priorities (Epic 10 Contract §34, T1003, T1005)
+EVENT_TYPE_PRIORITY: Dict[str, int] = {
+    TimelineEventType.EXECUTION_CREATED: 10,
+    TimelineEventType.MILESTONE_STARTED: 20,
+    TimelineEventType.INSPECTION_SCHEDULED: 25,
+    TimelineEventType.PAYMENT_REPORTED: 26,
+    TimelineEventType.DOCUMENT_UPLOADED: 28,
+    TimelineEventType.MILESTONE_COMPLETED: 30,
+    TimelineEventType.PAYMENT_CONFIRMED: 31,
+    TimelineEventType.INSPECTION_COMPLETED: 32,
+    TimelineEventType.INSPECTION_CANCELLED: 33,
+    TimelineEventType.MILESTONE_BLOCKED: 35,
+    TimelineEventType.ISSUE_OPENED: 36,
+    TimelineEventType.ISSUE_STARTED: 37,
+    TimelineEventType.ISSUE_RESOLVED: 38,
+    TimelineEventType.ISSUE_CANCELLED: 39,
+    TimelineEventType.MILESTONE_SKIPPED: 40,
+    TimelineEventType.EXECUTION_CLOSED: 50,
+}
+
+
+
+def project_execution_timeline(
+    execution_or_id: Union[Execution, UUID, str],
+    *,
+    actor: Any = None,
+) -> List[Dict[str, Any]]:
+    """
+    Project deterministic execution timeline from underlying domain aggregate facts.
+
+    Invariants (Epic 10 Contract §32, §33, §34, T1003):
+    - Sources strictly domain facts from Execution aggregate and its ExecutionMilestone instances.
+    - Historical rendering uses definitions from the Execution's bound workflow template version.
+    - Deterministic ordering:
+        event_at ASC -> stable_type_priority ASC -> stable_id ASC.
+    - Timestamp ties are strictly and deterministically broken by type priority then ID.
+    - Read authorization is enforced for requesting actor.
+    """
+    if isinstance(execution_or_id, Execution):
+        execution = execution_or_id
+    else:
+        try:
+            execution = (
+                Execution.objects.select_related("deal__created_by", "workflow_template_version__template")
+                .prefetch_related("milestones__definition", "milestones__completed_by")
+                .get(pk=execution_or_id)
+            )
+        except Execution.DoesNotExist:
+            raise ExecutionNotFoundError(f"Execution '{execution_or_id}' does not exist.")
+
+    if actor is not None:
+        check_execution_read_access(actor, execution)
+
+    events: List[Dict[str, Any]] = []
+
+    # 1. Execution created event
+    created_actor_id = None
+    created_actor_email = None
+    if execution.deal and execution.deal.created_by:
+        created_actor_id = str(execution.deal.created_by.id)
+        created_actor_email = getattr(execution.deal.created_by, "email", None)
+
+    events.append({
+        "event_id": f"execution-{execution.id}-created",
+        "event_type": TimelineEventType.EXECUTION_CREATED,
+        "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.EXECUTION_CREATED],
+        "event_at": execution.started_at or execution.created_at,
+        "recorded_at": execution.created_at,
+        "actor_id": created_actor_id,
+        "actor_email": created_actor_email,
+        "milestone_code": None,
+        "milestone_name_fa": None,
+        "milestone_name_en": None,
+        "notes": "",
+        "metadata": {
+            "template_code": execution.workflow_template_version.template.code,
+            "template_name_fa": execution.workflow_template_version.template.name_fa,
+            "template_name_en": execution.workflow_template_version.template.name_en,
+            "workflow_version": execution.workflow_template_version.version_number,
+            "status": execution.status,
+        },
+    })
+
+    # 2. Milestone domain facts
+    milestones = list(
+        execution.milestones.select_related("definition", "completed_by").order_by("definition__sort_order")
+    )
+
+    for m in milestones:
+        defn = m.definition
+        m_actor_id = str(m.completed_by.id) if m.completed_by else None
+        m_actor_email = getattr(m.completed_by, "email", None) if m.completed_by else None
+
+        if m.status == MilestoneStatus.COMPLETED:
+            events.append({
+                "event_id": f"milestone-{m.id}-completed",
+                "event_type": TimelineEventType.MILESTONE_COMPLETED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.MILESTONE_COMPLETED],
+                "event_at": m.actual_at or m.recorded_at or m.updated_at,
+                "recorded_at": m.recorded_at or m.updated_at,
+                "actor_id": m_actor_id,
+                "actor_email": m_actor_email,
+                "milestone_code": defn.code,
+                "milestone_name_fa": defn.name_fa,
+                "milestone_name_en": defn.name_en,
+                "notes": m.notes,
+                "metadata": {
+                    "sort_order": defn.sort_order,
+                    "terminal": defn.terminal,
+                    "blocking": defn.blocking,
+                    "required": defn.required,
+                },
+            })
+        elif m.status == MilestoneStatus.IN_PROGRESS:
+            events.append({
+                "event_id": f"milestone-{m.id}-started",
+                "event_type": TimelineEventType.MILESTONE_STARTED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.MILESTONE_STARTED],
+                "event_at": m.updated_at,
+                "recorded_at": m.updated_at,
+                "actor_id": m_actor_id,
+                "actor_email": m_actor_email,
+                "milestone_code": defn.code,
+                "milestone_name_fa": defn.name_fa,
+                "milestone_name_en": defn.name_en,
+                "notes": m.notes,
+                "metadata": {
+                    "sort_order": defn.sort_order,
+                    "terminal": defn.terminal,
+                    "blocking": defn.blocking,
+                    "required": defn.required,
+                },
+            })
+        elif m.status == MilestoneStatus.BLOCKED:
+            events.append({
+                "event_id": f"milestone-{m.id}-blocked",
+                "event_type": TimelineEventType.MILESTONE_BLOCKED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.MILESTONE_BLOCKED],
+                "event_at": m.updated_at,
+                "recorded_at": m.updated_at,
+                "actor_id": m_actor_id,
+                "actor_email": m_actor_email,
+                "milestone_code": defn.code,
+                "milestone_name_fa": defn.name_fa,
+                "milestone_name_en": defn.name_en,
+                "notes": m.notes,
+                "metadata": {
+                    "sort_order": defn.sort_order,
+                },
+            })
+        elif m.status == MilestoneStatus.SKIPPED:
+            events.append({
+                "event_id": f"milestone-{m.id}-skipped",
+                "event_type": TimelineEventType.MILESTONE_SKIPPED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.MILESTONE_SKIPPED],
+                "event_at": m.updated_at,
+                "recorded_at": m.updated_at,
+                "actor_id": m_actor_id,
+                "actor_email": m_actor_email,
+                "milestone_code": defn.code,
+                "milestone_name_fa": defn.name_fa,
+                "milestone_name_en": defn.name_en,
+                "notes": m.notes,
+                "metadata": {
+                    "sort_order": defn.sort_order,
+                },
+            })
+
+    # 3. Quality & Inspection domain facts (Epic 10 Contract §32, §43, T1005)
+    from execution.models.inspection import ExecutionInspection
+    inspection = ExecutionInspection.objects.filter(execution=execution).first()
+
+
+    if inspection:
+        # If scheduled_at is set, project INSPECTION_SCHEDULED
+        if inspection.scheduled_at:
+            events.append({
+                "event_id": f"inspection-{inspection.id}-scheduled",
+                "event_type": TimelineEventType.INSPECTION_SCHEDULED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.INSPECTION_SCHEDULED],
+                "event_at": inspection.scheduled_at,
+                "recorded_at": inspection.created_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": "INSPECTION_COMPLETED",
+                "milestone_name_fa": "بازرسی تکمیل شد",
+                "milestone_name_en": "Inspection Completed",
+                "notes": inspection.notes,
+                "metadata": {
+                    "agency": inspection.agency,
+                    "scheduled_at": inspection.scheduled_at.isoformat() if inspection.scheduled_at else None,
+                    "status": inspection.status,
+                    "required": inspection.required,
+                },
+            })
+
+        # If completed, project INSPECTION_COMPLETED
+        if inspection.status == InspectionStatus.COMPLETED and inspection.inspection_at:
+            events.append({
+                "event_id": f"inspection-{inspection.id}-completed",
+                "event_type": TimelineEventType.INSPECTION_COMPLETED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.INSPECTION_COMPLETED],
+                "event_at": inspection.inspection_at,
+                "recorded_at": inspection.updated_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": "INSPECTION_COMPLETED",
+                "milestone_name_fa": "بازرسی تکمیل شد",
+                "milestone_name_en": "Inspection Completed",
+                "notes": inspection.notes,
+                "metadata": {
+                    "agency": inspection.agency,
+                    "inspection_at": inspection.inspection_at.isoformat() if inspection.inspection_at else None,
+                    "status": inspection.status,
+                    "result": inspection.result,
+                    "required": inspection.required,
+                },
+            })
+
+        # If cancelled, project INSPECTION_CANCELLED
+        elif inspection.status == InspectionStatus.CANCELLED:
+            events.append({
+                "event_id": f"inspection-{inspection.id}-cancelled",
+                "event_type": TimelineEventType.INSPECTION_CANCELLED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.INSPECTION_CANCELLED],
+                "event_at": inspection.updated_at,
+                "recorded_at": inspection.updated_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": "INSPECTION_COMPLETED",
+                "milestone_name_fa": "بازرسی تکمیل شد",
+                "milestone_name_en": "Inspection Completed",
+                "notes": inspection.notes,
+                "metadata": {
+                    "agency": inspection.agency,
+                    "status": inspection.status,
+                    "required": inspection.required,
+                },
+            })
+
+    # 4. Payment monitoring domain facts (Epic 10 Contract §54, §55, T1006)
+    from execution.models.payment import ExecutionPayment
+
+    payment = (
+        ExecutionPayment.objects.select_related("reported_by", "confirmed_by")
+        .filter(execution=execution)
+        .first()
+    )
+
+    if payment:
+        if payment.reported_at:
+            events.append({
+                "event_id": f"payment-{payment.id}-reported",
+                "event_type": TimelineEventType.PAYMENT_REPORTED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.PAYMENT_REPORTED],
+                "event_at": payment.reported_at,
+                "recorded_at": payment.reported_at,
+                "actor_id": str(payment.reported_by_id) if payment.reported_by_id else None,
+                "actor_email": payment.reported_by.email if payment.reported_by else None,
+                "milestone_code": "PAYMENT_REPORTED",
+                "milestone_name_fa": "پرداخت گزارش شد",
+                "milestone_name_en": "Payment Reported",
+                "notes": payment.notes,
+                "metadata": {
+                    "status": payment.status,
+                    "expected_amount": str(payment.expected_amount) if payment.expected_amount is not None else None,
+                    "currency": payment.currency,
+                    "reference": payment.reference,
+                },
+            })
+
+        if payment.confirmed_at:
+            events.append({
+                "event_id": f"payment-{payment.id}-confirmed",
+                "event_type": TimelineEventType.PAYMENT_CONFIRMED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.PAYMENT_CONFIRMED],
+                "event_at": payment.confirmed_at,
+                "recorded_at": payment.confirmed_at,
+                "actor_id": str(payment.confirmed_by_id) if payment.confirmed_by_id else None,
+                "actor_email": payment.confirmed_by.email if payment.confirmed_by else None,
+                "milestone_code": "PAYMENT_REPORTED",
+                "milestone_name_fa": "پرداخت تأیید شد",
+                "milestone_name_en": "Payment Confirmed",
+                "notes": payment.notes,
+                "metadata": {
+                    "status": payment.status,
+                    "expected_amount": str(payment.expected_amount) if payment.expected_amount is not None else None,
+                    "currency": payment.currency,
+                    "reference": payment.reference,
+                },
+            })
+
+    # 5. Execution Document domain facts (Epic 10 Contract §60–§64, T1007, T1008)
+    from execution.models.document import ExecutionDocument
+
+    documents = list(
+        ExecutionDocument.objects.select_related("uploaded_by", "milestone__definition", "inspection", "issue")
+        .filter(execution=execution)
+        .order_by("uploaded_at", "id")
+    )
+
+    for doc in documents:
+        doc_actor_id = str(doc.uploaded_by.id) if doc.uploaded_by else None
+        doc_actor_email = getattr(doc.uploaded_by, "email", None) if doc.uploaded_by else None
+        m_code = doc.milestone.definition.code if doc.milestone else None
+        m_name_fa = doc.milestone.definition.name_fa if doc.milestone else None
+        m_name_en = doc.milestone.definition.name_en if doc.milestone else None
+
+        events.append({
+            "event_id": f"document-{doc.id}-uploaded",
+            "event_type": TimelineEventType.DOCUMENT_UPLOADED,
+            "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.DOCUMENT_UPLOADED],
+            "event_at": doc.uploaded_at,
+            "recorded_at": doc.uploaded_at,
+            "actor_id": doc_actor_id,
+            "actor_email": doc_actor_email,
+            "milestone_code": m_code,
+            "milestone_name_fa": m_name_fa,
+            "milestone_name_en": m_name_en,
+            "notes": f"{doc.get_category_display()}: {doc.file_name}",
+            "metadata": {
+                "category": doc.category,
+                "file_name": doc.file_name,
+                "content_type": doc.content_type,
+                "size_bytes": doc.size_bytes,
+                "milestone_id": str(doc.milestone_id) if doc.milestone_id else None,
+                "inspection_id": str(doc.inspection_id) if doc.inspection_id else None,
+                "issue_id": str(doc.issue_id) if doc.issue_id else None,
+            },
+        })
+
+    # 6. Execution Issue domain facts (Epic 10 Contract §32, §65–§74, T1008)
+    from execution.enums import IssueStatus
+    from execution.models.issue import ExecutionIssue
+
+    issues = list(
+        ExecutionIssue.objects.select_related("opened_by", "resolved_by")
+        .filter(execution=execution)
+        .order_by("opened_at", "id")
+    )
+
+    for issue in issues:
+        opened_actor_id = str(issue.opened_by.id) if issue.opened_by else None
+        opened_actor_email = getattr(issue.opened_by, "email", None) if issue.opened_by else None
+
+        # Always project ISSUE_OPENED
+        events.append({
+            "event_id": f"issue-{issue.id}-opened",
+            "event_type": TimelineEventType.ISSUE_OPENED,
+            "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.ISSUE_OPENED],
+            "event_at": issue.opened_at,
+            "recorded_at": issue.created_at,
+            "actor_id": opened_actor_id,
+            "actor_email": opened_actor_email,
+            "milestone_code": None,
+            "milestone_name_fa": None,
+            "milestone_name_en": None,
+            "notes": issue.title,
+            "metadata": {
+                "issue_id": str(issue.id),
+                "type": issue.type,
+                "status": issue.status,
+                "severity": issue.severity,
+                "blocks_execution": issue.blocks_execution,
+                "description": issue.description,
+            },
+        })
+
+        if issue.status == IssueStatus.IN_PROGRESS:
+            events.append({
+                "event_id": f"issue-{issue.id}-started",
+                "event_type": TimelineEventType.ISSUE_STARTED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.ISSUE_STARTED],
+                "event_at": issue.updated_at,
+                "recorded_at": issue.updated_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": None,
+                "milestone_name_fa": None,
+                "milestone_name_en": None,
+                "notes": f"Investigation started: {issue.title}",
+                "metadata": {
+                    "issue_id": str(issue.id),
+                    "type": issue.type,
+                    "status": issue.status,
+                    "severity": issue.severity,
+                    "blocks_execution": issue.blocks_execution,
+                },
+            })
+        elif issue.status == IssueStatus.RESOLVED:
+            resolved_actor_id = str(issue.resolved_by.id) if issue.resolved_by else None
+            resolved_actor_email = getattr(issue.resolved_by, "email", None) if issue.resolved_by else None
+            events.append({
+                "event_id": f"issue-{issue.id}-resolved",
+                "event_type": TimelineEventType.ISSUE_RESOLVED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.ISSUE_RESOLVED],
+                "event_at": issue.resolved_at or issue.updated_at,
+                "recorded_at": issue.updated_at,
+                "actor_id": resolved_actor_id,
+                "actor_email": resolved_actor_email,
+                "milestone_code": None,
+                "milestone_name_fa": None,
+                "milestone_name_en": None,
+                "notes": issue.resolution_notes or f"Resolved: {issue.title}",
+                "metadata": {
+                    "issue_id": str(issue.id),
+                    "type": issue.type,
+                    "status": issue.status,
+                    "severity": issue.severity,
+                    "blocks_execution": issue.blocks_execution,
+                    "resolved_at": issue.resolved_at.isoformat() if issue.resolved_at else None,
+                    "resolution_notes": issue.resolution_notes,
+                },
+            })
+        elif issue.status == IssueStatus.CANCELLED:
+            events.append({
+                "event_id": f"issue-{issue.id}-cancelled",
+                "event_type": TimelineEventType.ISSUE_CANCELLED,
+                "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.ISSUE_CANCELLED],
+                "event_at": issue.updated_at,
+                "recorded_at": issue.updated_at,
+                "actor_id": None,
+                "actor_email": None,
+                "milestone_code": None,
+                "milestone_name_fa": None,
+                "milestone_name_en": None,
+                "notes": f"Cancelled: {issue.title}",
+                "metadata": {
+                    "issue_id": str(issue.id),
+                    "type": issue.type,
+                    "status": issue.status,
+                    "severity": issue.severity,
+                    "blocks_execution": issue.blocks_execution,
+                },
+            })
+
+    # 7. Execution closed event
+    if execution.status == ExecutionStatus.CLOSED:
+
+        events.append({
+            "event_id": f"execution-{execution.id}-closed",
+            "event_type": TimelineEventType.EXECUTION_CLOSED,
+            "type_priority": EVENT_TYPE_PRIORITY[TimelineEventType.EXECUTION_CLOSED],
+            "event_at": execution.closed_at or execution.updated_at,
+            "recorded_at": execution.updated_at,
+            "actor_id": None,
+            "actor_email": None,
+            "milestone_code": None,
+            "milestone_name_fa": None,
+            "milestone_name_en": None,
+            "notes": "Execution operational lifecycle successfully concluded.",
+            "metadata": {
+                "closed_at": execution.closed_at.isoformat() if execution.closed_at else None,
+            },
+        })
+
+    # 4. Deterministic sort: (event_at ASC, stable_type_priority, stable_id ASC)
+    events.sort(key=lambda ev: (ev["event_at"], ev["type_priority"], str(ev["event_id"])))
+
+    return events

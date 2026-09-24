@@ -347,6 +347,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/deals/{deal_id}/execution/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Deal Execution Aggregate
+         * @description Retrieves the Execution aggregate and materialized milestone graph for a Deal.
+         */
+        get: operations["execution_get_by_deal"];
+        put?: never;
+        /**
+         * Create or Retrieve Deal Execution Aggregate
+         * @description Idempotently creates or retrieves the single Execution aggregate for an immutable Deal. Binds to the currently active PUBLISHED workflow template version or an explicitly specified published version. Materializes milestone instances and auto-completes the initial AWARDED milestone using the authoritative Award source timestamp. Subsequent calls return the existing Execution instance without duplicating rows or re-materializing. Concurrency is protected with PostgreSQL database locks.
+         */
+        post: operations["execution_create_or_get"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Execution Documents for Deal
+         * @description Lists all operational execution documents for a Deal's execution instance.
+         */
+        get: operations["deal_execution_documents_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/documents/upload/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Execution Document for Deal
+         * @description Uploads a new operational evidence document for a Deal's execution instance.
+         */
+        post: operations["deal_execution_document_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/inspection/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Operational Inspection for Deal
+         * @description Retrieves operational inspection record for a Deal's execution instance.
+         */
+        get: operations["deal_execution_inspection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/issues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Execution Issues for Deal
+         * @description Lists all operational issues for a Deal's execution instance.
+         */
+        get: operations["deal_execution_issues_list"];
+        put?: never;
+        /**
+         * Open Execution Issue for Deal
+         * @description Opens a new operational issue scoped to a specific Deal ID.
+         */
+        post: operations["deal_execution_issue_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/issues/{issue_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Issue Detail for Deal
+         * @description Retrieves a single execution issue record scoped to a Deal ID.
+         */
+        get: operations["deal_execution_issue_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/logistics/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Operational Logistics for Deal
+         * @description Retrieves operational logistics record for a Deal's execution instance.
+         */
+        get: operations["deal_execution_logistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/milestones/{milestone_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Milestone via Deal Scope
+         * @description Completes an execution milestone scoped to a specific Deal ID.
+         */
+        post: operations["deal_execution_milestone_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/deals/{deal_id}/execution/payment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Operational Payment for Deal
+         * @description Retrieves operational payment monitoring record for a Deal's execution instance.
+         */
+        get: operations["deal_execution_payment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/deals/{deal_id}/parties/": {
         parameters: {
             query?: never;
@@ -449,6 +637,694 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["documents_upload_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Aggregate by ID
+         * @description Retrieves Execution aggregate and materialized milestone graph by Execution UUID.
+         */
+        get: operations["execution_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Execution Documents
+         * @description Lists all operational evidence documents belonging to an Execution instance.
+         */
+        get: operations["execution_documents_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/documents/{document_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Document Metadata
+         * @description Retrieves metadata for a single operational evidence document.
+         */
+        get: operations["execution_document_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/documents/{document_id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Execution Document Bytes
+         * @description Streams authorized binary document bytes directly with safe Content-Disposition.
+         */
+        get: operations["execution_document_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/documents/upload/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Execution Document
+         * @description Uploads a new operational evidence document for an Execution aggregate with side-specific authorization.
+         */
+        post: operations["execution_document_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Quality & Inspection Record
+         * @description Idempotently retrieves or initializes the operational ExecutionInspection aggregate for an Execution. The required flag is derived strictly from persisted commercial context (RFQ.inspection_required). Status, result, timestamps, and agency are returned without heuristics or active-schema guessing.
+         */
+        get: operations["execution_inspection_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Quality Inspection
+         * @description Seller/Operator operational action: cancels scheduled or pending quality inspection. Transitions status to CANCELLED and resets result to UNKNOWN. Completed inspections cannot be cancelled. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_inspection_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Quality Inspection Completion
+         * @description Seller/Operator operational action: records authoritative quality inspection completion facts. Requires mandatory inspection_at timestamp and valid result (PASS, FAIL, CONDITIONAL, UNKNOWN). Result is never inferred from free-text notes. COMPLETED + FAIL represents a completed inspection whose quality outcome failed; it allows the INSPECTION_COMPLETED milestone to complete. Completed facts are historically immutable (no casual reopen or rewrite).
+         */
+        post: operations["execution_inspection_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/mark-not-required/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Quality Inspection Not Required
+         * @description Buyer/Operator operational action: waives inspection requirement. Seller is strictly denied from unilaterally waiving inspection required by Buyer. Transitions status to NOT_REQUIRED, sets required = False, and preserves result as UNKNOWN. NOT_REQUIRED must never become a fake PASS. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_inspection_mark_not_required"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/inspection/schedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule Quality Inspection
+         * @description Seller/Operator operational action: schedules inspection appointment date and agency. Transitions status to SCHEDULED, marks required = True, and preserves result as UNKNOWN. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_inspection_schedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/issues/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Execution Issues
+         * @description Lists all operational issues for an Execution aggregate.
+         */
+        get: operations["execution_issues_list"];
+        put?: never;
+        /**
+         * Open Execution Issue
+         * @description Authoritatively opens a new operational issue on an open Execution aggregate. Server derives opened_by and opened_at; client cannot forge them. Initial status is strictly OPEN and version is initialized to 1. Blocks_execution is set strictly from the explicit payload parameter.
+         */
+        post: operations["execution_issue_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/issues/{issue_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Issue Detail
+         * @description Retrieves a single execution issue record.
+         */
+        get: operations["execution_issue_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/issues/{issue_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Execution Issue
+         * @description Authoritatively cancels an execution issue. Requires current expected_version for optimistic concurrency control. Terminal state cannot be reopened or resolved.
+         */
+        post: operations["execution_issue_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/issues/{issue_id}/resolve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve Execution Issue
+         * @description Authoritatively marks an execution issue RESOLVED. Requires current expected_version and resolution_notes. Server derives resolved_by and resolved_at. Terminal state cannot be reopened or cancelled.
+         */
+        post: operations["execution_issue_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/issues/{issue_id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Execution Issue Investigation
+         * @description Transitions an issue from OPEN to IN_PROGRESS. Requires current expected_version for optimistic concurrency control.
+         */
+        post: operations["execution_issue_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Logistics Operational Record
+         * @description Idempotently retrieves or initializes the operational ExecutionLogistics aggregate for an Execution. Unknown fields remain null/empty without fabricated defaults.
+         */
+        get: operations["execution_logistics_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Constrained Mutation of Execution Logistics
+         * @description Mutates operational logistics facts under optimistic concurrency control (expected_version). Mass-assignment of server-owned fields (id, execution, version, created_at, updated_at) is strictly rejected. Side-specific authority is verified field-by-field.
+         */
+        patch: operations["execution_logistics_patch"];
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/record-delivery/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Actual Operational Delivery
+         * @description Records actual delivery arrival timestamp. Chronology validated: actual_delivery_at cannot precede actual_loading_at. Does NOT imply goods acceptance (milestone ACCEPTED remains separate). Requires Buyer or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_record_delivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/record-loading/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Actual Operational Loading
+         * @description Records actual operational loading timestamp. Guards chronology: actual_delivery_at cannot precede actual_loading_at. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_record_loading"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/schedule-loading/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule Operational Loading
+         * @description Records scheduled operational loading timestamp and optional pickup/destination locations. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_schedule_loading"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/update-cost/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Operational Logistics Cost
+         * @description Updates actual or reported operational logistics cost in Decimal. Currency code is mandatory. No FX conversion. Does not mutate commercial Deal cost snapshot. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_update_cost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/update-eta/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Estimated Time of Arrival (ETA)
+         * @description Updates ETA for operational shipment arrival. Rejected if actual delivery has already been recorded. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_update_eta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/logistics/update-transport/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Transport Carrier, Mode, and Reference
+         * @description Updates transport details. Transport mode must be one of canonical TransportMode enum. Requires Seller or Operator authority and optimistic concurrency expected_version.
+         */
+        post: operations["execution_logistics_update_transport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/milestones/{milestone_id}/block/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Milestone Blocked
+         * @description Marks an execution milestone BLOCKED with a mandatory non-empty reason.
+         */
+        post: operations["execution_milestone_block"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/milestones/{milestone_id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Execution Milestone
+         * @description Authoritatively marks an execution milestone COMPLETED. Requires current expected_version for optimistic concurrency control. If the milestone definition has terminal=True, the execution status is atomically set to CLOSED. Completed milestones are strictly immutable and cannot be reopened.
+         */
+        post: operations["execution_milestone_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/milestones/{milestone_id}/skip/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Milestone Skipped
+         * @description Marks an execution milestone SKIPPED with a mandatory reason.
+         */
+        post: operations["execution_milestone_skip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/milestones/{milestone_id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Milestone Execution
+         * @description Transitions a milestone from PENDING to IN_PROGRESS. Requires current expected_version for optimistic concurrency control.
+         */
+        post: operations["execution_milestone_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/payment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Execution Payment Monitoring Record
+         * @description Retrieves the authoritative operational payment monitoring record for an Execution. Returns status (EXPECTED, REPORTED, CONFIRMED), expected amount/currency, reported metadata, confirmed metadata, reference, notes, and aggregate version.
+         */
+        get: operations["execution_payment_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/payment/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Execution Payment
+         * @description Operator/Admin operational action: authoritatively confirms payment progress. Transitions status: REPORTED -> CONFIRMED. Normal prerequisite: status == REPORTED (direct EXPECTED -> CONFIRMED is forbidden). Server authoritatively derives confirmed_by and confirmed_at. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_payment_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/payment/report/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report Execution Payment
+         * @description Buyer/Seller/Operator operational action: reports payment occurrence. Transitions status: EXPECTED -> REPORTED. Server authoritatively derives reported_by and reported_at. Guarded by optimistic concurrency (expected_version) and select_for_update row locking.
+         */
+        post: operations["execution_payment_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/{execution_id}/timeline/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve Deterministic Execution Timeline
+         * @description Projects the deterministic domain timeline for an Execution instance. Combines execution creation, milestone status facts, and execution closure. Sorted strictly by (event_at ASC, stable_type_priority, stable_id ASC). Rendered historically using the bound workflow template version's definition metadata.
+         */
+        get: operations["execution_timeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/templates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List execution workflow templates
+         * @description List all workflow templates configured on the platform. Restricted to Operator and Admin.
+         */
+        get: operations["execution_templates_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/templates/{code_or_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve execution workflow template detail
+         * @description Retrieve details of a workflow template by code or UUID. Restricted to Operator and Admin.
+         */
+        get: operations["execution_templates_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/templates/{code}/active-version/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve active published workflow template version
+         * @description Deterministically retrieves the active published version for a template code.
+         */
+        get: operations["execution_templates_active_version_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/execution/versions/{version_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Retrieve workflow template version detail
+         * @description Retrieve full version details with milestone graph and prerequisite dependencies.
+         */
+        get: operations["execution_versions_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2510,6 +3386,8 @@ export interface components {
             /** @description Expected aggregate version of the Award for optimistic locking. */
             expected_version: number;
         };
+        /** @enum {unknown} */
+        BlankEnum: "";
         /**
          * @description * `SUPPLY_LISTING` - Supply Listing
          *     * `SUPPLY_OPPORTUNITY` - Supply Opportunity
@@ -2518,6 +3396,18 @@ export interface components {
          * @enum {string}
          */
         CandidateKindEnum: "SUPPLY_LISTING" | "SUPPLY_OPPORTUNITY" | "SUPPLIER_ORGANIZATION" | "BROKER_ORGANIZATION";
+        /**
+         * @description * `CONTRACT` - Contract
+         *     * `PAYMENT_PROOF` - Payment Proof
+         *     * `LOADING_DOCUMENT` - Loading Document
+         *     * `INSPECTION_REPORT` - Inspection Report
+         *     * `TRANSPORT_DOCUMENT` - Transport Document
+         *     * `DELIVERY_PROOF` - Delivery Proof
+         *     * `ACCEPTANCE_DOCUMENT` - Acceptance Document
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        CategoryEnum: "CONTRACT" | "PAYMENT_PROOF" | "LOADING_DOCUMENT" | "INSPECTION_REPORT" | "TRANSPORT_DOCUMENT" | "DELIVERY_PROOF" | "ACCEPTANCE_DOCUMENT" | "OTHER";
         ChecklistReview: {
             /** Format: uuid */
             document_id: string;
@@ -3138,6 +4028,13 @@ export interface components {
          * @enum {string}
          */
         DecisionDimensionEnum: "COST" | "QUALITY" | "DELIVERY" | "PAYMENT" | "TRUST" | "COMPLETENESS";
+        /**
+         * @description * `DRAFT` - Draft
+         *     * `PUBLISHED` - Published
+         *     * `RETIRED` - Retired
+         * @enum {string}
+         */
+        DecisionProfileLifecycleStatusEnum: "DRAFT" | "PUBLISHED" | "RETIRED";
         /** @description Optional payload for initiating a DecisionRun foundation (T0808). */
         DecisionRunCreateRequest: {
             /**
@@ -3301,6 +4198,690 @@ export interface components {
          * @enum {string}
          */
         EventTypeEnum: "rfq_created" | "rfq_published" | "participant_invited" | "participant_viewed" | "participant_declined" | "participant_responded" | "rfq_closed" | "rfq_cancelled";
+        /** @description Request payload for explicit idempotent execution creation. */
+        ExecutionCreateRequest: {
+            /** @description Canonical workflow template code (e.g. bitumen_standard). */
+            workflow_template_code?: string | null;
+            /**
+             * Format: uuid
+             * @description Explicit workflow template UUID.
+             */
+            workflow_template_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Explicit workflow template version UUID (must be PUBLISHED).
+             */
+            workflow_template_version_id?: string | null;
+        };
+        /** @description Full execution aggregate detail serializer. */
+        ExecutionDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Authoritative source Deal aggregate (1 Deal -> exactly 1 Execution).
+             */
+            readonly deal_id: string;
+            /**
+             * Format: uuid
+             * @description Immutable workflow template version bound at creation time.
+             */
+            readonly workflow_template_version_id: string;
+            readonly workflow_template_code: string;
+            readonly workflow_template_name_fa: string;
+            readonly workflow_template_name_en: string;
+            readonly workflow_version_number: number;
+            /**
+             * @description Execution operational lifecycle status (OPEN or CLOSED).
+             *
+             *     * `OPEN` - Open
+             *     * `CLOSED` - Closed
+             */
+            status?: components["schemas"]["ExecutionDetailStatusEnum"];
+            /** @description Optimistic concurrency aggregate version counter. */
+            version?: number;
+            /**
+             * Format: date-time
+             * @description Timestamp when execution monitoring started.
+             */
+            started_at?: string;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when execution reached CLOSED status.
+             */
+            closed_at?: string | null;
+            readonly milestones: components["schemas"]["ExecutionMilestone"][];
+            readonly logistics: components["schemas"]["ExecutionLogistics"];
+            readonly inspection: components["schemas"]["ExecutionInspection"];
+            readonly payment: components["schemas"]["ExecutionPayment"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `CLOSED` - Closed
+         * @enum {string}
+         */
+        ExecutionDetailStatusEnum: "OPEN" | "CLOSED";
+        /** @description Authoritative execution document metadata projection (Epic 10 Contract §60–§64, T1007, T1008). */
+        ExecutionDocument: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly execution_id: string;
+            /** Format: uuid */
+            readonly milestone_id: string | null;
+            /** Format: uuid */
+            readonly inspection_id: string | null;
+            /** Format: uuid */
+            readonly issue_id: string | null;
+            /**
+             * @description Authoritative operational document category.
+             *
+             *     * `CONTRACT` - Contract
+             *     * `PAYMENT_PROOF` - Payment Proof
+             *     * `LOADING_DOCUMENT` - Loading Document
+             *     * `INSPECTION_REPORT` - Inspection Report
+             *     * `TRANSPORT_DOCUMENT` - Transport Document
+             *     * `DELIVERY_PROOF` - Delivery Proof
+             *     * `ACCEPTANCE_DOCUMENT` - Acceptance Document
+             *     * `OTHER` - Other
+             */
+            readonly category: components["schemas"]["CategoryEnum"];
+            readonly category_display: string;
+            /** @description Safe original filename. */
+            readonly file_name: string;
+            /** @description MIME content type. */
+            readonly content_type: string;
+            /** @description File size in bytes. */
+            readonly size_bytes: number;
+            /** Format: uuid */
+            readonly uploaded_by_id: string | null;
+            /** Format: email */
+            readonly uploaded_by_email: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when document was uploaded.
+             */
+            readonly uploaded_at: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Request payload for authorized multipart execution document upload. */
+        ExecutionDocumentUpload: {
+            /**
+             * Format: binary
+             * @description Binary document file (PDF, JPEG, PNG, max 10MB)
+             */
+            file: string;
+            /**
+             * @description Authoritative operational document category.
+             *
+             *     * `CONTRACT` - Contract
+             *     * `PAYMENT_PROOF` - Payment Proof
+             *     * `LOADING_DOCUMENT` - Loading Document
+             *     * `INSPECTION_REPORT` - Inspection Report
+             *     * `TRANSPORT_DOCUMENT` - Transport Document
+             *     * `DELIVERY_PROOF` - Delivery Proof
+             *     * `ACCEPTANCE_DOCUMENT` - Acceptance Document
+             *     * `OTHER` - Other
+             */
+            category: components["schemas"]["CategoryEnum"];
+            /**
+             * Format: uuid
+             * @description Optional associated execution milestone ID.
+             */
+            milestone_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Optional associated execution quality inspection ID.
+             */
+            inspection_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Optional associated execution issue ID.
+             */
+            issue_id?: string | null;
+        };
+        /** @description Standard error response. */
+        ExecutionErrorResponse: {
+            /** @description Detailed error explanation. */
+            detail: string;
+            /** @description Machine-readable error code (e.g. BLOCKING_ISSUE_OPEN). */
+            code?: string | null;
+            /** @description Structured contextual data for the error. */
+            context?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** @description Operational execution inspection detail serializer (Epic 10 Contract §43–§49, T1005). */
+        ExecutionInspection: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent execution instance (1 Execution -> max 1 ExecutionInspection).
+             */
+            readonly execution_id: string;
+            /** @description Whether quality inspection is required by commercial context. */
+            required?: boolean;
+            /** @description Inspection agency or organization name (e.g. SGS, Bureau Veritas). */
+            agency?: string;
+            /**
+             * Format: date-time
+             * @description Scheduled inspection timestamp.
+             */
+            scheduled_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative historical inspection occurrence timestamp.
+             */
+            inspection_at?: string | null;
+            /**
+             * @description Runtime status of this inspection record.
+             *
+             *     * `NOT_REQUIRED` - Not Required
+             *     * `PENDING` - Pending
+             *     * `SCHEDULED` - Scheduled
+             *     * `COMPLETED` - Completed
+             *     * `CANCELLED` - Cancelled
+             */
+            status?: components["schemas"]["ExecutionInspectionStatusEnum"];
+            /**
+             * @description Authoritative quality inspection result (PASS, FAIL, CONDITIONAL, UNKNOWN).
+             *
+             *     * `PASS` - Pass
+             *     * `FAIL` - Fail
+             *     * `CONDITIONAL` - Conditional
+             *     * `UNKNOWN` - Unknown
+             */
+            result?: components["schemas"]["ResultEnum"];
+            /** @description Operational notes or instructions. Must never be used to infer result or status. */
+            notes?: string;
+            /** @description Optimistic concurrency aggregate version counter. */
+            version?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `NOT_REQUIRED` - Not Required
+         *     * `PENDING` - Pending
+         *     * `SCHEDULED` - Scheduled
+         *     * `COMPLETED` - Completed
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        ExecutionInspectionStatusEnum: "NOT_REQUIRED" | "PENDING" | "SCHEDULED" | "COMPLETED" | "CANCELLED";
+        /** @description Authoritative execution issue projection (Epic 10 Contract §65–§74, T1008). */
+        ExecutionIssue: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly execution_id: string;
+            /**
+             * @description Exact operational issue category.
+             *
+             *     * `QUALITY` - Quality
+             *     * `QUANTITY` - Quantity
+             *     * `LOGISTICS` - Logistics
+             *     * `PAYMENT` - Payment
+             *     * `DOCUMENT` - Document
+             *     * `CONTRACT` - Contract
+             *     * `OTHER` - Other
+             */
+            readonly type: components["schemas"]["ExecutionIssueTypeEnum"];
+            readonly type_display: string;
+            /**
+             * @description Lifecycle status: OPEN, IN_PROGRESS, RESOLVED, CANCELLED.
+             *
+             *     * `OPEN` - Open
+             *     * `IN_PROGRESS` - In Progress
+             *     * `RESOLVED` - Resolved
+             *     * `CANCELLED` - Cancelled
+             */
+            readonly status: components["schemas"]["ExecutionIssueStatusEnum"];
+            readonly status_display: string;
+            /**
+             * @description Optional severity: LOW, MEDIUM, HIGH, CRITICAL.
+             *
+             *     * `LOW` - Low
+             *     * `MEDIUM` - Medium
+             *     * `HIGH` - High
+             *     * `CRITICAL` - Critical
+             */
+            readonly severity: (components["schemas"]["ExecutionIssueSeverityEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly severity_display: string | null;
+            /** @description Concise title summarizing the operational issue. */
+            readonly title: string;
+            /** @description Detailed operational description or context. */
+            readonly description: string;
+            /** Format: uuid */
+            readonly opened_by_id: string | null;
+            /** Format: email */
+            readonly opened_by_email: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when issue was opened.
+             */
+            readonly opened_at: string;
+            /** Format: uuid */
+            readonly resolved_by_id: string | null;
+            /** Format: email */
+            readonly resolved_by_email: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when issue was marked RESOLVED.
+             */
+            readonly resolved_at: string | null;
+            /** @description Detailed notes explaining the resolution. */
+            readonly resolution_notes: string;
+            /** @description Whether this issue explicitly prevents execution closure while active. */
+            readonly blocks_execution: boolean;
+            readonly is_active_blocker: boolean;
+            /** @description Optimistic concurrency control version. */
+            readonly version: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Request payload to cancel an issue. */
+        ExecutionIssueCancel: {
+            /** @description Current issue version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional explanation or reason for cancellation.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to open a new execution issue. */
+        ExecutionIssueCreate: {
+            /**
+             * @description Exact operational issue type.
+             *
+             *     * `QUALITY` - Quality
+             *     * `QUANTITY` - Quantity
+             *     * `LOGISTICS` - Logistics
+             *     * `PAYMENT` - Payment
+             *     * `DOCUMENT` - Document
+             *     * `CONTRACT` - Contract
+             *     * `OTHER` - Other
+             */
+            type: components["schemas"]["ExecutionIssueTypeEnum"];
+            /** @description Concise title summarizing the operational issue. */
+            title: string;
+            /**
+             * @description Detailed operational description or context.
+             * @default
+             */
+            description: string;
+            /**
+             * @description Optional severity: LOW, MEDIUM, HIGH, CRITICAL.
+             *
+             *     * `LOW` - Low
+             *     * `MEDIUM` - Medium
+             *     * `HIGH` - High
+             *     * `CRITICAL` - Critical
+             */
+            severity?: (components["schemas"]["ExecutionIssueSeverityEnum"] | components["schemas"]["NullEnum"]) | null;
+            /**
+             * @description Whether this issue explicitly blocks execution closing.
+             * @default false
+             */
+            blocks_execution: boolean;
+        };
+        /** @description Request payload to authoritatively resolve an issue. */
+        ExecutionIssueResolve: {
+            /** @description Current issue version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Required operational explanation of how the issue was resolved. */
+            resolution_notes: string;
+        };
+        /**
+         * @description * `LOW` - Low
+         *     * `MEDIUM` - Medium
+         *     * `HIGH` - High
+         *     * `CRITICAL` - Critical
+         * @enum {string}
+         */
+        ExecutionIssueSeverityEnum: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+        /** @description Request payload to transition an issue from OPEN to IN_PROGRESS. */
+        ExecutionIssueStart: {
+            /** @description Current issue version for optimistic concurrency control. */
+            expected_version: number;
+        };
+        /**
+         * @description * `OPEN` - Open
+         *     * `IN_PROGRESS` - In Progress
+         *     * `RESOLVED` - Resolved
+         *     * `CANCELLED` - Cancelled
+         * @enum {string}
+         */
+        ExecutionIssueStatusEnum: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CANCELLED";
+        /**
+         * @description * `QUALITY` - Quality
+         *     * `QUANTITY` - Quantity
+         *     * `LOGISTICS` - Logistics
+         *     * `PAYMENT` - Payment
+         *     * `DOCUMENT` - Document
+         *     * `CONTRACT` - Contract
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        ExecutionIssueTypeEnum: "QUALITY" | "QUANTITY" | "LOGISTICS" | "PAYMENT" | "DOCUMENT" | "CONTRACT" | "OTHER";
+        /** @description Operational execution logistics detail serializer (Epic 10 Contract §35, T1004). */
+        ExecutionLogistics: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent execution instance (1 Execution -> max 1 ExecutionLogistics).
+             */
+            readonly execution_id: string;
+            /** @description Carrier name or operational freight operator. */
+            carrier_name?: string;
+            readonly carrier: string;
+            /**
+             * @description Canonical transport mode. Must not be inferred automatically.
+             *
+             *     * `ROAD` - Road
+             *     * `SEA` - Sea
+             *     * `RAIL` - Rail
+             *     * `AIR` - Air
+             *     * `MULTIMODAL` - Multimodal
+             *     * `OTHER` - Other
+             */
+            transport_mode?: (components["schemas"]["TransportModeEnum"] | components["schemas"]["BlankEnum"] | components["schemas"]["NullEnum"]) | null;
+            /**
+             * Format: uuid
+             * @description Structured pickup geographic area reference.
+             */
+            readonly pickup_area_id: string | null;
+            readonly pickup_area_code: string | null;
+            readonly pickup_area_name_fa: string | null;
+            readonly pickup_area_name_en: string | null;
+            /**
+             * Format: uuid
+             * @description Structured destination geographic area reference.
+             */
+            readonly destination_area_id: string | null;
+            readonly destination_area_code: string | null;
+            readonly destination_area_name_fa: string | null;
+            readonly destination_area_name_en: string | null;
+            /** @description Operational pickup facility description or local address. */
+            pickup_location?: string;
+            /** @description Operational destination facility description or local address. */
+            destination_location?: string;
+            /**
+             * Format: date-time
+             * @description Scheduled operational loading timestamp.
+             */
+            scheduled_loading_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Reported actual operational loading timestamp.
+             */
+            actual_loading_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Estimated time of arrival (ETA) at destination.
+             */
+            eta?: string | null;
+            /**
+             * Format: date-time
+             * @description Reported actual operational delivery timestamp.
+             */
+            actual_delivery_at?: string | null;
+            /** @description Operational transport reference (e.g. B/L, CMR, tracking number). */
+            transport_reference?: string;
+            /**
+             * Format: decimal
+             * @description Actual or reported operational logistics cost in Decimal.
+             */
+            logistics_cost?: string | null;
+            /** @description ISO 4217 3-letter currency code for logistics cost. */
+            currency?: string;
+            /** @description Optimistic concurrency aggregate version counter. */
+            version?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /** @description Execution milestone instance presentation serializer. */
+        ExecutionMilestone: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent execution instance.
+             */
+            readonly execution_id: string;
+            /**
+             * Format: uuid
+             * @description Milestone definition from the bound workflow template version.
+             */
+            readonly definition_id: string;
+            readonly code: string;
+            readonly name_fa: string;
+            readonly name_en: string;
+            readonly sort_order: number;
+            readonly required: boolean;
+            readonly blocking: boolean;
+            readonly terminal: boolean;
+            /**
+             * @description Runtime status of this milestone instance.
+             *
+             *     * `PENDING` - Pending
+             *     * `IN_PROGRESS` - In Progress
+             *     * `COMPLETED` - Completed
+             *     * `BLOCKED` - Blocked
+             *     * `SKIPPED` - Skipped
+             */
+            status?: components["schemas"]["ExecutionMilestoneStatusEnum"];
+            /**
+             * Format: date-time
+             * @description Target expected completion date/time.
+             */
+            expected_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Actual historical occurrence timestamp.
+             */
+            actual_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when milestone completion was recorded.
+             */
+            recorded_at?: string | null;
+            /** @description User who authoritatively recorded completion. */
+            readonly completed_by_id: number | null;
+            readonly completed_by_email: string | null;
+            /** @description Operational notes or transition reasons. */
+            notes?: string;
+            /** @description Optimistic concurrency version counter. */
+            version?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        ExecutionMilestoneDefinition: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical uppercase machine code (e.g. AWARDED, LOADING_SCHEDULED) */
+            code: string;
+            /** @description Persian display label */
+            name_fa: string;
+            /** @description English display label */
+            name_en: string;
+            /** @description Deterministic display and logical order within the version */
+            sort_order: number;
+            /** @description Whether this milestone is required for workflow completion */
+            required?: boolean;
+            /** @description Whether downstream milestones are blocked until this milestone is completed */
+            blocking?: boolean;
+            /** @description Whether completing this milestone marks the execution as CLOSED */
+            terminal?: boolean;
+            /** @description Default expected offset days from execution start */
+            expected_offset_days?: number | null;
+            /** @description Optional category (e.g. COMMERCIAL, LOGISTICS, QUALITY, PAYMENT, CLOSURE) */
+            category?: string;
+            readonly prerequisite_codes: string[];
+        };
+        /**
+         * @description * `PENDING` - Pending
+         *     * `IN_PROGRESS` - In Progress
+         *     * `COMPLETED` - Completed
+         *     * `BLOCKED` - Blocked
+         *     * `SKIPPED` - Skipped
+         * @enum {string}
+         */
+        ExecutionMilestoneStatusEnum: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "BLOCKED" | "SKIPPED";
+        /** @description Authoritative payment monitoring aggregate serializer (Epic 10 Contract §50–§59, T1006). */
+        ExecutionPayment: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent execution instance (1 Execution -> max 1 ExecutionPayment).
+             */
+            readonly execution_id: string;
+            /**
+             * @description Runtime status of this payment monitoring record (EXPECTED, REPORTED, CONFIRMED).
+             *
+             *     * `EXPECTED` - Expected
+             *     * `REPORTED` - Reported
+             *     * `CONFIRMED` - Confirmed
+             */
+            status?: components["schemas"]["ExecutionPaymentStatusEnum"];
+            /**
+             * Format: decimal
+             * @description Authoritative expected payment amount derived from immutable Deal commercial truth.
+             */
+            expected_amount?: string | null;
+            /** @description ISO 4217 3-letter currency code from Deal commercial snapshot. */
+            currency?: string;
+            /**
+             * Format: date-time
+             * @description Expected payment due date/time if deterministically supported.
+             */
+            expected_at?: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when payment was reported.
+             */
+            reported_at?: string | null;
+            /** Format: uuid */
+            readonly reported_by_id: string | null;
+            readonly reported_by_email: string | null;
+            /**
+             * Format: date-time
+             * @description Authoritative server timestamp when payment was confirmed by Operator/Admin.
+             */
+            confirmed_at?: string | null;
+            /** Format: uuid */
+            readonly confirmed_by_id: string | null;
+            readonly confirmed_by_email: string | null;
+            /** @description Operational transaction/banking reference. Operational metadata only; never stores secrets. */
+            reference?: string;
+            /** @description Operational notes. Notes do not determine payment status. */
+            notes?: string;
+            /** @description Optimistic concurrency aggregate version counter. */
+            version?: number;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        /**
+         * @description * `EXPECTED` - Expected
+         *     * `REPORTED` - Reported
+         *     * `CONFIRMED` - Confirmed
+         * @enum {string}
+         */
+        ExecutionPaymentStatusEnum: "EXPECTED" | "REPORTED" | "CONFIRMED";
+        ExecutionWorkflowTemplateDetail: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical lowercase machine code (e.g. bitumen_standard) */
+            code: string;
+            /** @description Persian name */
+            name_fa: string;
+            /** @description English name */
+            name_en: string;
+            /** @description Detailed workflow description */
+            description?: string;
+            /** @description Whether this template is active for new executions */
+            is_active?: boolean;
+            readonly active_version: components["schemas"]["ExecutionWorkflowTemplateVersion"];
+            readonly versions: components["schemas"]["ExecutionWorkflowTemplateVersionSummary"][];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        ExecutionWorkflowTemplateSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Canonical lowercase machine code (e.g. bitumen_standard) */
+            code: string;
+            /** @description Persian name */
+            name_fa: string;
+            /** @description English name */
+            name_en: string;
+            /** @description Detailed workflow description */
+            description?: string;
+            /** @description Whether this template is active for new executions */
+            is_active?: boolean;
+            /**
+             * Format: uuid
+             * @description The currently active published version for new execution instances.
+             */
+            readonly active_version_id: string | null;
+            readonly active_version_number: number | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        ExecutionWorkflowTemplateVersion: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Parent workflow template
+             */
+            readonly template_id: string;
+            /** @description Monotonically increasing version number within the template */
+            version_number: number;
+            status?: components["schemas"]["DecisionProfileLifecycleStatusEnum"];
+            /** @description Summary of changes in this version */
+            change_summary?: string;
+            readonly is_active: boolean;
+            /** Format: date-time */
+            published_at?: string | null;
+            /** Format: date-time */
+            retired_at?: string | null;
+            readonly milestones: components["schemas"]["ExecutionMilestoneDefinition"][];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        ExecutionWorkflowTemplateVersionSummary: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Monotonically increasing version number within the template */
+            version_number: number;
+            status?: components["schemas"]["DecisionProfileLifecycleStatusEnum"];
+            readonly is_active: boolean;
+        };
         /**
          * @description Explicit serializer for ExternalCounterparty.
          *
@@ -3396,6 +4977,75 @@ export interface components {
         HealthResponse: {
             status: string;
         };
+        /** @description Request payload to cancel scheduled or pending inspection. */
+        InspectionCancel: {
+            /** @description Current expected inspection version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Cancellation reason or notes.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to complete quality inspection. */
+        InspectionComplete: {
+            /** @description Current expected inspection version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Authoritative historical inspection occurrence timestamp.
+             */
+            inspection_at: string;
+            /**
+             * @description Authoritative quality inspection result (PASS, FAIL, CONDITIONAL, UNKNOWN).
+             *
+             *     * `PASS` - Pass
+             *     * `FAIL` - Fail
+             *     * `CONDITIONAL` - Conditional
+             *     * `UNKNOWN` - Unknown
+             */
+            result: components["schemas"]["ResultEnum"];
+            /**
+             * @description Inspection agency or organization name.
+             * @default
+             */
+            agency: string;
+            /**
+             * @description Operational notes or observations.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to mark inspection as not required / waived. */
+        InspectionMarkNotRequired: {
+            /** @description Current expected inspection version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Waiver reason or notes.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to schedule inspection. */
+        InspectionSchedule: {
+            /** @description Current expected inspection version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Scheduled inspection timestamp.
+             */
+            scheduled_at: string;
+            /**
+             * @description Inspection agency or organization name (e.g. SGS, Bureau Veritas).
+             * @default
+             */
+            agency: string;
+            /**
+             * @description Operational notes or instructions.
+             * @default
+             */
+            notes: string;
+        };
         InternalOrganizationVerificationDetail: {
             /** Format: uuid */
             readonly id: string;
@@ -3432,6 +5082,106 @@ export interface components {
          * @enum {string}
          */
         LogisticsCostStatusEnum: "KNOWN_SEPARATE" | "INCLUDED_IN_PRICE" | "NOT_APPLICABLE" | "UNKNOWN";
+        /** @description Request payload to record actual delivery receipt. */
+        LogisticsRecordDelivery: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Reported actual operational delivery timestamp.
+             */
+            actual_delivery_at: string;
+        };
+        /** @description Request payload to record actual loading occurrence. */
+        LogisticsRecordLoading: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Reported actual operational loading timestamp.
+             */
+            actual_loading_at: string;
+        };
+        /** @description Request payload to schedule operational loading. */
+        LogisticsScheduleLoading: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Scheduled operational loading timestamp.
+             */
+            scheduled_loading_at: string;
+            /**
+             * Format: uuid
+             * @description Optional structured pickup geographic area UUID.
+             */
+            pickup_area_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Optional structured destination geographic area UUID.
+             */
+            destination_area_id?: string | null;
+            /**
+             * @description Optional pickup facility or address description.
+             * @default
+             */
+            pickup_location: string;
+            /**
+             * @description Optional destination facility or address description.
+             * @default
+             */
+            destination_location: string;
+        };
+        /** @description Request payload to update logistics cost and currency. */
+        LogisticsUpdateCost: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: decimal
+             * @description Actual or reported operational logistics cost in Decimal.
+             */
+            logistics_cost: string;
+            /** @description ISO 4217 3-letter currency code. */
+            currency: string;
+        };
+        /** @description Request payload to update ETA. */
+        LogisticsUpdateETA: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Estimated time of arrival (ETA) at destination.
+             */
+            eta: string;
+        };
+        /** @description Request payload to update carrier, transport mode, and reference. */
+        LogisticsUpdateTransport: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Carrier name or freight operator.
+             * @default
+             */
+            carrier_name: string;
+            /** @description Roadmap alias for carrier_name. */
+            carrier?: string;
+            /**
+             * @description Canonical transport mode (ROAD, SEA, RAIL, AIR, MULTIMODAL, OTHER).
+             *
+             *     * `ROAD` - Road
+             *     * `SEA` - Sea
+             *     * `RAIL` - Rail
+             *     * `AIR` - Air
+             *     * `MULTIMODAL` - Multimodal
+             *     * `OTHER` - Other
+             */
+            transport_mode?: (components["schemas"]["TransportModeEnum"] | components["schemas"]["NullEnum"]) | null;
+            /**
+             * @description Operational transport tracking reference (B/L, CMR, etc.).
+             * @default
+             */
+            transport_reference: string;
+        };
         /**
          * @description Audience-safe matching candidate projection.
          *
@@ -3594,6 +5344,45 @@ export interface components {
          * @enum {string}
          */
         MatchingSignalResponseOutcomeEnum: "PASS" | "PARTIAL" | "FAIL" | "UNKNOWN" | "NOT_APPLICABLE";
+        /** @description Request payload to mark milestone BLOCKED. */
+        MilestoneBlockRequest: {
+            /** @description Current expected milestone version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory reason describing the blocking issue. */
+            reason: string;
+        };
+        /** @description Request payload to complete an execution milestone. */
+        MilestoneCompleteRequest: {
+            /** @description Current expected milestone version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * Format: date-time
+             * @description Reported historical occurrence timestamp. Defaults to server now if omitted.
+             */
+            actual_at?: string | null;
+            /**
+             * @description Optional completion notes or evidence summary.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to mark milestone SKIPPED. */
+        MilestoneSkipRequest: {
+            /** @description Current expected milestone version for optimistic concurrency control. */
+            expected_version: number;
+            /** @description Mandatory reason explaining why the milestone was skipped. */
+            reason: string;
+        };
+        /** @description Request payload to transition milestone to IN_PROGRESS. */
+        MilestoneStartRequest: {
+            /** @description Current expected milestone version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional operational notes.
+             * @default
+             */
+            notes: string;
+        };
         /** @enum {unknown} */
         NullEnum: null;
         /** @description Input payload for a child cost component. */
@@ -4801,6 +6590,32 @@ export interface components {
             /** Format: date-time */
             readonly updated_at?: string;
         };
+        /** @description Constrained request payload for PATCH on execution logistics. */
+        PatchedLogisticsMutateRequest: {
+            /** @description Current expected logistics version for optimistic concurrency control. */
+            expected_version?: number;
+            carrier_name?: string;
+            carrier?: string;
+            transport_mode?: (components["schemas"]["TransportModeEnum"] | components["schemas"]["NullEnum"]) | null;
+            /** Format: uuid */
+            pickup_area_id?: string | null;
+            /** Format: uuid */
+            destination_area_id?: string | null;
+            pickup_location?: string;
+            destination_location?: string;
+            /** Format: date-time */
+            scheduled_loading_at?: string | null;
+            /** Format: date-time */
+            actual_loading_at?: string | null;
+            /** Format: date-time */
+            eta?: string | null;
+            /** Format: date-time */
+            actual_delivery_at?: string | null;
+            transport_reference?: string;
+            /** Format: decimal */
+            logistics_cost?: string | null;
+            currency?: string;
+        };
         /**
          * @description Payload for updating mutable attributes of an OPEN Opportunity follow-up task.
          *     Protects status, completed_at, created_by, opportunity, id, timestamps against modification.
@@ -5037,6 +6852,36 @@ export interface components {
              *     * `private` - Private
              */
             visibility?: components["schemas"]["RFQVisibilityEnum"];
+        };
+        /** @description Request payload to authoritatively confirm execution payment. */
+        PaymentConfirmRequest: {
+            /** @description Current expected payment aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional operational confirmation or banking reference.
+             * @default
+             */
+            reference: string;
+            /**
+             * @description Optional operational confirmation notes.
+             * @default
+             */
+            notes: string;
+        };
+        /** @description Request payload to report execution payment. */
+        PaymentReportRequest: {
+            /** @description Current expected payment aggregate version for optimistic concurrency control. */
+            expected_version: number;
+            /**
+             * @description Optional operational transaction or banking reference.
+             * @default
+             */
+            reference: string;
+            /**
+             * @description Optional operational payment notes.
+             * @default
+             */
+            notes: string;
         };
         /**
          * @description * `buyer` - buyer
@@ -5642,6 +7487,14 @@ export interface components {
          * @enum {string}
          */
         ResolutionMethodEnum: "AUTOMATIC" | "MANUAL";
+        /**
+         * @description * `PASS` - Pass
+         *     * `FAIL` - Fail
+         *     * `CONDITIONAL` - Conditional
+         *     * `UNKNOWN` - Unknown
+         * @enum {string}
+         */
+        ResultEnum: "PASS" | "FAIL" | "CONDITIONAL" | "UNKNOWN";
         /** @description Payload for declining or cancelling an open RevisionRequest (T0810). */
         RevisionRequestAction: {
             /** @description Expected Offer aggregate_version for optimistic concurrency control. */
@@ -6168,6 +8021,51 @@ export interface components {
          * @enum {string}
          */
         TechnicalComplianceEnum: "PASS" | "FAIL" | "UNKNOWN";
+        /** @description Single deterministic event in the derived Execution Timeline. */
+        TimelineEvent: {
+            /** @description Deterministic event identifier. */
+            event_id: string;
+            /** @description Canonical domain event type. */
+            event_type: string;
+            /** @description Tie-breaking type priority. */
+            type_priority: number;
+            /**
+             * Format: date-time
+             * @description Actual domain occurrence timestamp.
+             */
+            event_at: string;
+            /**
+             * Format: date-time
+             * @description Server record timestamp.
+             */
+            recorded_at: string;
+            /** @description Actor UUID if available. */
+            actor_id: string | null;
+            /** @description Actor email if available. */
+            actor_email: string | null;
+            /** @description Milestone code if applicable. */
+            milestone_code: string | null;
+            /** @description Persian milestone name. */
+            milestone_name_fa: string | null;
+            /** @description English milestone name. */
+            milestone_name_en: string | null;
+            /** @description Associated event notes or reasons. */
+            notes: string;
+            /** @description Additional structured event metadata. */
+            metadata: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * @description * `ROAD` - Road
+         *     * `SEA` - Sea
+         *     * `RAIL` - Rail
+         *     * `AIR` - Air
+         *     * `MULTIMODAL` - Multimodal
+         *     * `OTHER` - Other
+         * @enum {string}
+         */
+        TransportModeEnum: "ROAD" | "SEA" | "RAIL" | "AIR" | "MULTIMODAL" | "OTHER";
         UnitMetadata: {
             canonical_unit?: string;
             unit_family?: string;
@@ -7266,6 +9164,501 @@ export interface operations {
             };
         };
     };
+    execution_get_by_deal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_create_or_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ExecutionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Execution aggregate created or retrieved successfully. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetail"];
+                };
+            };
+            /** @description Execution aggregate newly materialized. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetail"];
+                };
+            };
+            /** @description Validation failure or inactive workflow template. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Actor lacks authorization for this Deal's execution. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Referenced Deal or workflow version not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_documents_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by document category */
+                category?: string;
+                /** @description Filter by associated inspection ID */
+                inspection_id?: string;
+                /** @description Filter by associated issue ID */
+                issue_id?: string;
+                /** @description Filter by associated milestone ID */
+                milestone_id?: string;
+            };
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_document_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ExecutionDocumentUpload"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_inspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_issues_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_issue_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutionIssueCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_issue_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_logistics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_milestone_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneCompleteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    deal_execution_payment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionPayment"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
     deals_parties_list: {
         parameters: {
             query?: never;
@@ -7510,6 +9903,1766 @@ export interface operations {
             };
             /** @description Storage or database failure */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    execution_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_documents_list: {
+        parameters: {
+            query?: {
+                /** @description Filter by document category */
+                category?: string;
+                /** @description Filter by associated inspection ID */
+                inspection_id?: string;
+                /** @description Filter by associated issue ID */
+                issue_id?: string;
+                /** @description Filter by associated milestone ID */
+                milestone_id?: string;
+            };
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_document_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_document_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                document_id: string;
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binary document bytes streaming response. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_document_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ExecutionDocumentUpload"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDocument"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionCancel"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionComplete"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_mark_not_required: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionMarkNotRequired"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_inspection_schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionSchedule"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionInspection"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_issues_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_issue_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutionIssueCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_issue_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_issue_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutionIssueCancel"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_issue_resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutionIssueResolve"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_issue_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutionIssueStart"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionIssue"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLogisticsMutateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_record_delivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsRecordDelivery"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_record_loading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsRecordLoading"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_schedule_loading: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsScheduleLoading"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_update_cost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsUpdateCost"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_update_eta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsUpdateETA"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_logistics_update_transport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogisticsUpdateTransport"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionLogistics"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_milestone_block: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneBlockRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_milestone_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneCompleteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version) or already completed. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_milestone_skip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneSkipRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_milestone_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+                milestone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MilestoneStartRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionMilestone"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_payment_detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionPayment"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_payment_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentConfirmRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionPayment"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_payment_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentReportRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionPayment"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            /** @description Optimistic concurrency conflict (stale expected_version). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_timeline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deterministic timeline event list. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEvent"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionErrorResponse"];
+                };
+            };
+        };
+    };
+    execution_templates_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionWorkflowTemplateSummary"][];
+                };
+            };
+        };
+    };
+    execution_templates_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code_or_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionWorkflowTemplateDetail"];
+                };
+            };
+            /** @description Workflow template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    execution_templates_active_version_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionWorkflowTemplateVersion"];
+                };
+            };
+            /** @description Active version or template not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    execution_versions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionWorkflowTemplateVersion"];
+                };
+            };
+            /** @description Workflow version not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
