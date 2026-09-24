@@ -151,18 +151,13 @@ def _ensure_prerequisites(stdout=None) -> Dict[str, Any]:
     }
 
 
-def _seed_organizations_and_users() -> Dict[str, Any]:
-    """Seed 5 Buyers, 9 Suppliers, 6 Brokers, and Operators with deterministic identities."""
-    operator_user = User.objects.get(email="operator@demo.local")
-    admin_user = User.objects.get(email="admin@demo.local")
-
-    org_definitions = [
-        # --- BUYERS (5) ---
-        {
-            "key": "buyer_1",
-            "name": "Demo Buyer Corp",
-            "email": "buyer@demo.local",
-            "capability": "buyer",
+DEMO_ORG_DEFINITIONS = [
+    # --- BUYERS (5) ---
+    {
+        "key": "buyer_1",
+        "name": "Demo Buyer Corp",
+        "email": "buyer@demo.local",
+        "capability": "buyer",
             "role": "manager",
             "reg_id": "REG-BYR-001",
             "country": "IR",
@@ -406,6 +401,13 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
         },
     ]
 
+
+def _seed_organizations_and_users() -> Dict[str, Any]:
+    """Seed 5 Buyers, 9 Suppliers, 6 Brokers, and Operators with deterministic identities."""
+    operator_user = User.objects.get(email="operator@demo.local")
+    admin_user = User.objects.get(email="admin@demo.local")
+    org_definitions = DEMO_ORG_DEFINITIONS
+
     bitumen = CommodityDefinition.objects.get(code="bitumen")
     base_oil = CommodityDefinition.objects.filter(code="base_oil").first()
 
@@ -577,47 +579,49 @@ def _apply_verification_status(
             )
 
 
+DEMO_EXTERNAL_COUNTERPARTIES = [
+    {
+        "key": "gulf_petro",
+        "company_name": "Gulf Petrochemicals FZE",
+        "contact_name": "Tariq Al-Mansoor",
+        "phone": "+971-4-8812345",
+        "email": "tariq@gulfpetro.demo.ae",
+        "geography": "UAE",
+        "notes": "Regional distributor based in Jebel Ali Free Zone.",
+    },
+    {
+        "key": "oman_terminals",
+        "company_name": "Oman Bitumen Terminals LLC",
+        "contact_name": "Salim Al-Harthy",
+        "phone": "+968-24-765432",
+        "email": "salim@omanbitumen.demo.om",
+        "geography": "Oman",
+        "notes": "Major storage and bulk loading terminal at Sohar Port.",
+    },
+    {
+        "key": "caspian_supply",
+        "company_name": "Caspian Bitumen Supply DMCC",
+        "contact_name": "Rashad Aliyev",
+        "phone": "+994-12-4987654",
+        "email": "rashad@caspianbitumen.demo.az",
+        "geography": "Azerbaijan",
+        "notes": "Cross-border trading desk in Baku.",
+    },
+    {
+        "key": "anatolia_tar",
+        "company_name": "Anatolia Tar & Pitch AS",
+        "contact_name": "Mehmet Demir",
+        "phone": "+90-324-2334455",
+        "email": "mdemir@anatoliatar.demo.tr",
+        "geography": "Turkey",
+        "notes": "Importer and terminal operator in Mersin.",
+    },
+]
+
+
 def _seed_external_counterparties(operator: Any) -> Dict[str, ExternalCounterparty]:
     """Seed 4 realistic off-platform commercial counterparties."""
-    cps = [
-        {
-            "key": "gulf_petro",
-            "company_name": "Gulf Petrochemicals FZE",
-            "contact_name": "Tariq Al-Mansoor",
-            "phone": "+971-4-8812345",
-            "email": "tariq@gulfpetro.demo.ae",
-            "geography": "UAE",
-            "notes": "Regional distributor based in Jebel Ali Free Zone.",
-        },
-        {
-            "key": "oman_terminals",
-            "company_name": "Oman Bitumen Terminals LLC",
-            "contact_name": "Salim Al-Harthy",
-            "phone": "+968-24-765432",
-            "email": "salim@omanbitumen.demo.om",
-            "geography": "Oman",
-            "notes": "Major storage and bulk loading terminal at Sohar Port.",
-        },
-        {
-            "key": "caspian_supply",
-            "company_name": "Caspian Bitumen Supply DMCC",
-            "contact_name": "Rashad Aliyev",
-            "phone": "+994-12-4987654",
-            "email": "rashad@caspianbitumen.demo.az",
-            "geography": "Azerbaijan",
-            "notes": "Cross-border trading desk in Baku.",
-        },
-        {
-            "key": "anatolia_tar",
-            "company_name": "Anatolia Tar & Pitch AS",
-            "contact_name": "Mehmet Demir",
-            "phone": "+90-324-2334455",
-            "email": "mdemir@anatoliatar.demo.tr",
-            "geography": "Turkey",
-            "notes": "Importer and terminal operator in Mersin.",
-        },
-    ]
-
+    cps = DEMO_EXTERNAL_COUNTERPARTIES
     out = {}
     for c in cps:
         ec, _ = ExternalCounterparty.objects.get_or_create(

@@ -145,3 +145,62 @@ Supported model saves, lifecycle functions, Admin changes, and Django model/quer
 `validate_commodity_payload(schema_version, payload)` derives Draft-7 JSON Schema from relational definitions. It never substitutes the current active version. Payloads are flat; enum options use `value`, `label_fa`, `label_en`, and optional `sort_order`; units use `canonical_unit`. Constraints use `minimum`, `maximum`, `minLength`, and `maxLength`. Optional fields may be absent, but no v1 field is nullable. Errors are `ValidationError(code='invalid_payload', params={'errors': [...]})` with stable `field`, `code`, and application-owned `message` values. UI callers can translate codes and pass field messages to the generic Form.
 
 `python manage.py test` discovers all commodity model/lifecycle/validation/API, seed, historical integration, concurrency, and API-fixture regressions. Shared examples in `apps/web/tests/fixtures/commodity-schemas.json` are normalized actual seeded API responses; backend CI compares them and frontend CI consumes them. To deliberately regenerate after a contract change, set `UPDATE_COMMODITY_FIXTURES=1` for `python manage.py test commodities.test_contract_fixtures`, then unset it and run both test suites. No fixture contains business-instance persistence. `npm run api:generate` remains the only canonical OpenAPI/TypeScript generation path; the redundant root `schema.yml` snapshot was removed.
+
+## Epic 13 Demo Dataset & Reset Management
+
+### Commands
+
+```sh
+# Initial seed of the realistic demo dataset (T1301 baseline + T1302 Hero scenario):
+python manage.py seed_demo_dataset
+
+# Canonical reset to restore Demo environment back to the clean seed baseline:
+python manage.py reset_demo
+python manage.py reset_demo --no-input
+```
+
+### Purpose
+
+`python manage.py reset_demo` restores the Demo environment to its canonical demonstration state after test runs, manual UI testing, or Hero Flow walk-throughs. It deletes all Demo-owned transactional state (Deal executions, milestones, logistics, Deal snapshots, awards, offers, matching runs, opportunities, invitations, and supply listings) and re-invokes the canonical seed pipeline (`seed_demo_dataset`).
+
+### Allowed Environment & Safety Guards
+
+To prevent accidental data loss:
+- **Demo Switcher Guard**: Requires `DEMO_PERSONA_SWITCHER_ENABLED=True` (or `"true"` / `"1"`). If disabled, the command terminates immediately before performing any deletions.
+- **Production Guard**: Verifies that `DJANGO_SETTINGS_MODULE` is not set to production (`config.settings.production`) and that environment flags (`ENVIRONMENT=production`, `APP_ENV=production`) are absent.
+- **Interactive Confirmation**: Prompts for interactive confirmation (`Type 'yes' to continue`) unless `--no-input` is passed.
+
+### Reset Semantics & Boundaries
+
+The reset operation is executed inside an atomic PostgreSQL transaction (`transaction.atomic`):
+- **What gets reset (Demo transactional & persona state)**:
+  - All Deal Executions and operational sub-records (Milestones, Logistics, Operational Documents) linked to Demo Deals.
+  - All Deals, Deal Terms Snapshots, Party Snapshots, Cost Snapshots, and Broker Attributions linked to Demo RFQs/Offers.
+  - All Awards and AwardAllocations for Demo offers/RFQs.
+  - All Offers (including RevisionRequests, OfferVersions, draft and submitted version pointers).
+  - All MatchingRuns for Demo RFQs.
+  - All Opportunities and OpportunityContactAttempts linked to Demo entities (including the Hero opportunity `OPP-2026-0001`).
+  - Sequence counter for `OpportunityIdentifierSequence` reset to 0 for year 2026 to ensure deterministic opportunity sequence numbering across resets.
+  - All Demo RFQs (Hero RFQ, Deal RFQs, active RFQs, expired RFQs, drafts), RFQ invitations, and supply listings.
+  - External counterparties associated with Demo organizations.
+  - Organization verification records and documents for Demo organizations.
+  - Verification state, display names, and capabilities of canonical Demo organizations reset to baseline; any extra demo organizations deleted.
+  - Canonical demo users (`buyer@demo.local`, `supplier@demo.local`, `broker@demo.local`, `operator@demo.local`, `admin@demo.local`) have their active status and system roles restored; any extra `@demo.local` users deleted.
+  - Re-executes `seed_demo_dataset()`, restoring the 10 historical closed/in-progress deals, active/expired RFQs, matching runs, supply listings, and the exact Hero flow starting state.
+
+- **What is preserved**:
+  - Non-demo organizations, users, memberships, and system roles.
+  - Unrelated customer/pilot RFQs, opportunities, offers, deals, and executions.
+  - Platform catalog definitions and commodity schemas (`seed_bitumen`, `seed_base_oil`).
+  - Reference data (geography, country catalogs, units of measurement, delivery terms).
+  - Database schema and applied migrations.
+
+### Expected Result
+
+After executing `python manage.py reset_demo`, the database is in the exact identical state as a fresh run of `seed_demo_dataset`:
+- 5 Demo Personas active with unusable passwords.
+- 10 Realistic Demo Deals (Deals 1 & 2 CLOSED with 10 completed milestone executions; Deal 10 OPEN with in-progress milestones; Deals 3-9 in various operational states).
+- 1 Fresh Hero Opportunity (`OPP-2026-0001`) in `PENDING_VALIDATION` ready for the Hero walkthrough.
+- 2 Active RFQs (Bitumen 60/70 and Base Oil SN 500) open for bidding with matching runs and invitations.
+- Deterministic, repeatable, and idempotent across multiple successive executions.
+
