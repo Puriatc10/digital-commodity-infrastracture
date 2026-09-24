@@ -302,7 +302,7 @@ def submit_operator_external_offer(
             valid_until=valid_until,
             logistics_cost_status=logistics_cost_status,
             logistics_cost_amount=logistics_cost_amount,
-            specifications=specifications,
+            specifications=specifications if specifications is not None else (locked_opp.specifications or {}),
             notes=notes,
             cost_components=cost_components,
         )

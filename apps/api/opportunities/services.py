@@ -245,6 +245,8 @@ def create_opportunity(
     organization_id: uuid.UUID | str | None = None,
     external_counterparty_id: uuid.UUID | str | None = None,
     commodity_id: uuid.UUID | str | None = None,
+    schema_version_id: uuid.UUID | str | None = None,
+    specifications: dict | None = None,
     quantity: Decimal | None = None,
     unit: str = "MT",
     indicative_price: Decimal | None = None,
@@ -253,11 +255,13 @@ def create_opportunity(
     delivery_window_end: datetime.date | None = None,
     payment_terms: str = "",
     geography: str = "",
+    origin_area_id: uuid.UUID | str | None = None,
     notes: str = "",
     source: str = OpportunitySource.OPERATOR_SOURCING,
     broker_id: uuid.UUID | str | None = None,
     created_by: Any = None,
     as_of: datetime.datetime | None = None,
+    identifier: str | None = None,
 ) -> Opportunity:
     """
     Authoritative Opportunity creation service.
@@ -265,8 +269,9 @@ def create_opportunity(
     Transaction semantics:
         BEGIN
         -> validate source and broker attribution consistency
-        -> allocate unique year/sequence safely (PostgreSQL select_for_update)
+        -> allocate unique year/sequence safely (PostgreSQL select_for_update) unless identifier provided
         -> construct identifier (OPP-{YEAR}-{SEQUENCE})
+        -> validate dynamic specifications if schema_version_id provided
         -> create Opportunity
         -> full_clean & save
         -> COMMIT
@@ -276,7 +281,16 @@ def create_opportunity(
     """
     validate_opportunity_source_and_broker(source=source, broker_id=broker_id)
 
-    identifier = allocate_opportunity_identifier(as_of=as_of)
+    if identifier is None:
+        identifier = allocate_opportunity_identifier(as_of=as_of)
+
+    schema_version = None
+    if schema_version_id:
+        from commodities.models import CommoditySchemaVersion
+        schema_version = CommoditySchemaVersion.objects.filter(pk=schema_version_id).first()
+        if schema_version and specifications:
+            from trade_hub.services.rfq_service import validate_specifications_payload
+            validate_specifications_payload(schema_version, specifications)
 
     opportunity = Opportunity(
         identifier=identifier,
@@ -284,6 +298,8 @@ def create_opportunity(
         organization_id=organization_id,
         external_counterparty_id=external_counterparty_id,
         commodity_id=commodity_id,
+        schema_version=schema_version,
+        specifications=specifications or {},
         quantity=quantity,
         unit=unit,
         indicative_price=indicative_price,
@@ -292,6 +308,7 @@ def create_opportunity(
         delivery_window_end=delivery_window_end,
         payment_terms=payment_terms,
         geography=geography,
+        origin_area_id=origin_area_id,
         notes=notes,
         source=source,
         broker_id=broker_id,

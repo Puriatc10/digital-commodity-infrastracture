@@ -168,6 +168,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-07",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "buyer_2",
@@ -179,6 +180,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-07",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "buyer_3",
@@ -190,6 +192,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-19",
             "verif_status": VerificationStatus.BASIC_VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "buyer_4",
@@ -201,6 +204,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-04",
             "verif_status": VerificationStatus.UNDER_REVIEW,
+            "commodities": ["bitumen"],
         },
         {
             "key": "buyer_5",
@@ -212,8 +216,11 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-01",
             "verif_status": VerificationStatus.DOCUMENTS_SUBMITTED,
+            "commodities": ["bitumen"],
         },
         # --- SUPPLIERS (9) ---
+        # 7 Bitumen suppliers (suppliers 1-7 satisfy Bitumen matching candidate universe)
+        # 2 Base Oil suppliers (suppliers 8-9 satisfy platform-wide catalog without polluting Bitumen candidate universe)
         {
             "key": "supplier_1",
             "name": "Demo Supplier LLC",
@@ -224,6 +231,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-07",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "supplier_2",
@@ -235,6 +243,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-04",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "supplier_3",
@@ -246,7 +255,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-07",
             "verif_status": VerificationStatus.VERIFIED,
-            "has_base_oil": True,
+            "commodities": ["bitumen", "base_oil"],
         },
         {
             "key": "supplier_4",
@@ -258,6 +267,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-23",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "supplier_5",
@@ -269,6 +279,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-01",
             "verif_status": VerificationStatus.BASIC_VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "supplier_6",
@@ -280,6 +291,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-14",
             "verif_status": VerificationStatus.UNDER_REVIEW,
+            "commodities": ["bitumen"],
         },
         {
             "key": "supplier_7",
@@ -291,7 +303,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-22",
             "verif_status": VerificationStatus.DOCUMENTS_SUBMITTED,
-            "has_base_oil": True,
+            "commodities": ["bitumen", "base_oil"],
         },
         {
             "key": "supplier_8",
@@ -303,6 +315,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-17",
             "verif_status": VerificationStatus.UNVERIFIED,
+            "commodities": ["base_oil"],
         },
         {
             "key": "supplier_9",
@@ -314,8 +327,11 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-10",
             "verif_status": VerificationStatus.SUSPENDED,
+            "commodities": ["base_oil"],
         },
         # --- BROKERS (6) ---
+        # 3 Bitumen brokers (brokers 1-3 satisfy Bitumen matching candidate universe)
+        # 3 Base Oil brokers (brokers 4-6 satisfy platform-wide broker diversity)
         {
             "key": "broker_1",
             "name": "Demo Brokerage",
@@ -326,6 +342,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-07",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "broker_2",
@@ -337,6 +354,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-32",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "broker_3",
@@ -348,6 +366,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-07",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["bitumen"],
         },
         {
             "key": "broker_4",
@@ -359,6 +378,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-23",
             "verif_status": VerificationStatus.BASIC_VERIFIED,
+            "commodities": ["base_oil"],
         },
         {
             "key": "broker_5",
@@ -370,6 +390,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-07",
             "verif_status": VerificationStatus.UNDER_REVIEW,
+            "commodities": ["base_oil"],
         },
         {
             "key": "broker_6",
@@ -381,6 +402,7 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             "country": "IR",
             "area_code": "IR-04",
             "verif_status": VerificationStatus.VERIFIED,
+            "commodities": ["base_oil"],
         },
     ]
 
@@ -422,16 +444,23 @@ def _seed_organizations_and_users() -> Dict[str, Any]:
             defaults={"role": defn["role"], "is_active": True},
         )
 
-        # Commodity link
-        OrganizationCommodity.objects.get_or_create(
-            organization=org,
-            commodity=bitumen,
-        )
-        if defn.get("has_base_oil") and base_oil:
-            OrganizationCommodity.objects.get_or_create(
-                organization=org,
-                commodity=base_oil,
-            )
+        # Commodity links synchronization
+        commodities_to_link = defn.get("commodities", ["bitumen"])
+        valid_comm_ids = []
+        for comm_code in commodities_to_link:
+            if comm_code == "bitumen" and bitumen:
+                oc, _ = OrganizationCommodity.objects.get_or_create(
+                    organization=org,
+                    commodity=bitumen,
+                )
+                valid_comm_ids.append(oc.id)
+            elif comm_code == "base_oil" and base_oil:
+                oc, _ = OrganizationCommodity.objects.get_or_create(
+                    organization=org,
+                    commodity=base_oil,
+                )
+                valid_comm_ids.append(oc.id)
+        OrganizationCommodity.objects.filter(organization=org).exclude(id__in=valid_comm_ids).delete()
 
         # Geographic operating area
         if defn.get("area_code"):
@@ -615,6 +644,10 @@ def _seed_opportunities(
     operator = entities["operator_user"]
     orgs = entities["orgs"]
 
+    schema = CommoditySchemaVersion.objects.filter(
+        commodity=commodity, status=CommoditySchemaVersion.SchemaStatus.PUBLISHED
+    ).first()
+
     opp_definitions = [
         {
             "code": "01",
@@ -625,8 +658,10 @@ def _seed_opportunities(
             "qty": Decimal("500.000"),
             "price": Decimal("375.00"),
             "geography": "UAE / Jebel Ali",
-            "target_status": OpportunityStatus.QUALIFIED,
-            "notes": "[DEMO-OPP-01] Sourced through Demo Brokerage for export-grade Bitumen 60/70.",
+            "target_status": OpportunityStatus.CAPTURED,
+            "identifier": "OPP-2026-000124",
+            "specifications": {"penetration_grade": "60/70"},
+            "notes": "[DEMO-OPP-HERO] [OPP-2026-00124] [DEMO-OPP-01] Sourced through Demo Brokerage for export-grade Bitumen 60/70.",
         },
         {
             "code": "02",
@@ -659,7 +694,7 @@ def _seed_opportunities(
             "qty": Decimal("600.000"),
             "price": Decimal("390.00"),
             "geography": "Iran / Isfahan",
-            "target_status": OpportunityStatus.CAPTURED,
+            "target_status": OpportunityStatus.QUALIFIED,
             "notes": "[DEMO-OPP-04] Road maintenance demand inquiry for highway expansion.",
         },
         {
@@ -714,15 +749,21 @@ def _seed_opportunities(
     for d in opp_definitions:
         tag = f"[DEMO-OPP-{d['code']}]"
         existing = Opportunity.objects.filter(notes__contains=tag).first()
+        if not existing and d.get("identifier"):
+            existing = Opportunity.objects.filter(identifier=d["identifier"]).first()
+
         if existing:
             out[d["code"]] = existing
             continue
 
         opp = create_opportunity(
+            identifier=d.get("identifier"),
             direction=d["direction"],
             organization_id=d.get("org").id if d.get("org") else None,
             external_counterparty_id=d.get("ext_cp").id if d.get("ext_cp") else None,
             commodity_id=commodity.id,
+            schema_version_id=schema.id if d.get("specifications") and schema else None,
+            specifications=d.get("specifications"),
             quantity=d["qty"],
             unit="MT",
             indicative_price=d["price"],
@@ -1688,6 +1729,10 @@ def seed_demo_dataset(stdout=None) -> Dict[str, Any]:
             stdout.write("Seeding Deal Executions and milestone histories...")
         _seed_executions(trade_data["deals"], entities)
 
+    # 7. Hero Scenario Context (T1302)
+    from identity.seed_hero import seed_hero_scenario
+    hero_summary = seed_hero_scenario(stdout=stdout)
+
     # Compute final counts
     buyers_count = OrganizationCapability.objects.filter(capability="buyer").count()
     suppliers_count = OrganizationCapability.objects.filter(capability="supplier").count()
@@ -1708,6 +1753,7 @@ def seed_demo_dataset(stdout=None) -> Dict[str, Any]:
         "deals_count": deals_count,
         "opportunities_count": opps_count,
         "executions_count": executions_count,
+        "hero_scenario": hero_summary,
     }
 
     if stdout:
