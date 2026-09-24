@@ -86,10 +86,10 @@ export function CommoditySpecificationForm({
 
               return (
                 <div key={attr.key} className="space-y-2">
-                  <Label htmlFor={fieldId} className="flex items-center space-x-1 rtl:space-x-reverse">
+                  <Label htmlFor={fieldId} className="flex items-center gap-1.5">
                     <span>{labelText}</span>
                     {isRequired && <span className="text-destructive" title={messages.required}>*</span>}
-                    {unit && <span className="text-muted-foreground text-xs ml-1 rtl:mr-1 rtl:ml-0">({unit})</span>}
+                    {unit && <bdi className="text-muted-foreground text-xs font-normal">({unit})</bdi>}
                   </Label>
 
                   <div className="mt-1">

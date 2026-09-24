@@ -7,7 +7,7 @@ import {
   Loader2,
   RefreshCw,
   ShieldAlert,
-  ArrowRight,
+  ArrowLeft,
   Building2,
   User,
   Handshake,
@@ -603,13 +603,13 @@ export function OpportunityDetailClient({
         <div className="flex items-center gap-3">
           <Link href={`/${locale}/opportunities`}>
             <Button variant="outline" className="min-h-8 px-2.5 py-1 text-xs gap-1">
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" />
               <span>{oppMsg.actions.backToList}</span>
             </Button>
           </Link>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold font-mono">
-              {opp.identifier || opp.id}
+              <bdi dir="ltr">{opp.identifier || opp.id}</bdi>
             </h1>
             <Badge
               variant="outline"
@@ -625,7 +625,7 @@ export function OpportunityDetailClient({
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
-            {oppMsg.fields.version}: <strong className="font-mono">{opp.version}</strong>
+            {oppMsg.fields.version}: <strong className="font-mono"><bdi dir="ltr">{opp.version}</bdi></strong>
           </span>
           <Button
             variant="outline"
@@ -1059,7 +1059,7 @@ export function OpportunityDetailClient({
                         </p>
                         {attempt.recorded_by_email && (
                           <span className="text-[10px] text-muted-foreground">
-                            ثبت شده توسط: {attempt.recorded_by_email}
+                            ثبت شده توسط: <bdi dir="ltr">{attempt.recorded_by_email}</bdi>
                           </span>
                         )}
                       </div>
@@ -1133,7 +1133,7 @@ export function OpportunityDetailClient({
 
                         <div className="flex items-center justify-between border-t pt-2 mt-1">
                           <span className="text-[10px] text-muted-foreground">
-                            مسئول: {task.assigned_to_email || "بدون انتساب"}
+                            مسئول: {task.assigned_to_email ? <bdi dir="ltr">{task.assigned_to_email}</bdi> : "بدون انتساب"}
                           </span>
                           {isOpen && (
                             <div className="flex items-center gap-2">
@@ -1254,7 +1254,7 @@ export function OpportunityDetailClient({
 
       {/* 1. Reason Action Modal (Hold / Reject / Lost) */}
       {activeModal === "reason_action" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">
@@ -1306,7 +1306,7 @@ export function OpportunityDetailClient({
 
       {/* 2. Contact Attempt Modal */}
       {activeModal === "contact_attempt" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">{oppMsg.modals.contactTitle}</CardTitle>
@@ -1372,7 +1372,7 @@ export function OpportunityDetailClient({
 
       {/* 3. Follow-up Task Modal */}
       {activeModal === "create_task" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">{oppMsg.modals.taskTitle}</CardTitle>
@@ -1454,7 +1454,7 @@ export function OpportunityDetailClient({
 
       {/* 4. Convert to RFQ Modal (T0609) */}
       {activeModal === "convert_rfq" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-lg bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">{oppMsg.modals.convertRfqTitle}</CardTitle>
@@ -1549,7 +1549,7 @@ export function OpportunityDetailClient({
 
       {/* 5. Convert to Supply Listing Modal (T0610) */}
       {activeModal === "convert_supply" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-lg bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">{oppMsg.modals.convertSupplyTitle}</CardTitle>

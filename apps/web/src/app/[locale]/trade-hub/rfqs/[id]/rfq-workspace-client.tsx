@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import {
   AlertTriangle,
-  ArrowRight,
+  ArrowLeft,
   Award,
   CheckCircle2,
   Clock,
@@ -486,7 +486,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
         <h2 className="text-xl font-bold">{t.rfqNotFoundTitle}</h2>
         <p className="max-w-md text-sm text-muted-foreground">{t.rfqNotFoundDescription}</p>
         <Button variant="outline" onClick={() => router.push(`/${locale}/trade-hub`)}>
-          <ArrowRight className="ml-2 h-4 w-4 rtl:mr-2 rtl:ml-0" />
+          <ArrowLeft className="me-2 h-4 w-4 rtl:rotate-180" />
           {t.backToHub}
         </Button>
       </div>
@@ -669,7 +669,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
           <Users className="h-4 w-4" />
           {t.tabs.participants}
           {canManage && invitations.length > 0 && (
-            <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0.5">
+            <Badge variant="secondary" className="ms-1 text-xs px-1.5 py-0.5">
               {invitations.length}
             </Badge>
           )}
@@ -796,7 +796,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
               <CardContent className="pt-4">
                 {isLoadingSchema ? (
                   <div className="flex items-center justify-center p-6 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <Loader2 className="h-5 w-5 animate-spin me-2" />
                     <span>{t.errors.loadSchemaFailed}</span>
                   </div>
                 ) : schema ? (
@@ -1016,7 +1016,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
                     className="min-h-8 px-3 py-1.5 text-xs"
                     onClick={() => setShowInviteModal(true)}
                   >
-                    <Users className="h-4 w-4 mr-2 rtl:ml-2 rtl:mr-0" />
+                    <Users className="h-4 w-4 me-2" />
                     {t.participants.inviteMore}
                   </Button>
                 )}
@@ -1046,7 +1046,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
                           <TableCell className="font-medium">
                             {inv.organization.name}
                             {inv.organization.verification_status === "verified" && (
-                              <Badge variant="outline" className="ml-2 text-xs text-green-600 border-green-200">
+                              <Badge variant="outline" className="ms-2 text-xs text-green-600 border-green-200">
                                 معتبر
                               </Badge>
                             )}
@@ -1187,7 +1187,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
                 {t.activity.noActivity}
               </div>
             ) : (
-              <div className="relative border-r border-border pr-4 space-y-6 rtl:border-r rtl:border-l-0 rtl:pr-4">
+              <div className="relative border-s border-border ps-4 space-y-6">
                 {activity.map((item) => {
                   const eventTitle =
                     t.activity.events[item.event_type as keyof typeof t.activity.events] ||
@@ -1198,7 +1198,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
 
                   return (
                     <div key={item.id} className="relative flex flex-col gap-1">
-                      <div className="absolute -right-[23px] top-1 h-3 w-3 rounded-full border-2 border-background bg-primary rtl:-right-[23px]" />
+                      <div className="absolute -start-[23px] top-1 h-3 w-3 rounded-full border-2 border-background bg-primary" />
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold">{eventTitle}</span>
                         {item.organization_name && (
@@ -1337,7 +1337,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
               >
                 {isActionLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2 rtl:ml-2 rtl:mr-0" />
+                    <Loader2 className="h-4 w-4 animate-spin me-2" />
                     {t.actions.closing}
                   </>
                 ) : (
@@ -1363,7 +1363,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
               <div className="space-y-1.5">
                 <Label htmlFor="cancel-reason" className="text-xs font-medium">
                   {t.actions.cancelReasonLabel}
-                  {rfq.status === "published" && <span className="text-destructive ml-1">*</span>}
+                  {rfq.status === "published" && <span className="text-destructive ms-1">*</span>}
                 </Label>
                 <Textarea
                   id="cancel-reason"
@@ -1392,7 +1392,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
                 >
                   {isActionLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2 rtl:ml-2 rtl:mr-0" />
+                      <Loader2 className="h-4 w-4 animate-spin me-2" />
                       {t.actions.cancelling}
                     </>
                   ) : (
@@ -1472,7 +1472,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
                             {isInvitingId === org.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                              <Send className="h-3.5 w-3.5 mr-1 rtl:ml-1 rtl:mr-0" />
+                              <Send className="h-3.5 w-3.5 me-1" />
                             )}
                             ارسال دعوت
                           </Button>
@@ -1538,7 +1538,7 @@ export function RFQWorkspaceClient({ locale = "fa", rfqId }: RFQWorkspaceClientP
                 >
                   {isDeclining ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2 rtl:ml-2 rtl:mr-0" />
+                      <Loader2 className="h-4 w-4 animate-spin me-2" />
                       {t.participants.declining}
                     </>
                   ) : (

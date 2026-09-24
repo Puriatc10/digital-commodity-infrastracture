@@ -58,7 +58,7 @@ export function DecisionRunCard({
   if (!run) {
     return (
       <Card className="border border-dashed bg-card/40">
-        <CardHeader className="pb-2 text-center sm:text-right">
+        <CardHeader className="pb-2 text-center sm:text-start">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 justify-center sm:justify-start">
@@ -140,7 +140,7 @@ export function DecisionRunCard({
                 <Sparkles className="h-4 w-4 text-primary" />
                 <CardTitle className="text-sm font-semibold">{t.title}</CardTitle>
                 <Badge variant="outline" className="text-[11px] text-muted-foreground font-mono">
-                  {t.policyVersion} {run.profile_code} (v{run.profile_version_number})
+                  {t.policyVersion} <bdi dir="ltr">{run.profile_code} (v{run.profile_version_number})</bdi>
                 </Badge>
                 {isStale ? (
                   <Badge variant="outline" className="text-amber-600 border-amber-300 text-[11px]">
@@ -192,7 +192,7 @@ export function DecisionRunCard({
                   <div className="text-[11px] text-muted-foreground">
                     رتبه ۱ با امتیاز مؤثر{" "}
                     <span className="font-mono font-bold text-foreground">
-                      {recommendedCandidate.effective_score ?? "—"}%
+                      <bdi dir="ltr">{recommendedCandidate.effective_score ?? "—"}%</bdi>
                     </span>
                   </div>
                 </div>

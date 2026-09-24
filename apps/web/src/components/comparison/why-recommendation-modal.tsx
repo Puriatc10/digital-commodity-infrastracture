@@ -156,12 +156,12 @@ export function WhyRecommendationModal({
                 <div className="flex items-center gap-3 text-muted-foreground text-[11px]">
                   {signal.weight && (
                     <span>
-                      {t.weight} <span className="font-mono text-foreground font-medium">{signal.weight}%</span>
+                      {t.weight} <span className="font-mono text-foreground font-medium"><bdi dir="ltr">{signal.weight}%</bdi></span>
                     </span>
                   )}
                   {signal.contribution && (
                     <span>
-                      {t.contribution} <span className="font-mono text-foreground font-medium">{signal.contribution}%</span>
+                      {t.contribution} <span className="font-mono text-foreground font-medium"><bdi dir="ltr">{signal.contribution}%</bdi></span>
                     </span>
                   )}
                 </div>
@@ -176,13 +176,13 @@ export function WhyRecommendationModal({
                   {expectedStr !== null && (
                     <div className="bg-muted/30 p-1.5 rounded">
                       <span className="text-muted-foreground block text-[10px] mb-0.5">{t.expected}:</span>
-                      <span className="font-mono text-foreground break-all">{expectedStr}</span>
+                      <bdi dir="ltr" className="font-mono text-foreground break-all block">{expectedStr}</bdi>
                     </div>
                   )}
                   {actualStr !== null && (
                     <div className="bg-muted/30 p-1.5 rounded">
                       <span className="text-muted-foreground block text-[10px] mb-0.5">{t.actual}:</span>
-                      <span className="font-mono text-foreground break-all">{actualStr}</span>
+                      <bdi dir="ltr" className="font-mono text-foreground break-all block">{actualStr}</bdi>
                     </div>
                   )}
                 </div>
@@ -212,7 +212,7 @@ export function WhyRecommendationModal({
               </CardTitle>
             </div>
             <CardDescription className="text-xs mt-1">
-              پیشنهاد {offerorName} (نسخه V{candidate.version_number}) · {t.subtitle}
+              پیشنهاد {offerorName} (نسخه <bdi dir="ltr">V{candidate.version_number}</bdi>) · {t.subtitle}
             </CardDescription>
           </div>
           <Button
