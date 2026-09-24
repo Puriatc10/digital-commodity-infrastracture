@@ -646,7 +646,7 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
 
       {/* Tabs Navigation Bar */}
       <div className="border-b border-border overflow-x-auto">
-        <nav className="flex space-x-1 rtl:space-x-reverse min-w-max pb-px" aria-label="Tabs">
+        <nav className="flex space-x-1 rtl:space-x-reverse min-w-max pb-px" aria-label={t.tabs.ariaLabel}>
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;

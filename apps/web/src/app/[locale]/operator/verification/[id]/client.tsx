@@ -20,24 +20,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { components } from "@/lib/api/generated/schema";
+import { getMessages } from "@/i18n/messages";
+import type { EnabledLocale } from "@/i18n/config";
 
 type InternalVerificationDetail =
   components["schemas"]["InternalOrganizationVerificationDetail"];
 type VerificationDoc = components["schemas"]["VerificationDocument"];
-
-const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  commercial_registration: "ثبت تجاری / روزنامه رسمی",
-  tax_certificate: "گواهی مالیاتی و کد اقتصادی",
-  bank_reference: "معرفی‌نامه بانکی",
-  identity_proof: "احراز هویت مدیران",
-};
-
-const DOC_STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  pending: { label: "در انتظار بررسی", className: "text-amber-600 bg-amber-50" },
-  accepted: { label: "تایید شده", className: "text-green-600 bg-green-50" },
-  rejected: { label: "رد شده", className: "text-destructive bg-destructive/10" },
-  replaced: { label: "جایگزین شده", className: "text-muted-foreground bg-muted" },
-};
 
 export function VerificationCaseDetailClient({
   id: organizationId,
@@ -46,6 +34,9 @@ export function VerificationCaseDetailClient({
   id: string;
   locale: string;
 }) {
+  const messages = getMessages((locale || "fa") as EnabledLocale);
+  const t = messages.verification.caseDetail;
+
   const queryClient = useQueryClient();
   const { state: authState } = useAuth();
 
@@ -58,6 +49,21 @@ export function VerificationCaseDetailClient({
   const [actionError, setActionError] = useState<string | null>(null);
   const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const getDocStatusInfo = (status: string) => {
+    switch (status) {
+      case "pending":
+        return { label: t.documents.statuses.pending, className: "text-amber-600 bg-amber-50" };
+      case "accepted":
+        return { label: t.documents.statuses.accepted, className: "text-green-600 bg-green-50" };
+      case "rejected":
+        return { label: t.documents.statuses.rejected, className: "text-destructive bg-destructive/10" };
+      case "replaced":
+        return { label: t.documents.statuses.replaced, className: "text-muted-foreground bg-muted" };
+      default:
+        return { label: status, className: "text-muted-foreground" };
+    }
+  };
 
   // 1. Fetch case verification detail
   const {
@@ -129,9 +135,7 @@ export function VerificationCaseDetailClient({
     void refetchDocs();
     const err = error as { detail?: string; message?: string; status?: number };
     if (err?.status === 409 || (err?.message && err.message.includes("Stale"))) {
-      setActionError(
-        "اطلاعات پرونده همگام نیست (تغییر همزمان رخ داده است). اطلاعات صفحه به‌روزرسانی شد، لطفاً مجدداً بررسی فرمایید."
-      );
+      setActionError(t.conflictError);
     } else {
       setActionError(err?.detail || err?.message || fallbackMessage);
     }
@@ -272,7 +276,7 @@ export function VerificationCaseDetailClient({
 
   const addNoteMutation = useMutation({
     mutationFn: async () => {
-      if (!internalNote.trim()) throw new Error("متن یادداشت نمی‌تواند خالی باشد.");
+      if (!internalNote.trim()) throw new Error(t.decision.emptyNoteError);
       const res = await client.POST(
         "/api/organizations/{org_id}/verification/notes/",
         {
@@ -317,7 +321,7 @@ export function VerificationCaseDetailClient({
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="sr-only">Loading case details...</span>
+        <span className="sr-only">{t.loadingSr}</span>
       </div>
     );
   }
@@ -327,10 +331,10 @@ export function VerificationCaseDetailClient({
       <Card className="p-8 text-center">
         <div className="flex flex-col items-center gap-3">
           <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h2 className="text-lg font-semibold text-destructive">دسترسی غیرمجاز</h2>
-          <span className="sr-only">Unauthorized</span>
+          <h2 className="text-lg font-semibold text-destructive">{t.unauthorizedTitle}</h2>
+          <span className="sr-only">{t.unauthorizedSr}</span>
           <p className="text-sm text-muted-foreground">
-            این بخش اختصاصی اپراتورها و مدیران سامانه برای بررسی پرونده‌های احراز هویت است.
+            {t.unauthorizedDesc}
           </p>
         </div>
       </Card>
@@ -341,11 +345,11 @@ export function VerificationCaseDetailClient({
     return (
       <Card className="p-8 text-center">
         <p className="text-destructive font-medium">
-          خطا در بارگذاری پرونده احراز هویت.
-          <span className="sr-only">Error loading case details.</span>
+          {t.loadError}
+          <span className="sr-only">{t.errorSr}</span>
         </p>
         <Button onClick={() => refetchVerification()} variant="outline" className="mt-4">
-          تلاش دوباره
+          {t.retry}
         </Button>
       </Card>
     );
@@ -373,13 +377,13 @@ export function VerificationCaseDetailClient({
           </Link>
           <div>
             <h2 className="text-xl font-bold">
-              {profileData?.name ? `پرونده احراز هویت: ${profileData.name}` : "پرونده احراز هویت سازمان"}
+              {profileData?.name ? t.title.replace("{name}", profileData.name) : t.defaultTitle}
             </h2>
-            <p className="text-xs text-muted-foreground">شناسه سازمان: {organizationId}</p>
+            <p className="text-xs text-muted-foreground">{t.orgIdLabel} {organizationId}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">نسخه پرونده: v{verificationData.version}</span>
+          <span className="text-xs text-muted-foreground">{t.caseVersionLabel} v{verificationData.version}</span>
           <VerificationBadge status={verificationData.status} />
         </div>
       </div>
@@ -401,7 +405,7 @@ export function VerificationCaseDetailClient({
       {/* Operator Workflow Action Panel */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold">اقدامات اپراتور</CardTitle>
+          <CardTitle className="text-base font-semibold">{t.actions.panelTitle}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
@@ -412,7 +416,7 @@ export function VerificationCaseDetailClient({
                 className="bg-primary text-primary-foreground"
               >
                 {startReviewMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                شروع بررسی پرونده
+                {t.actions.startReview}
               </Button>
             )}
 
@@ -424,7 +428,7 @@ export function VerificationCaseDetailClient({
                   className="bg-teal-600 text-white hover:bg-teal-700"
                 >
                   {approveBasicMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                  اعطای تاییدیه اولیه
+                  {t.actions.approveBasic}
                 </Button>
                 <Button
                   onClick={() => approveFullMutation.mutate()}
@@ -432,7 +436,7 @@ export function VerificationCaseDetailClient({
                   className="bg-green-600 text-white hover:bg-green-700"
                 >
                   {approveFullMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                  اعطای تاییدیه کامل
+                  {t.actions.approveFull}
                 </Button>
               </>
             )}
@@ -444,7 +448,7 @@ export function VerificationCaseDetailClient({
                 variant="outline"
               >
                 {reopenMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                بازگشایی جهت بررسی مجدد
+                {t.actions.reopen}
               </Button>
             )}
           </div>
@@ -453,7 +457,7 @@ export function VerificationCaseDetailClient({
           {verificationData.status === "under_review" && (
             <div className="flex flex-col gap-2 pt-2 border-t sm:flex-row sm:items-center">
               <Input
-                placeholder="دلیل رد پرونده را بنویسید..."
+                placeholder={t.decision.reasonPlaceholder}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="flex-1"
@@ -466,7 +470,7 @@ export function VerificationCaseDetailClient({
                 disabled={isAnyActionPending || !reason.trim()}
               >
                 {rejectMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                رد پرونده
+                {t.actions.reject}
               </Button>
             </div>
           )}
@@ -474,7 +478,7 @@ export function VerificationCaseDetailClient({
           {(verificationData.status === "basic_verified" || verificationData.status === "verified") && (
             <div className="flex flex-col gap-2 pt-2 border-t sm:flex-row sm:items-center">
               <Input
-                placeholder="دلیل تعلیق را بنویسید..."
+                placeholder={t.decision.suspendPlaceholder}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="flex-1"
@@ -487,7 +491,7 @@ export function VerificationCaseDetailClient({
                 disabled={isAnyActionPending || !reason.trim()}
               >
                 {suspendMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-                تعلیق پرونده
+                {t.actions.suspend}
               </Button>
             </div>
           )}
@@ -497,7 +501,7 @@ export function VerificationCaseDetailClient({
       {/* Evidence Checklist with Authorized Download */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold">چک‌لیست مدارک احراز هویت</CardTitle>
+          <CardTitle className="text-base font-semibold">{t.documents.title}</CardTitle>
         </CardHeader>
         <CardContent>
           {isDocsLoading ? (
@@ -506,15 +510,12 @@ export function VerificationCaseDetailClient({
             </div>
           ) : !documentsData || documentsData.length === 0 ? (
             <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-              هیچ مدرکی برای این سازمان ثبت نشده است.
+              {t.documents.empty}
             </div>
           ) : (
             <ul className="divide-y divide-border">
               {documentsData.map((doc) => {
-                const statusInfo = DOC_STATUS_LABELS[doc.verification_status] || {
-                  label: doc.verification_status,
-                  className: "text-muted-foreground",
-                };
+                const statusInfo = getDocStatusInfo(doc.verification_status);
                 const isDownloading = downloadingDocId === doc.id;
                 const isReviewable =
                   verificationData.status === "under_review" &&
@@ -526,11 +527,11 @@ export function VerificationCaseDetailClient({
                       <FileText className="h-5 w-5 text-muted-foreground" />
                       <div>
                         <p className="text-sm font-medium">
-                          {DOCUMENT_TYPE_LABELS[doc.type] || doc.type}
+                          {(t.documents.types as Record<string, string>)[doc.type] || doc.type}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {doc.file_name} · {(doc.size_bytes / 1024).toFixed(0)} کیلوبایت · ثبت شده در{" "}
-                          {new Date(doc.created_at).toLocaleDateString("fa-IR")}
+                          {doc.file_name} · {(doc.size_bytes / 1024).toFixed(0)} {t.documents.sizeUnit} · {t.documents.registeredAt}{" "}
+                          {new Date(doc.created_at).toLocaleDateString(locale === "fa" ? "fa-IR" : "en-US")}
                         </p>
                       </div>
                     </div>
@@ -552,7 +553,7 @@ export function VerificationCaseDetailClient({
                         ) : (
                           <Download className="h-3.5 w-3.5" />
                         )}
-                        دانلود مدرک
+                        {t.documents.download}
                       </Button>
 
                       {/* Checklist Accept / Reject Buttons */}
@@ -570,7 +571,7 @@ export function VerificationCaseDetailClient({
                             disabled={isAnyActionPending}
                           >
                             <CheckCircle2 className="h-3.5 w-3.5 me-1" />
-                            تایید
+                            {t.actions.accept}
                           </Button>
                           <Button
                             variant="outline"
@@ -584,7 +585,7 @@ export function VerificationCaseDetailClient({
                             disabled={isAnyActionPending}
                           >
                             <XCircle className="h-3.5 w-3.5 me-1" />
-                            رد
+                            {t.actions.checklistReject}
                           </Button>
                         </div>
                       )}
@@ -600,7 +601,7 @@ export function VerificationCaseDetailClient({
       {/* Internal Notes (Operator only) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold">یادداشت‌های داخلی اپراتور</CardTitle>
+          <CardTitle className="text-base font-semibold">{t.history.notesTitle}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {verificationData.notes && verificationData.notes.length > 0 ? (
@@ -609,19 +610,19 @@ export function VerificationCaseDetailClient({
                 <li key={note.id} className="rounded-md border bg-muted/30 p-3 text-sm">
                   <div className="flex items-center justify-between pb-1 text-xs text-muted-foreground border-b border-border/50 mb-2">
                     <span className="font-medium">{note.actor_email}</span>
-                    <span>{new Date(note.created_at).toLocaleString("fa-IR")}</span>
+                    <span>{new Date(note.created_at).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}</span>
                   </div>
                   <p className="whitespace-pre-wrap">{note.note}</p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-muted-foreground">یادداشت داخلی ثبت نشده است.</p>
+            <p className="text-xs text-muted-foreground">{t.history.emptyNotes}</p>
           )}
 
           <div className="flex flex-col gap-2 pt-2 border-t sm:flex-row sm:items-center">
             <Input
-              placeholder="افزودن یادداشت داخلی محرمانه..."
+              placeholder={t.decision.internalNotePlaceholder}
               value={internalNote}
               onChange={(e) => setInternalNote(e.target.value)}
               className="flex-1"
@@ -633,7 +634,7 @@ export function VerificationCaseDetailClient({
               variant="outline"
             >
               {addNoteMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-              ثبت یادداشت
+              {t.actions.addNote}
             </Button>
           </div>
         </CardContent>
@@ -642,7 +643,7 @@ export function VerificationCaseDetailClient({
       {/* Decision History */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold">تاریخچه تصمیمات پرونده</CardTitle>
+          <CardTitle className="text-base font-semibold">{t.history.decisionTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           {verificationData.decisions && verificationData.decisions.length > 0 ? (
@@ -651,7 +652,7 @@ export function VerificationCaseDetailClient({
                 <li key={decision.id} className="py-3 text-sm">
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                     <span className="font-medium">{decision.actor_email}</span>
-                    <span>{new Date(decision.created_at).toLocaleString("fa-IR")}</span>
+                    <span>{new Date(decision.created_at).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{decision.action}:</span>
@@ -659,14 +660,14 @@ export function VerificationCaseDetailClient({
                   </div>
                   {decision.reason && (
                     <p className="mt-1 text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-                      دلیل: {decision.reason}
+                      {t.decision.reasonPrefix} {decision.reason}
                     </p>
                   )}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-muted-foreground">هنوز تصمیمی برای این پرونده ثبت نشده است.</p>
+            <p className="text-xs text-muted-foreground">{t.history.emptyDecisions}</p>
           )}
         </CardContent>
       </Card>

@@ -303,13 +303,13 @@ export function OpportunityDetailClient({
           setQualificationErrors(combined);
         }
 
-        throw new Error(errData?.detail || "Action failed");
+        throw new Error(errData?.detail || oppMsg.states.actionError);
       }
 
       setActionSuccess(oppMsg.states.lifecycleSuccess);
       await refetchOpp();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Error executing action");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.actionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -352,7 +352,7 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "Action failed");
+        throw new Error(errData?.detail || oppMsg.states.actionError);
       }
 
       setActionSuccess(oppMsg.states.lifecycleSuccess);
@@ -360,7 +360,7 @@ export function OpportunityDetailClient({
       setActionReason("");
       await refetchOpp();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Error executing action");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.actionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -391,7 +391,7 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "Failed to record contact attempt");
+        throw new Error(errData?.detail || oppMsg.states.contactError);
       }
 
       setActionSuccess(oppMsg.states.attemptRecorded);
@@ -399,7 +399,7 @@ export function OpportunityDetailClient({
       setContactNotes("");
       await refetchContacts();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Error recording attempt");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.contactError);
     } finally {
       setIsSubmitting(false);
     }
@@ -431,7 +431,7 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "Failed to create task");
+        throw new Error(errData?.detail || oppMsg.states.taskError);
       }
 
       setActionSuccess(oppMsg.states.taskCreated);
@@ -441,7 +441,7 @@ export function OpportunityDetailClient({
       setTaskDescription("");
       await refetchTasks();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Error creating task");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.taskError);
     } finally {
       setIsSubmitting(false);
     }
@@ -469,7 +469,7 @@ export function OpportunityDetailClient({
       }
 
       if (!resp.response.ok) {
-        throw new Error("Task transition failed");
+        throw new Error(oppMsg.states.taskError);
       }
 
       setActionSuccess(
@@ -479,7 +479,7 @@ export function OpportunityDetailClient({
       );
       await refetchTasks();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Task action failed");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.taskError);
     }
   };
 
@@ -512,14 +512,14 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "RFQ conversion failed");
+        throw new Error(errData?.detail || oppMsg.states.conversionError);
       }
 
       setActionSuccess(oppMsg.states.conversionSuccess);
       setActiveModal("none");
       await refetchOpp();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Conversion failed");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.conversionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -555,14 +555,14 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "Supply Listing conversion failed");
+        throw new Error(errData?.detail || oppMsg.states.supplyConversionError);
       }
 
       setActionSuccess(oppMsg.states.conversionSuccess);
       setActiveModal("none");
       await refetchOpp();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Conversion failed");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.supplyConversionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -1466,7 +1466,7 @@ export function OpportunityDetailClient({
                     {oppMsg.modals.buyerOrgLabel} *
                   </Label>
                   <Input
-                    placeholder="UUID سازمان خریدار ثبت‌شده..."
+                    placeholder={oppMsg.modals.buyerUuidPlaceholder}
                     value={convertBuyerOrgId}
                     onChange={(e) => setConvertBuyerOrgId(e.target.value)}
                     className="h-8 text-xs font-mono"
@@ -1561,7 +1561,7 @@ export function OpportunityDetailClient({
                     {oppMsg.modals.supplierOrgLabel} *
                   </Label>
                   <Input
-                    placeholder="UUID سازمان تأمین‌کننده ثبت‌شده..."
+                    placeholder={oppMsg.modals.supplierUuidPlaceholder}
                     value={convertSupplierOrgId}
                     onChange={(e) => setConvertSupplierOrgId(e.target.value)}
                     className="h-8 text-xs font-mono"
