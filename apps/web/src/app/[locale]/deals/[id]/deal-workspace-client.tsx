@@ -49,6 +49,19 @@ import {
   Truck,
   Users,
 } from "lucide-react";
+import { ExecutionTab } from "@/components/deals/execution/execution-tab";
+import { LogisticsTab } from "@/components/deals/execution/logistics-tab";
+import { QualityTab } from "@/components/deals/execution/quality-tab";
+import { DocumentsTab } from "@/components/deals/execution/documents-tab";
+import { IssuesTab } from "@/components/deals/execution/issues-tab";
+import type {
+  ExecutionDetail,
+  ExecutionLogistics,
+  ExecutionInspection,
+  ExecutionDocument,
+  ExecutionIssue,
+  TimelineEvent,
+} from "@/components/deals/execution/types";
 
 type DealResponse = components["schemas"]["DealResponse"];
 type CommoditySchemaVersion = components["schemas"]["CommoditySchemaVersion"];
@@ -85,6 +98,19 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
   const [deal, setDeal] = useState<DealResponse | null>(null);
   const [schema, setSchema] = useState<CommoditySchemaVersion | null>(null);
 
+  // Epic 10 Execution States
+  const [execution, setExecution] = useState<ExecutionDetail | null>(null);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [logistics, setLogistics] = useState<ExecutionLogistics | null>(null);
+  const [inspection, setInspection] = useState<ExecutionInspection | null>(null);
+  const [documents, setDocuments] = useState<ExecutionDocument[]>([]);
+  const [issues, setIssues] = useState<ExecutionIssue[]>([]);
+  const [, setIsLoadingExecution] = useState<boolean>(false);
+  const [isLoadingTimeline, setIsLoadingTimeline] = useState<boolean>(false);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState<boolean>(false);
+  const [isLoadingIssues, setIsLoadingIssues] = useState<boolean>(false);
+  const [isInitializingExecution, setIsInitializingExecution] = useState<boolean>(false);
+
   // Loading & Error States
   const [isLoadingDeal, setIsLoadingDeal] = useState<boolean>(true);
   const [isLoadingSchema, setIsLoadingSchema] = useState<boolean>(false);
@@ -112,6 +138,154 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
   const previousSessionKeyRef = useRef<string | null>(null);
   const currentSessionKey = `${dealId}:${currentOrgId ?? "none"}:${currentUserId ?? "none"}:${isOperatorOrAdmin ? "op" : "cust"}`;
 
+  // Execution resource fetching functions with race protection
+  const fetchExecution = async (reqKey = currentSessionKey) => {
+    setIsLoadingExecution(true);
+    try {
+      const { data, response } = await apiClient.GET("/api/deals/{deal_id}/execution/", {
+        params: { path: { deal_id: dealId } },
+      });
+
+      if (activeRequestKeyRef.current !== reqKey) return;
+
+      if (response.ok && data) {
+        setExecution(data);
+        if (data.logistics) setLogistics(data.logistics);
+        if (data.inspection) setInspection(data.inspection);
+      } else {
+        setExecution(null);
+        setLogistics(null);
+        setInspection(null);
+      }
+    } catch {
+      if (activeRequestKeyRef.current === reqKey) {
+        setExecution(null);
+      }
+    } finally {
+      if (activeRequestKeyRef.current === reqKey) {
+        setIsLoadingExecution(false);
+      }
+    }
+  };
+
+  const fetchTimeline = async (execId?: string, reqKey = currentSessionKey) => {
+    const targetId = execId || execution?.id;
+    if (!targetId) return;
+    setIsLoadingTimeline(true);
+    try {
+      const { data, response } = await apiClient.GET("/api/execution/{execution_id}/timeline/", {
+        params: { path: { execution_id: targetId } },
+      });
+      if (activeRequestKeyRef.current !== reqKey) return;
+      if (response.ok && data) {
+        setTimeline(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      if (activeRequestKeyRef.current === reqKey) {
+        setIsLoadingTimeline(false);
+      }
+    }
+  };
+
+  const fetchLogistics = async (execId?: string, reqKey = currentSessionKey) => {
+    const targetId = execId || execution?.id;
+    if (!targetId) return;
+    try {
+      const { data, response } = await apiClient.GET("/api/execution/{execution_id}/logistics/", {
+        params: { path: { execution_id: targetId } },
+      });
+      if (activeRequestKeyRef.current !== reqKey) return;
+      if (response.ok && data) {
+        setLogistics(data);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const fetchInspection = async (execId?: string, reqKey = currentSessionKey) => {
+    const targetId = execId || execution?.id;
+    if (!targetId) return;
+    try {
+      const { data, response } = await apiClient.GET("/api/execution/{execution_id}/inspection/", {
+        params: { path: { execution_id: targetId } },
+      });
+      if (activeRequestKeyRef.current !== reqKey) return;
+      if (response.ok && data) {
+        setInspection(data);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const fetchDocuments = async (execId?: string, reqKey = currentSessionKey) => {
+    const targetId = execId || execution?.id;
+    if (!targetId) return;
+    setIsLoadingDocuments(true);
+    try {
+      const { data, response } = await apiClient.GET("/api/execution/{execution_id}/documents/", {
+        params: { path: { execution_id: targetId } },
+      });
+      if (activeRequestKeyRef.current !== reqKey) return;
+      if (response.ok && data) {
+        setDocuments(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      if (activeRequestKeyRef.current === reqKey) {
+        setIsLoadingDocuments(false);
+      }
+    }
+  };
+
+  const fetchIssues = async (execId?: string, reqKey = currentSessionKey) => {
+    const targetId = execId || execution?.id;
+    if (!targetId) return;
+    setIsLoadingIssues(true);
+    try {
+      const { data, response } = await apiClient.GET("/api/execution/{execution_id}/issues/", {
+        params: { path: { execution_id: targetId } },
+      });
+      if (activeRequestKeyRef.current !== reqKey) return;
+      if (response.ok && data) {
+        setIssues(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      if (activeRequestKeyRef.current === reqKey) {
+        setIsLoadingIssues(false);
+      }
+    }
+  };
+
+  const handleInitializeExecution = async () => {
+    if (!deal) return;
+    setIsInitializingExecution(true);
+    try {
+      const { data, response } = await apiClient.POST("/api/deals/{deal_id}/execution/", {
+        params: { path: { deal_id: deal.id } },
+        body: {},
+      });
+      if (response.ok && data) {
+        setExecution(data);
+        if (data.logistics) setLogistics(data.logistics);
+        if (data.inspection) setInspection(data.inspection);
+        await fetchTimeline(data.id);
+        await fetchDocuments(data.id);
+        await fetchIssues(data.id);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsInitializingExecution(false);
+    }
+  };
+
   // 1. Authoritative Deal Fetch & Session Isolation
   useEffect(() => {
     if (isAuthLoading) return;
@@ -122,8 +296,15 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
       previousSessionKeyRef.current !== currentSessionKey
     ) {
       queryClient.removeQueries({ queryKey: ["deal"] });
+      queryClient.removeQueries({ queryKey: ["execution"] });
       setDeal(null);
       setSchema(null);
+      setExecution(null);
+      setTimeline([]);
+      setLogistics(null);
+      setInspection(null);
+      setDocuments([]);
+      setIssues([]);
       setActiveTab("overview");
       setResolveError(null);
       setResolveSuccess(false);
@@ -164,6 +345,7 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
           setDeal(data);
           setIsNotFound(false);
           setIsUnauthorized(false);
+          void fetchExecution(requestKey);
         }
       } catch {
         if (!ignore && activeRequestKeyRef.current === requestKey) {
@@ -181,6 +363,7 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
     return () => {
       ignore = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSessionKey, dealId, isAuthLoading, queryClient]);
 
   // 2. Exact Historical Schema Fetch
@@ -217,6 +400,36 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
       ignore = true;
     };
   }, [schemaVersionId]);
+
+  // 3. Tab-specific Fetch Effect
+  useEffect(() => {
+    let ignore = false;
+    const targetExecutionId = execution?.id;
+    if (!targetExecutionId) return;
+
+    const loadTabData = async () => {
+      await Promise.resolve();
+      if (ignore) return;
+
+      if (activeTab === "execution") {
+        await fetchTimeline(targetExecutionId);
+      } else if (activeTab === "logistics") {
+        await fetchLogistics(targetExecutionId);
+      } else if (activeTab === "quality") {
+        await fetchInspection(targetExecutionId);
+      } else if (activeTab === "documents") {
+        await fetchDocuments(targetExecutionId);
+      } else if (activeTab === "issues") {
+        await fetchIssues(targetExecutionId);
+      }
+    };
+
+    void loadTabData();
+    return () => {
+      ignore = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, execution?.id]);
 
   // Handle Manual Attribution Resolution Submit
   const handleResolveAttribution = async (e: React.FormEvent) => {
@@ -336,6 +549,10 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
   // Extract Parties
   const buyerParty = deal.parties?.find((p) => p.role === "BUYER");
   const sellerParty = deal.parties?.find((p) => p.role === "SELLER");
+
+  const isBuyer = deal.buyer_organization_id ? currentOrgId === deal.buyer_organization_id : false;
+  const isSeller = deal.seller_organization_id ? currentOrgId === deal.seller_organization_id : false;
+  const isViewer = state.status === "authenticated" && state.currentOrganization?.role === "viewer";
 
   const commodityName =
     locale === "fa"
@@ -1070,94 +1287,88 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
         </div>
       )}
 
-      {/* Tab 5: Execution (Staged Honest Empty State) */}
+      {/* Tab 5: Execution */}
       {activeTab === "execution" && (
-        <Card className="p-12 text-center shadow-none border-dashed">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
-            <PlayCircle className="size-6 text-muted-foreground" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold">{t.stagedTabs.execution.title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            {t.stagedTabs.execution.description}
-          </p>
-          <div className="mt-4">
-            <Badge variant="outline" className="text-xs">
-              {t.badges.plannedEpic10}
-            </Badge>
-          </div>
-        </Card>
+        <ExecutionTab
+          locale={locale}
+          dealId={deal.id}
+          execution={execution}
+          timeline={timeline}
+          isLoadingTimeline={isLoadingTimeline}
+          isOperatorOrAdmin={isOperatorOrAdmin}
+          isBuyer={isBuyer}
+          isSeller={isSeller}
+          isViewer={isViewer}
+          onRefreshExecution={() => fetchExecution()}
+          onRefreshTimeline={() => fetchTimeline()}
+          onInitializeExecution={handleInitializeExecution}
+          isInitializing={isInitializingExecution}
+        />
       )}
 
-      {/* Tab 6: Logistics (Staged Honest Empty State) */}
+      {/* Tab 6: Logistics */}
       {activeTab === "logistics" && (
-        <Card className="p-12 text-center shadow-none border-dashed">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
-            <Truck className="size-6 text-muted-foreground" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold">{t.stagedTabs.logistics.title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            {t.stagedTabs.logistics.description}
-          </p>
-          <div className="mt-4">
-            <Badge variant="outline" className="text-xs">
-              {t.badges.plannedEpic10}
-            </Badge>
-          </div>
-        </Card>
+        <LogisticsTab
+          locale={locale}
+          deal={deal}
+          execution={execution}
+          logistics={logistics}
+          isOperatorOrAdmin={isOperatorOrAdmin}
+          isBuyer={isBuyer}
+          isSeller={isSeller}
+          isViewer={isViewer}
+          onRefreshLogistics={() => fetchLogistics()}
+          onRefreshTimeline={() => fetchTimeline()}
+        />
       )}
 
-      {/* Tab 7: Quality (Staged Honest Empty State) */}
+      {/* Tab 7: Quality */}
       {activeTab === "quality" && (
-        <Card className="p-12 text-center shadow-none border-dashed">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
-            <ShieldCheck className="size-6 text-muted-foreground" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold">{t.stagedTabs.quality.title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            {t.stagedTabs.quality.description}
-          </p>
-          <div className="mt-4">
-            <Badge variant="outline" className="text-xs">
-              {t.badges.plannedEpic10}
-            </Badge>
-          </div>
-        </Card>
+        <QualityTab
+          locale={locale}
+          dealId={deal.id}
+          execution={execution}
+          inspection={inspection}
+          isOperatorOrAdmin={isOperatorOrAdmin}
+          isBuyer={isBuyer}
+          isSeller={isSeller}
+          isViewer={isViewer}
+          onRefreshInspection={() => fetchInspection()}
+          onRefreshTimeline={() => fetchTimeline()}
+        />
       )}
 
-      {/* Tab 8: Documents (Staged Honest Empty State) */}
+      {/* Tab 8: Documents */}
       {activeTab === "documents" && (
-        <Card className="p-12 text-center shadow-none border-dashed">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
-            <FileText className="size-6 text-muted-foreground" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold">{t.stagedTabs.documents.title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            {t.stagedTabs.documents.description}
-          </p>
-          <div className="mt-4">
-            <Badge variant="outline" className="text-xs">
-              {t.badges.plannedEpic10}
-            </Badge>
-          </div>
-        </Card>
+        <DocumentsTab
+          locale={locale}
+          execution={execution}
+          documents={documents}
+          isLoadingDocuments={isLoadingDocuments}
+          isOperatorOrAdmin={isOperatorOrAdmin}
+          isBuyer={isBuyer}
+          isSeller={isSeller}
+          isViewer={isViewer}
+          onRefreshDocuments={() => fetchDocuments()}
+          onRefreshTimeline={() => fetchTimeline()}
+        />
       )}
 
-      {/* Tab 9: Issues (Staged Honest Empty State) */}
+      {/* Tab 9: Issues */}
       {activeTab === "issues" && (
-        <Card className="p-12 text-center shadow-none border-dashed">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
-            <AlertTriangle className="size-6 text-muted-foreground" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold">{t.stagedTabs.issues.title}</h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            {t.stagedTabs.issues.description}
-          </p>
-          <div className="mt-4">
-            <Badge variant="outline" className="text-xs">
-              {t.badges.plannedEpic10}
-            </Badge>
-          </div>
-        </Card>
+        <IssuesTab
+          locale={locale}
+          dealId={deal.id}
+          execution={execution}
+          issues={issues}
+          isLoadingIssues={isLoadingIssues}
+          isOperatorOrAdmin={isOperatorOrAdmin}
+          isBuyer={isBuyer}
+          isSeller={isSeller}
+          isViewer={isViewer}
+          onRefreshIssues={() => fetchIssues()}
+          onRefreshTimeline={() => fetchTimeline()}
+        />
       )}
 
       {/* Tab 10: Activity (Real domain events only) */}
