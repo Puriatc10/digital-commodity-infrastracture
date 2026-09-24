@@ -13,6 +13,11 @@ from execution.api.serializers import (
     ExecutionDocumentUploadSerializer,
     ExecutionErrorResponseSerializer,
     ExecutionInspectionSerializer,
+    ExecutionIssueCancelSerializer,
+    ExecutionIssueCreateSerializer,
+    ExecutionIssueResolveSerializer,
+    ExecutionIssueSerializer,
+    ExecutionIssueStartSerializer,
     ExecutionLogisticsSerializer,
     ExecutionMilestoneSerializer,
     ExecutionPaymentSerializer,
@@ -41,13 +46,16 @@ from execution.api.serializers import (
 from execution.exceptions import (
     CrossObjectIntegrityError,
     ExecutionClosedError,
+    ExecutionClosingBlockedError,
     ExecutionDocumentNotFoundError,
+    ExecutionIssueNotFoundError,
     ExecutionNotFoundError,
     ExecutionPermissionDeniedError,
     ExecutionStorageError,
     ExecutionValidationError,
     InspectionNotFoundError,
     InvalidInspectionTransitionError,
+    InvalidIssueTransitionError,
     InvalidMilestoneTransitionError,
     InvalidPaymentTransitionError,
     LogisticsNotFoundError,
@@ -68,6 +76,7 @@ from execution.permissions import IsOperatorOrAdmin
 from execution.services import (
     block_milestone,
     cancel_inspection,
+    cancel_issue,
     complete_inspection,
     complete_milestone,
     confirm_payment,
@@ -78,6 +87,8 @@ from execution.services import (
     get_execution_document_download,
     get_execution_documents,
     get_execution_for_deal,
+    get_execution_issue_detail,
+    get_execution_issues,
     get_or_create_execution_inspection,
     get_or_create_execution_logistics,
     get_or_create_execution_payment,
@@ -85,13 +96,16 @@ from execution.services import (
     get_workflow_version,
     mark_inspection_not_required,
     mutate_logistics,
+    open_issue,
     project_execution_timeline,
     record_delivery,
     record_loading,
     report_payment,
+    resolve_issue,
     schedule_inspection,
     schedule_loading,
     skip_milestone,
+    start_issue,
     start_milestone,
     update_eta,
     update_logistics_cost,
@@ -454,6 +468,13 @@ class MilestoneCompleteActionView(APIView):
             return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
         except (ExecutionNotFoundError, MilestoneNotFoundError) as err:
             return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionClosingBlockedError as err:
+            payload = {
+                "detail": str(err),
+                "code": getattr(err, "code", "BLOCKING_ISSUE_OPEN"),
+                "context": getattr(err, "context", {}),
+            }
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
         except (
             ExecutionClosedError,
             MilestonePrerequisiteUnmetError,
@@ -618,6 +639,13 @@ class DealMilestoneCompleteActionView(APIView):
             return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
         except (ExecutionNotFoundError, MilestoneNotFoundError) as err:
             return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionClosingBlockedError as err:
+            payload = {
+                "detail": str(err),
+                "code": getattr(err, "code", "BLOCKING_ISSUE_OPEN"),
+                "context": getattr(err, "context", {}),
+            }
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
         except (
             ExecutionClosedError,
             MilestonePrerequisiteUnmetError,
@@ -1606,6 +1634,7 @@ class ExecutionDocumentListView(APIView):
             OpenApiParameter(name="category", type=OpenApiTypes.STR, required=False, description="Filter by document category"),
             OpenApiParameter(name="milestone_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated milestone ID"),
             OpenApiParameter(name="inspection_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated inspection ID"),
+            OpenApiParameter(name="issue_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated issue ID"),
         ],
         responses={
             200: ExecutionDocumentSerializer(many=True),
@@ -1617,6 +1646,7 @@ class ExecutionDocumentListView(APIView):
         category = request.query_params.get("category")
         milestone_id = request.query_params.get("milestone_id")
         inspection_id = request.query_params.get("inspection_id")
+        issue_id = request.query_params.get("issue_id")
 
         try:
             docs = get_execution_documents(
@@ -1625,6 +1655,7 @@ class ExecutionDocumentListView(APIView):
                 category=category,
                 milestone_id=milestone_id,
                 inspection_id=inspection_id,
+                issue_id=issue_id,
             )
         except ExecutionNotFoundError as err:
             return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
@@ -1666,6 +1697,7 @@ class ExecutionDocumentUploadView(APIView):
         category = serializer.validated_data["category"]
         milestone_id = serializer.validated_data.get("milestone_id")
         inspection_id = serializer.validated_data.get("inspection_id")
+        issue_id = serializer.validated_data.get("issue_id")
 
         try:
             doc = upload_execution_document(
@@ -1675,6 +1707,7 @@ class ExecutionDocumentUploadView(APIView):
                 actor=request.user,
                 milestone_id=milestone_id,
                 inspection_id=inspection_id,
+                issue_id=issue_id,
             )
         except ExecutionNotFoundError as err:
             return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
@@ -1768,6 +1801,7 @@ class DealExecutionDocumentListView(APIView):
             OpenApiParameter(name="category", type=OpenApiTypes.STR, required=False, description="Filter by document category"),
             OpenApiParameter(name="milestone_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated milestone ID"),
             OpenApiParameter(name="inspection_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated inspection ID"),
+            OpenApiParameter(name="issue_id", type=OpenApiTypes.UUID, required=False, description="Filter by associated issue ID"),
         ],
         responses={
             200: ExecutionDocumentSerializer(many=True),
@@ -1786,6 +1820,7 @@ class DealExecutionDocumentListView(APIView):
         category = request.query_params.get("category")
         milestone_id = request.query_params.get("milestone_id")
         inspection_id = request.query_params.get("inspection_id")
+        issue_id = request.query_params.get("issue_id")
 
         try:
             docs = get_execution_documents(
@@ -1794,6 +1829,7 @@ class DealExecutionDocumentListView(APIView):
                 category=category,
                 milestone_id=milestone_id,
                 inspection_id=inspection_id,
+                issue_id=issue_id,
             )
         except ExecutionPermissionDeniedError as err:
             return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
@@ -1840,6 +1876,7 @@ class DealExecutionDocumentUploadView(APIView):
         category = serializer.validated_data["category"]
         milestone_id = serializer.validated_data.get("milestone_id")
         inspection_id = serializer.validated_data.get("inspection_id")
+        issue_id = serializer.validated_data.get("issue_id")
 
         try:
             doc = upload_execution_document(
@@ -1849,6 +1886,7 @@ class DealExecutionDocumentUploadView(APIView):
                 actor=request.user,
                 milestone_id=milestone_id,
                 inspection_id=inspection_id,
+                issue_id=issue_id,
             )
         except ExecutionPermissionDeniedError as err:
             return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
@@ -1859,5 +1897,380 @@ class DealExecutionDocumentUploadView(APIView):
 
         out = ExecutionDocumentSerializer(doc)
         return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+class ExecutionIssueListView(APIView):
+    """List and open operational execution issues (Epic 10 Contract §65–§74, T1008)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_issues_list",
+        tags=["Execution Issues"],
+        summary="List Execution Issues",
+        description="Lists all operational issues for an Execution aggregate.",
+        responses={
+            200: ExecutionIssueSerializer(many=True),
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, execution_id):
+        try:
+            issues = get_execution_issues(execution_id, actor=request.user)
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionIssueSerializer(issues, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        operation_id="execution_issue_create",
+        tags=["Execution Issues"],
+        summary="Open Execution Issue",
+        description=(
+            "Authoritatively opens a new operational issue on an open Execution aggregate. "
+            "Server derives opened_by and opened_at; client cannot forge them. "
+            "Initial status is strictly OPEN and version is initialized to 1. "
+            "Blocks_execution is set strictly from the explicit payload parameter."
+        ),
+        request=ExecutionIssueCreateSerializer,
+        responses={
+            201: ExecutionIssueSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, execution_id):
+        serializer = ExecutionIssueCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            issue = open_issue(
+                execution_id,
+                type=data["type"],
+                title=data["title"],
+                description=data.get("description", ""),
+                severity=data.get("severity"),
+                blocks_execution=data.get("blocks_execution", False),
+                actor=request.user,
+            )
+        except ExecutionNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionClosedError, ExecutionValidationError, CrossObjectIntegrityError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionIssueSerializer(issue)
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+class ExecutionIssueDetailView(APIView):
+    """Retrieve operational execution issue details."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_issue_detail",
+        tags=["Execution Issues"],
+        summary="Retrieve Execution Issue Detail",
+        description="Retrieves a single execution issue record.",
+        responses={
+            200: ExecutionIssueSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, execution_id, issue_id):
+        try:
+            issue = get_execution_issue_detail(execution_id, issue_id, actor=request.user)
+        except (ExecutionNotFoundError, ExecutionIssueNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except CrossObjectIntegrityError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = ExecutionIssueSerializer(issue)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ExecutionIssueStartActionView(APIView):
+    """Transition an operational issue to IN_PROGRESS."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_issue_start",
+        tags=["Execution Issues"],
+        summary="Start Execution Issue Investigation",
+        description=(
+            "Transitions an issue from OPEN to IN_PROGRESS. "
+            "Requires current expected_version for optimistic concurrency control."
+        ),
+        request=ExecutionIssueStartSerializer,
+        responses={
+            200: ExecutionIssueSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id, issue_id):
+        serializer = ExecutionIssueStartSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            issue = start_issue(
+                execution_id,
+                issue_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except (ExecutionNotFoundError, ExecutionIssueNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionClosedError, InvalidIssueTransitionError, CrossObjectIntegrityError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionIssueSerializer(issue)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionIssueResolveActionView(APIView):
+    """Authoritatively resolve an operational issue."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_issue_resolve",
+        tags=["Execution Issues"],
+        summary="Resolve Execution Issue",
+        description=(
+            "Authoritatively marks an execution issue RESOLVED. "
+            "Requires current expected_version and resolution_notes. "
+            "Server derives resolved_by and resolved_at. "
+            "Terminal state cannot be reopened or cancelled."
+        ),
+        request=ExecutionIssueResolveSerializer,
+        responses={
+            200: ExecutionIssueSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id, issue_id):
+        serializer = ExecutionIssueResolveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            issue = resolve_issue(
+                execution_id,
+                issue_id,
+                expected_version=data["expected_version"],
+                resolution_notes=data["resolution_notes"],
+                actor=request.user,
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except (ExecutionNotFoundError, ExecutionIssueNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (
+            ExecutionClosedError,
+            InvalidIssueTransitionError,
+            CrossObjectIntegrityError,
+            ExecutionValidationError,
+        ) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionIssueSerializer(issue)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class ExecutionIssueCancelActionView(APIView):
+    """Cancel an operational issue."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="execution_issue_cancel",
+        tags=["Execution Issues"],
+        summary="Cancel Execution Issue",
+        description=(
+            "Authoritatively cancels an execution issue. "
+            "Requires current expected_version for optimistic concurrency control. "
+            "Terminal state cannot be reopened or resolved."
+        ),
+        request=ExecutionIssueCancelSerializer,
+        responses={
+            200: ExecutionIssueSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+            409: OpenApiResponse(
+                response=ExecutionErrorResponseSerializer,
+                description="Optimistic concurrency conflict (stale expected_version).",
+            ),
+        },
+    )
+    def post(self, request, execution_id, issue_id):
+        serializer = ExecutionIssueCancelSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            issue = cancel_issue(
+                execution_id,
+                issue_id,
+                expected_version=data["expected_version"],
+                actor=request.user,
+                notes=data.get("notes"),
+            )
+        except StaleVersionError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_409_CONFLICT)
+        except (ExecutionNotFoundError, ExecutionIssueNotFoundError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionClosedError, InvalidIssueTransitionError, CrossObjectIntegrityError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionIssueSerializer(issue)
+        return Response(out.data, status=status.HTTP_200_OK)
+
+
+class DealExecutionIssueListView(APIView):
+    """List and open operational execution issues scoped to a specific Deal UUID."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deal_execution_issues_list",
+        tags=["Execution Issues"],
+        summary="List Execution Issues for Deal",
+        description="Lists all operational issues for a Deal's execution instance.",
+        responses={
+            200: ExecutionIssueSerializer(many=True),
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, deal_id):
+        try:
+            execution = get_execution_for_deal(deal_id, actor=request.user)
+        except ExecutionNotFoundError:
+            return Response({"detail": f"Execution for deal '{deal_id}' not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            issues = get_execution_issues(execution.id, actor=request.user, deal_id=deal_id)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionIssueSerializer(issues, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        operation_id="deal_execution_issue_create",
+        tags=["Execution Issues"],
+        summary="Open Execution Issue for Deal",
+        description="Opens a new operational issue scoped to a specific Deal ID.",
+        request=ExecutionIssueCreateSerializer,
+        responses={
+            201: ExecutionIssueSerializer,
+            400: ExecutionErrorResponseSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def post(self, request, deal_id):
+        try:
+            execution = get_execution_for_deal(deal_id, actor=request.user)
+        except ExecutionNotFoundError:
+            return Response({"detail": f"Execution for deal '{deal_id}' not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ExecutionIssueCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            issue = open_issue(
+                execution.id,
+                type=data["type"],
+                title=data["title"],
+                description=data.get("description", ""),
+                severity=data.get("severity"),
+                blocks_execution=data.get("blocks_execution", False),
+                actor=request.user,
+                deal_id=deal_id,
+            )
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except (ExecutionClosedError, ExecutionValidationError, CrossObjectIntegrityError) as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        out = ExecutionIssueSerializer(issue)
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+class DealExecutionIssueDetailView(APIView):
+    """Retrieve operational execution issue details scoped to a specific Deal UUID."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        operation_id="deal_execution_issue_detail",
+        tags=["Execution Issues"],
+        summary="Retrieve Execution Issue Detail for Deal",
+        description="Retrieves a single execution issue record scoped to a Deal ID.",
+        responses={
+            200: ExecutionIssueSerializer,
+            403: ExecutionErrorResponseSerializer,
+            404: ExecutionErrorResponseSerializer,
+        },
+    )
+    def get(self, request, deal_id, issue_id):
+        try:
+            execution = get_execution_for_deal(deal_id, actor=request.user)
+        except ExecutionNotFoundError:
+            return Response({"detail": f"Execution for deal '{deal_id}' not found."}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            issue = get_execution_issue_detail(execution.id, issue_id, actor=request.user, deal_id=deal_id)
+        except ExecutionIssueNotFoundError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_404_NOT_FOUND)
+        except ExecutionPermissionDeniedError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_403_FORBIDDEN)
+        except CrossObjectIntegrityError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = ExecutionIssueSerializer(issue)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 

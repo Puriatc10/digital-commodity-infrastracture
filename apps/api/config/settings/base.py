@@ -102,6 +102,9 @@ SPECTACULAR_SETTINGS = {
         "MatchingSignalResponseOutcomeEnum": "offers.enums.DecisionSignalStatus",
         "RevisionRequestStatusEnum": "offers.enums.RevisionRequestStatus",
         "CommoditySchemaStatusEnum": "commodities.models.CommoditySchemaVersion.SchemaStatus",
+        "ExecutionIssueTypeEnum": "execution.enums.IssueType",
+        "ExecutionIssueStatusEnum": "execution.enums.IssueStatus",
+        "ExecutionIssueSeverityEnum": "execution.enums.IssueSeverity",
     },
 }
 

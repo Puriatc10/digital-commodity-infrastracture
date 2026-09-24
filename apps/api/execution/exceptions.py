@@ -105,3 +105,25 @@ class ExecutionDocumentNotFoundError(ExecutionError):
 class ExecutionStorageError(ExecutionError):
     """Raised when an object storage operation (upload, retrieve, delete) fails."""
 
+
+class ExecutionIssueNotFoundError(ExecutionError):
+    """Raised when an execution issue cannot be found."""
+
+
+class InvalidIssueTransitionError(ExecutionError):
+    """Raised when an illegal issue lifecycle transition is requested."""
+
+
+class ExecutionClosingBlockedError(ExecutionValidationError):
+    """Raised when execution closing is blocked by active blocking issues or policy guards."""
+
+    def __init__(
+        self,
+        message: str = "Cannot close execution: active blocking issue(s) exist.",
+        code: str = "BLOCKING_ISSUE_OPEN",
+        context: dict = None,
+    ):
+        super().__init__(message)
+        self.code = code
+        self.context = context or {}
+

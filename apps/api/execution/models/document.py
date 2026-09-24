@@ -50,6 +50,14 @@ class ExecutionDocument(models.Model):
         related_name="documents",
         help_text="Optional associated execution inspection instance.",
     )
+    issue = models.ForeignKey(
+        "execution.ExecutionIssue",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="documents",
+        help_text="Optional associated execution issue instance.",
+    )
     category = models.CharField(
         max_length=50,
         choices=ExecutionDocumentCategory.choices,
@@ -122,6 +130,12 @@ class ExecutionDocument(models.Model):
             if self.inspection.execution_id != self.execution_id:
                 raise ValidationError(
                     {"inspection": f"Inspection '{self.inspection_id}' does not belong to execution '{self.execution_id}'."}
+                )
+
+        if self.issue_id and self.execution_id:
+            if self.issue.execution_id != self.execution_id:
+                raise ValidationError(
+                    {"issue": f"Issue '{self.issue_id}' does not belong to execution '{self.execution_id}'."}
                 )
 
     def save(self, *args, **kwargs) -> None:

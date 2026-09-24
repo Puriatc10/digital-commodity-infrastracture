@@ -64,6 +64,13 @@ __all__ = [
     "get_execution_documents",
     "get_execution_document_detail",
     "get_execution_document_download",
+    "get_active_blocking_issues",
+    "open_issue",
+    "start_issue",
+    "resolve_issue",
+    "cancel_issue",
+    "get_execution_issues",
+    "get_execution_issue_detail",
 ]
 
 from .document_service import (
@@ -105,6 +112,15 @@ from .payment_service import (
     confirm_payment,
     get_or_create_execution_payment,
     report_payment,
+)
+from .issue_service import (
+    cancel_issue,
+    get_active_blocking_issues,
+    get_execution_issue_detail,
+    get_execution_issues,
+    open_issue,
+    resolve_issue,
+    start_issue,
 )
 from .timeline_service import project_execution_timeline
 

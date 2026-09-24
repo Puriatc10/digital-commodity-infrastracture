@@ -445,6 +445,65 @@ def check_document_upload_authority(
         )
 
 
+def check_issue_read_authority(
+    user: Any,
+    deal_or_execution: Any,
+) -> None:
+    """
+    Verify read authorization for execution issues.
+
+    Delegates to check_execution_read_access ensuring Deal party (buyer/seller non-external)
+    or Operator/Admin authority is verified.
+    """
+    check_execution_read_access(user, deal_or_execution)
+
+
+def check_issue_mutation_authority(
+    user: Any,
+    deal_or_execution: Any,
+    action_type: str = "OPEN",
+) -> None:
+    """
+    Verify operational authority to open, investigate, resolve, or cancel an ExecutionIssue (Epic 10 Contract §65–§74, T1008).
+
+    Authorized:
+    - Platform OPERATOR or ADMIN with explicit SystemRoleAssignment (global operational authority).
+    - Active non-viewer members (Owner, Manager, Member) of the Deal's Buyer Organization.
+    - Active non-viewer members of the Deal's Seller Organization (if internal seller).
+
+    Denied:
+    - Anonymous users.
+    - Django staff/superusers without SystemRoleAssignment.
+    - Viewer role members (strictly read-only).
+    - Attributed-only brokers (attribution is provenance, not authorization).
+    - External counterparty direct sessions (handled exclusively via Operator).
+    - Unrelated organizations / competitor participants.
+    """
+    deal = getattr(deal_or_execution, "deal", deal_or_execution)
+    if not user or not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
+        raise ExecutionPermissionDeniedError("Authentication required.")
+
+    if is_operator_or_admin(user):
+        return
+
+    allowed_org_ids = [deal.buyer_organization_id]
+    if deal.seller_organization_id:
+        allowed_org_ids.append(deal.seller_organization_id)
+
+    membership = OrganizationMembership.objects.filter(
+        user=user,
+        organization_id__in=allowed_org_ids,
+        is_active=True,
+        organization__is_active=True,
+    ).first()
+
+    if not membership:
+        raise ExecutionPermissionDeniedError("You do not have permission to manage issues for this execution.")
+
+    if membership.role == OrganizationMembership.OrganizationRole.VIEWER:
+        raise ExecutionPermissionDeniedError("Viewer role is read-only and cannot mutate execution state.")
+
+
 class IsOperatorOrAdmin(permissions.BasePermission):
     """DRF permission class restricting view access to Platform Operators and Product Admins."""
 

@@ -7,6 +7,7 @@ from .dependency import ExecutionMilestoneDependency
 from .document import ExecutionDocument
 from .execution import Execution, lock_executions
 from .inspection import ExecutionInspection
+from .issue import ExecutionIssue
 from .logistics import ExecutionLogistics
 from .milestone import ExecutionMilestone
 from .milestone_definition import ExecutionMilestoneDefinition
@@ -77,6 +78,11 @@ def protect_execution_document_deletion(sender, instance, **kwargs):
     raise ValidationError("Execution documents represent historical operational evidence and cannot be deleted.")
 
 
+@receiver(pre_delete, sender=ExecutionIssue)
+def protect_execution_issue_deletion(sender, instance, **kwargs):
+    raise ValidationError("Execution issues represent historical operational records and cannot be deleted.")
+
+
 __all__ = [
     "ExecutionWorkflowTemplate",
     "ExecutionWorkflowTemplateVersion",
@@ -88,6 +94,7 @@ __all__ = [
     "ExecutionInspection",
     "ExecutionPayment",
     "ExecutionDocument",
+    "ExecutionIssue",
     "lock_workflow_templates",
     "lock_executions",
 ]

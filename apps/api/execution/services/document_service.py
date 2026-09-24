@@ -18,6 +18,7 @@ from execution.exceptions import (
 from execution.models.document import ExecutionDocument
 from execution.models.execution import Execution
 from execution.models.inspection import ExecutionInspection
+from execution.models.issue import ExecutionIssue
 from execution.models.milestone import ExecutionMilestone
 from execution.permissions import (
     check_document_read_authority,
@@ -93,15 +94,16 @@ def upload_execution_document(
     actor: Any,
     milestone_id: Optional[Union[UUID, str]] = None,
     inspection_id: Optional[Union[UUID, str]] = None,
+    issue_id: Optional[Union[UUID, str]] = None,
 ) -> ExecutionDocument:
     """
-    Authorized multipart evidence upload for an Execution aggregate (Epic 10 Contract §60–§64, T1007).
+    Authorized multipart evidence upload for an Execution aggregate (Epic 10 Contract §60–§64, T1007, T1008).
 
     Invariants:
     - Execution exists and is accessible.
     - Side-specific category authorization verified for actor.
     - File size, content type, and magic bytes strictly validated.
-    - Same-Execution Guard: optional milestone and inspection MUST belong to the same execution.
+    - Same-Execution Guard: optional milestone, inspection, and issue MUST belong to the same execution.
     - Server derives storage identity (UUID-based object_key); client cannot control or substitute keys.
     - Bytes reside strictly in MinIO/S3 object storage; PostgreSQL persists metadata only.
     - Storage atomicity: storage succeeds + DB fails -> immediate practical compensation deletes orphaned object.
@@ -149,6 +151,18 @@ def upload_execution_document(
                 f"not target execution '{execution.id}'."
             )
 
+    issue = None
+    if issue_id:
+        try:
+            issue = ExecutionIssue.objects.get(pk=issue_id)
+        except ExecutionIssue.DoesNotExist:
+            raise ExecutionValidationError(f"Issue '{issue_id}' does not exist.")
+        if issue.execution_id != execution.id:
+            raise CrossObjectIntegrityError(
+                f"Issue '{issue_id}' belongs to execution '{issue.execution_id}', "
+                f"not target execution '{execution.id}'."
+            )
+
     # 4. Generate server-side storage identity (Client cannot control or substitute)
     storage_uuid = uuid.uuid4()
     object_key = f"execution-documents/{execution.id}/{storage_uuid}-{safe_filename}"
@@ -166,6 +180,7 @@ def upload_execution_document(
                 execution=execution,
                 milestone=milestone,
                 inspection=inspection,
+                issue=issue,
                 category=category,
                 file_name=safe_filename,
                 content_type=content_type,
@@ -190,6 +205,7 @@ def get_execution_documents(
     category: Optional[str] = None,
     milestone_id: Optional[Union[UUID, str]] = None,
     inspection_id: Optional[Union[UUID, str]] = None,
+    issue_id: Optional[Union[UUID, str]] = None,
 ):
     """
     List metadata for documents belonging to an Execution, with optional contextual filtering.
@@ -203,7 +219,7 @@ def get_execution_documents(
 
     qs = (
         ExecutionDocument.objects.filter(execution=execution)
-        .select_related("uploaded_by", "milestone__definition", "inspection")
+        .select_related("uploaded_by", "milestone__definition", "inspection", "issue")
         .order_by("-uploaded_at", "-id")
     )
 
@@ -213,6 +229,8 @@ def get_execution_documents(
         qs = qs.filter(milestone_id=milestone_id)
     if inspection_id:
         qs = qs.filter(inspection_id=inspection_id)
+    if issue_id:
+        qs = qs.filter(issue_id=issue_id)
 
     return qs
 

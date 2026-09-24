@@ -2,9 +2,16 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from execution.enums import ExecutionDocumentCategory, InspectionResult, TransportMode
+from execution.enums import (
+    ExecutionDocumentCategory,
+    InspectionResult,
+    IssueSeverity,
+    IssueType,
+    TransportMode,
+)
 from execution.models import (
     ExecutionDocument,
+    ExecutionIssue,
     ExecutionMilestoneDefinition,
     ExecutionWorkflowTemplate,
     ExecutionWorkflowTemplateVersion,
@@ -718,21 +725,33 @@ class PaymentConfirmRequestSerializer(serializers.Serializer):
 
 
 class ExecutionErrorResponseSerializer(serializers.Serializer):
-
     """Standard error response."""
 
     detail = serializers.CharField(help_text="Detailed error explanation.")
+    code = serializers.CharField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Machine-readable error code (e.g. BLOCKING_ISSUE_OPEN).",
+    )
+    context = serializers.DictField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Structured contextual data for the error.",
+    )
 
 
 BinaryFileField = extend_schema_field(OpenApiTypes.BINARY)(serializers.FileField)
 
 
 class ExecutionDocumentSerializer(serializers.ModelSerializer):
-    """Authoritative execution document metadata projection (Epic 10 Contract §60–§64, T1007)."""
+    """Authoritative execution document metadata projection (Epic 10 Contract §60–§64, T1007, T1008)."""
 
     execution_id = serializers.UUIDField(source="execution.id", read_only=True)
     milestone_id = serializers.UUIDField(source="milestone.id", read_only=True, allow_null=True)
     inspection_id = serializers.UUIDField(source="inspection.id", read_only=True, allow_null=True)
+    issue_id = serializers.UUIDField(source="issue.id", read_only=True, allow_null=True)
     category_display = serializers.CharField(source="get_category_display", read_only=True)
     uploaded_by_id = serializers.UUIDField(source="uploaded_by.id", read_only=True, allow_null=True)
     uploaded_by_email = serializers.EmailField(source="uploaded_by.email", read_only=True, allow_null=True)
@@ -744,6 +763,7 @@ class ExecutionDocumentSerializer(serializers.ModelSerializer):
             "execution_id",
             "milestone_id",
             "inspection_id",
+            "issue_id",
             "category",
             "category_display",
             "file_name",
@@ -777,5 +797,122 @@ class ExecutionDocumentUploadSerializer(serializers.Serializer):
         allow_null=True,
         default=None,
         help_text="Optional associated execution quality inspection ID.",
+    )
+    issue_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Optional associated execution issue ID.",
+    )
+
+
+class ExecutionIssueSerializer(serializers.ModelSerializer):
+    """Authoritative execution issue projection (Epic 10 Contract §65–§74, T1008)."""
+
+    execution_id = serializers.UUIDField(source="execution.id", read_only=True)
+    opened_by_id = serializers.UUIDField(source="opened_by.id", read_only=True, allow_null=True)
+    opened_by_email = serializers.EmailField(source="opened_by.email", read_only=True, allow_null=True)
+    resolved_by_id = serializers.UUIDField(source="resolved_by.id", read_only=True, allow_null=True)
+    resolved_by_email = serializers.EmailField(source="resolved_by.email", read_only=True, allow_null=True)
+    type_display = serializers.CharField(source="get_type_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    severity_display = serializers.CharField(source="get_severity_display", read_only=True, allow_null=True)
+    is_active_blocker = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = ExecutionIssue
+        fields = [
+            "id",
+            "execution_id",
+            "type",
+            "type_display",
+            "status",
+            "status_display",
+            "severity",
+            "severity_display",
+            "title",
+            "description",
+            "opened_by_id",
+            "opened_by_email",
+            "opened_at",
+            "resolved_by_id",
+            "resolved_by_email",
+            "resolved_at",
+            "resolution_notes",
+            "blocks_execution",
+            "is_active_blocker",
+            "version",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class ExecutionIssueCreateSerializer(serializers.Serializer):
+    """Request payload to open a new execution issue."""
+
+    type = serializers.ChoiceField(
+        choices=IssueType.choices,
+        help_text="Exact operational issue type.",
+    )
+    title = serializers.CharField(
+        max_length=255,
+        help_text="Concise title summarizing the operational issue.",
+    )
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Detailed operational description or context.",
+    )
+    severity = serializers.ChoiceField(
+        choices=IssueSeverity.choices,
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Optional severity: LOW, MEDIUM, HIGH, CRITICAL.",
+    )
+    blocks_execution = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Whether this issue explicitly blocks execution closing.",
+    )
+
+
+class ExecutionIssueStartSerializer(serializers.Serializer):
+    """Request payload to transition an issue from OPEN to IN_PROGRESS."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        help_text="Current issue version for optimistic concurrency control.",
+    )
+
+
+class ExecutionIssueResolveSerializer(serializers.Serializer):
+    """Request payload to authoritatively resolve an issue."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        help_text="Current issue version for optimistic concurrency control.",
+    )
+    resolution_notes = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        help_text="Required operational explanation of how the issue was resolved.",
+    )
+
+
+class ExecutionIssueCancelSerializer(serializers.Serializer):
+    """Request payload to cancel an issue."""
+
+    expected_version = serializers.IntegerField(
+        min_value=1,
+        help_text="Current issue version for optimistic concurrency control.",
+    )
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional explanation or reason for cancellation.",
     )
 
