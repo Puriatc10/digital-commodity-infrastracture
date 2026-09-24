@@ -302,7 +302,8 @@ export function ProfileClient({ id }: { id: string }) {
                   href={profile.website}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-primary hover:underline"
+                  dir="ltr"
+                  className="inline-block text-primary hover:underline"
                 >
                   {profile.website}
                 </a>
@@ -438,9 +439,13 @@ export function ProfileClient({ id }: { id: string }) {
                         </div>
                         {currentDoc && (
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <FileText className="h-3.5 w-3.5" />
-                            <span className="truncate">{currentDoc.file_name}</span>
-                            <span>({(currentDoc.size_bytes / 1024).toFixed(0)} {t.fileSizeLabel})</span>
+                            <FileText className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">
+                              <bdi className="font-mono">{currentDoc.file_name}</bdi>
+                            </span>
+                            <span>
+                              <bdi dir="ltr">({(currentDoc.size_bytes / 1024).toFixed(0)} {t.fileSizeLabel})</bdi>
+                            </span>
                           </div>
                         )}
                       </div>

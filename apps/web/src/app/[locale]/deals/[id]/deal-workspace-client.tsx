@@ -469,7 +469,7 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
     }
   };
 
-  const ArrowIcon = isRtl ? ArrowLeft : ArrowRight;
+  const ArrowIcon = isRtl ? ArrowRight : ArrowLeft;
 
   // Loading State View
   if (isAuthLoading || isLoadingDeal) {
@@ -619,7 +619,7 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
               </h1>
               <p className="mt-1 text-sm text-muted-foreground flex flex-wrap items-center gap-2">
                 <span>{buyerParty?.name_snapshot || "خریدار"}</span>
-                <span>←</span>
+                <span aria-hidden="true">{isRtl ? "←" : "→"}</span>
                 <span>{sellerParty?.name_snapshot || "فروشنده"}</span>
               </p>
             </div>

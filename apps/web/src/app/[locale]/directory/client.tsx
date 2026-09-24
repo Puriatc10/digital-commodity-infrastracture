@@ -146,13 +146,13 @@ export function DirectoryClient() {
               {t.filters.searchLabel}
             </label>
             <div className="relative">
-              <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 id="search"
                 name="search"
                 defaultValue={search}
                 placeholder={t.filters.searchPlaceholder}
-                className="pl-8 pr-8"
+                className="ps-8 pe-3"
               />
             </div>
           </div>

@@ -211,13 +211,13 @@ export function MatchingSignalExplanationDialog({
               <div className="flex items-center gap-1.5">
                 <span className="text-muted-foreground">{t.scores.coverage}:</span>
                 <span className="font-bold text-sm text-foreground">
-                  {candidate.evidence_coverage ? `${Number(candidate.evidence_coverage).toFixed(2)}${t.scores.percent}` : "-"}
+                  <bdi dir="ltr">{candidate.evidence_coverage ? `${Number(candidate.evidence_coverage).toFixed(2)}${t.scores.percent}` : "-"}</bdi>
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 border-r pr-4 rtl:border-l rtl:border-r-0 rtl:pl-4 rtl:pr-0">
+              <div className="flex items-center gap-1.5 border-s ps-4">
                 <span className="text-muted-foreground">{t.scores.rankingScore}:</span>
                 <span className="font-bold text-sm text-primary">
-                  {candidate.ranking_score ? `${Number(candidate.ranking_score).toFixed(2)}${t.scores.percent}` : "-"}
+                  <bdi dir="ltr">{candidate.ranking_score ? `${Number(candidate.ranking_score).toFixed(2)}${t.scores.percent}` : "-"}</bdi>
                 </span>
               </div>
             </>
@@ -256,13 +256,13 @@ export function MatchingSignalExplanationDialog({
                     <Table className="text-xs">
                       <TableHeader>
                         <TableRow className="bg-muted/50">
-                          <TableHead className="w-[140px] text-right font-medium">
+                          <TableHead className="w-[140px] text-start font-medium">
                             {t.explanation.signalTable.code}
                           </TableHead>
-                          <TableHead className="w-[110px] text-right font-medium">
+                          <TableHead className="w-[110px] text-start font-medium">
                             {t.explanation.signalTable.outcome}
                           </TableHead>
-                          <TableHead className="text-right font-medium">
+                          <TableHead className="text-start font-medium">
                             {t.explanation.signalTable.reason}
                           </TableHead>
                           <TableHead className="w-[80px] text-center font-medium">
@@ -319,9 +319,9 @@ export function MatchingSignalExplanationDialog({
                                           <span className="font-semibold text-muted-foreground block mb-0.5">
                                             {t.explanation.signalTable.expected}:
                                           </span>
-                                          <span className="font-mono text-foreground break-all">
+                                          <bdi dir="ltr" className="font-mono text-foreground break-all block">
                                             {formatValue(sig.expected_value)}
-                                          </span>
+                                          </bdi>
                                         </div>
                                       )}
                                       {sig.actual_value !== undefined && sig.actual_value !== null && (
@@ -329,9 +329,9 @@ export function MatchingSignalExplanationDialog({
                                           <span className="font-semibold text-muted-foreground block mb-0.5">
                                             {t.explanation.signalTable.actual}:
                                           </span>
-                                          <span className="font-mono text-foreground break-all">
+                                          <bdi dir="ltr" className="font-mono text-foreground break-all block">
                                             {formatValue(sig.actual_value)}
-                                          </span>
+                                          </bdi>
                                         </div>
                                       )}
                                     </div>

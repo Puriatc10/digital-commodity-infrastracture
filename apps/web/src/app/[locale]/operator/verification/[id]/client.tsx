@@ -373,17 +373,17 @@ export function VerificationCaseDetailClient({
             href={`/${locale}/operator/verification`}
             className="flex h-9 w-9 items-center justify-center rounded-md border border-border hover:bg-accent"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
           </Link>
           <div>
             <h2 className="text-xl font-bold">
               {profileData?.name ? t.title.replace("{name}", profileData.name) : t.defaultTitle}
             </h2>
-            <p className="text-xs text-muted-foreground">{t.orgIdLabel} {organizationId}</p>
+            <p className="text-xs text-muted-foreground">{t.orgIdLabel} <bdi dir="ltr">{organizationId}</bdi></p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{t.caseVersionLabel} v{verificationData.version}</span>
+          <span className="text-xs text-muted-foreground">{t.caseVersionLabel} <bdi dir="ltr">v{verificationData.version}</bdi></span>
           <VerificationBadge status={verificationData.status} />
         </div>
       </div>
@@ -530,7 +530,7 @@ export function VerificationCaseDetailClient({
                           {(t.documents.types as Record<string, string>)[doc.type] || doc.type}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {doc.file_name} · {(doc.size_bytes / 1024).toFixed(0)} {t.documents.sizeUnit} · {t.documents.registeredAt}{" "}
+                          <bdi className="font-mono">{doc.file_name}</bdi> · <bdi dir="ltr">{(doc.size_bytes / 1024).toFixed(0)} {t.documents.sizeUnit}</bdi> · {t.documents.registeredAt}{" "}
                           {new Date(doc.created_at).toLocaleDateString(locale === "fa" ? "fa-IR" : "en-US")}
                         </p>
                       </div>
@@ -609,7 +609,7 @@ export function VerificationCaseDetailClient({
               {verificationData.notes.map((note) => (
                 <li key={note.id} className="rounded-md border bg-muted/30 p-3 text-sm">
                   <div className="flex items-center justify-between pb-1 text-xs text-muted-foreground border-b border-border/50 mb-2">
-                    <span className="font-medium">{note.actor_email}</span>
+                    <span className="font-medium"><bdi dir="ltr">{note.actor_email}</bdi></span>
                     <span>{new Date(note.created_at).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}</span>
                   </div>
                   <p className="whitespace-pre-wrap">{note.note}</p>
@@ -651,12 +651,12 @@ export function VerificationCaseDetailClient({
               {verificationData.decisions.map((decision) => (
                 <li key={decision.id} className="py-3 text-sm">
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                    <span className="font-medium">{decision.actor_email}</span>
+                    <span className="font-medium"><bdi dir="ltr">{decision.actor_email}</bdi></span>
                     <span>{new Date(decision.created_at).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{decision.action}:</span>
-                    <span>{decision.previous_status} ➔ {decision.new_status}</span>
+                    <span dir="ltr">{decision.previous_status} ➔ {decision.new_status}</span>
                   </div>
                   {decision.reason && (
                     <p className="mt-1 text-xs text-muted-foreground bg-muted/50 p-2 rounded">

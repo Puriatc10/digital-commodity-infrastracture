@@ -33,7 +33,9 @@ export function AuthStatusBar({ messages }: { messages: Messages["session"] }) {
             {state.systemRoles.map(roleLabel).join("، ")}
           </span>
         )}
-        <span className="text-muted-foreground font-medium text-xs">{state.user.email}</span>
+        <span className="text-muted-foreground font-medium text-xs">
+          <bdi dir="ltr">{state.user.email}</bdi>
+        </span>
         {state.availableOrganizations.length > 0 ? (
           <select
             aria-label={messages.organization}

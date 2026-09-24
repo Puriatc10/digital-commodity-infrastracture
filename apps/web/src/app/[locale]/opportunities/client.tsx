@@ -305,7 +305,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base font-bold">
             {viewsConfig.find((v) => v.id === activeView)?.label}
-            <span className="mr-2 text-xs font-normal text-muted-foreground">
+            <span className="ms-2 text-xs font-normal text-muted-foreground">
               ({totalCount} {oppMsg.title})
             </span>
           </CardTitle>
@@ -345,7 +345,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                   <TableHead>{oppMsg.fields.source}</TableHead>
                   <TableHead>{oppMsg.fields.status}</TableHead>
                   <TableHead>{oppMsg.fields.updatedAt}</TableHead>
-                  <TableHead className="text-left">{oppMsg.fields.actions}</TableHead>
+                  <TableHead className="text-end">{oppMsg.fields.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -367,7 +367,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                           href={`/${locale}/opportunities/${opp.id}`}
                           className="text-primary hover:underline"
                         >
-                          {opp.identifier || opp.id.slice(0, 8)}
+                          <bdi dir="ltr">{opp.identifier || opp.id.slice(0, 8)}</bdi>
                         </Link>
                       </TableCell>
 
@@ -396,12 +396,12 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                       </TableCell>
 
                       <TableCell className="text-sm">
-                        {opp.quantity ? `${opp.quantity} ${opp.unit}` : "—"}
+                        {opp.quantity ? <bdi dir="ltr">{opp.quantity} {opp.unit}</bdi> : "—"}
                       </TableCell>
 
                       <TableCell className="text-sm">
                         {opp.indicative_price
-                          ? `${opp.indicative_price} ${opp.currency}`
+                          ? <bdi dir="ltr">{opp.indicative_price} {opp.currency}</bdi>
                           : "—"}
                       </TableCell>
 
@@ -445,7 +445,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                         {new Date(opp.updated_at).toLocaleDateString("fa-IR")}
                       </TableCell>
 
-                      <TableCell className="text-left">
+                      <TableCell className="text-end">
                         <Link href={`/${locale}/opportunities/${opp.id}`}>
                           <Button variant="outline" className="min-h-7 px-2.5 py-1 text-xs">
                             {oppMsg.actions.viewDetails}
@@ -472,7 +472,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                   disabled={!hasPrev || isFetching}
                   className="min-h-8 px-2.5 py-1 gap-1 text-xs"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                   <span>قبلی</span>
                 </Button>
                 <Button
@@ -482,7 +482,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                   className="min-h-8 px-2.5 py-1 gap-1 text-xs"
                 >
                   <span>بعدی</span>
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                 </Button>
               </div>
             </div>

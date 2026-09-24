@@ -42,6 +42,7 @@ interface TradeHubClientProps {
 
 export function TradeHubClient({ locale }: TradeHubClientProps) {
   const messages = getMessages(locale);
+  const isRtl = locale === "fa";
   const t = messages.tradeHub;
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -354,12 +355,12 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Text Search */}
           <div className="relative lg:col-span-2">
-            <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute start-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t.filters.searchPlaceholder}
-              className="pr-9 text-sm"
+              className="ps-9 pe-3 text-sm"
               aria-label={t.filters.searchPlaceholder}
             />
           </div>
@@ -527,15 +528,17 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
                     <div>
                       <span className="text-muted-foreground block">{t.labels.quantity}:</span>
                       <span className="font-semibold text-foreground">
-                        {Number(rfq.quantity).toLocaleString()} {rfq.unit}
+                        <bdi dir="ltr">{Number(rfq.quantity).toLocaleString()} {rfq.unit}</bdi>
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground block">{t.labels.targetPrice}:</span>
                       <span className="font-semibold text-foreground">
-                        {rfq.target_price
-                          ? `${Number(rfq.target_price).toLocaleString()} ${rfq.currency}`
-                          : t.labels.notSpecified}
+                        {rfq.target_price ? (
+                          <bdi dir="ltr">{Number(rfq.target_price).toLocaleString()} {rfq.currency}</bdi>
+                        ) : (
+                          t.labels.notSpecified
+                        )}
                       </span>
                     </div>
                   </div>
@@ -556,8 +559,12 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
                           <MapPin className="h-3.5 w-3.5 shrink-0" />
                           {t.labels.origin} / {t.labels.destination}:
                         </span>
-                        <span className="text-foreground font-medium truncate max-w-[150px]">
-                          {rfq.origin || "—"} → {rfq.destination || "—"}
+                        <span className="text-foreground font-medium truncate max-w-[150px] inline-flex items-center gap-1">
+                          <span>{rfq.origin || "—"}</span>
+                          <span aria-hidden="true" className="text-muted-foreground">
+                            {isRtl ? "←" : "→"}
+                          </span>
+                          <span>{rfq.destination || "—"}</span>
                         </span>
                       </div>
                     )}
@@ -645,15 +652,17 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
                     <div>
                       <span className="text-muted-foreground block">{t.labels.quantity}:</span>
                       <span className="font-semibold text-foreground">
-                        {Number(listing.quantity).toLocaleString()} {listing.unit}
+                        <bdi dir="ltr">{Number(listing.quantity).toLocaleString()} {listing.unit}</bdi>
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground block">{t.labels.indicativePrice}:</span>
                       <span className="font-semibold text-foreground">
-                        {listing.indicative_price
-                          ? `${Number(listing.indicative_price).toLocaleString()} ${listing.currency}`
-                          : t.labels.notSpecified}
+                        {listing.indicative_price ? (
+                          <bdi dir="ltr">{Number(listing.indicative_price).toLocaleString()} {listing.currency}</bdi>
+                        ) : (
+                          t.labels.notSpecified
+                        )}
                       </span>
                     </div>
                   </div>

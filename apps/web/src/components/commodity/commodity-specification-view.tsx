@@ -89,16 +89,16 @@ export function CommoditySpecificationView({
 
               return (
                 <div key={attr.key} className="flex flex-col space-y-1">
-                  <dt className="text-sm font-medium text-muted-foreground flex items-center space-x-1 rtl:space-x-reverse">
+                  <dt className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
                     <span>{labelText}</span>
                     {unit && (
-                      <span className="text-xs ml-1 rtl:mr-1 rtl:ml-0">
+                      <bdi className="text-xs">
                         ({unit})
-                      </span>
+                      </bdi>
                     )}
                   </dt>
                   <dd className="text-sm font-medium">
-                    {displayValue}
+                    <bdi>{displayValue}</bdi>
                   </dd>
                 </div>
               );
