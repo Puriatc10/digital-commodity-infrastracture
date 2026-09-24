@@ -11,14 +11,18 @@ import { MatchingRunHeader } from "./matching-run-header";
 import { MatchingLaneView } from "./matching-lane-view";
 import { MatchingSignalExplanationDialog } from "./matching-signal-explanation-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
   CheckCircle2,
-  Loader2,
   Play,
   XCircle,
 } from "lucide-react";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type RFQBuilderResponse = components["schemas"]["RFQBuilderResponse"];
 type RFQPublicResponse = components["schemas"]["RFQPublicResponse"];
@@ -80,6 +84,9 @@ export function RFQMatchingTab({
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [isInvitingId, setIsInvitingId] = useState<string | null>(null);
+  const [unauthorizedStatus, setUnauthorizedStatus] = useState<401 | 403 | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [refreshIndex, setRefreshIndex] = useState<number>(0);
 
   // Explanation Dialog State
   const [explanationCandidate, setExplanationCandidate] =
@@ -103,6 +110,8 @@ export function RFQMatchingTab({
       setExplanationCandidate(null);
       setActionError(null);
       setActionSuccess(null);
+      setUnauthorizedStatus(null);
+      setLoadError(null);
 
       // Remove queries from queryClient
       queryClient.removeQueries({ queryKey: ["matching-runs", rfq.id] });
@@ -121,6 +130,8 @@ export function RFQMatchingTab({
     async function loadRuns() {
       setIsLoadingRuns(true);
       setActionError(null);
+      setUnauthorizedStatus(null);
+      setLoadError(null);
 
       try {
         const { data, response } = await apiClient.GET("/api/matching/rfqs/{rfq_id}/runs/", {
@@ -130,8 +141,8 @@ export function RFQMatchingTab({
         // Discard if session changed or newer request initiated
         if (ignore || version !== requestVersionRef.current) return;
 
-        if (response.status === 403) {
-          setActionError(t.states.unauthorized);
+        if (response.status === 401 || response.status === 403) {
+          setUnauthorizedStatus(response.status as 401 | 403);
           setRuns([]);
           setSelectedRun(null);
           return;
@@ -153,10 +164,18 @@ export function RFQMatchingTab({
             setSelectedRun(null);
             setCandidates([]);
           }
+        } else {
+          setLoadError(
+            response.status >= 500
+              ? messages.states.error.serverError
+              : messages.states.error.defaultDescription
+          );
+          setRuns([]);
+          setSelectedRun(null);
         }
       } catch {
         if (!ignore && version === requestVersionRef.current) {
-          setActionError(t.states.error);
+          setLoadError(messages.states.error.networkError);
           setRuns([]);
           setSelectedRun(null);
         }
@@ -171,7 +190,7 @@ export function RFQMatchingTab({
     return () => {
       ignore = true;
     };
-  }, [rfq.id, isOperatorOrAdmin, t.states.unauthorized, t.states.error]);
+  }, [rfq.id, isOperatorOrAdmin, messages.states.error, refreshIndex]);
 
   // 2. Fetch evaluated candidates for selected run
   useEffect(() => {
@@ -351,48 +370,40 @@ export function RFQMatchingTab({
         locale={locale}
       />
 
-      {/* Main Content: Loading / Empty / Lanes */}
+      {/* Main Content: Loading / Unauthorized / Error / Empty / Lanes */}
       {isLoadingRuns ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-xs">{t.states.loadingRuns}</p>
-        </div>
+        <LoadingState variant="section" message={t.states.loadingRuns} locale={locale} />
+      ) : unauthorizedStatus ? (
+        <AccessDeniedState
+          statusCode={unauthorizedStatus}
+          description={t.states.unauthorized}
+          locale={locale}
+        />
+      ) : loadError ? (
+        <ErrorState
+          errorMessage={loadError}
+          onRetry={() => setRefreshIndex((k) => k + 1)}
+          locale={locale}
+        />
       ) : runs.length === 0 ? (
-        /* Empty State: No run yet */
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center p-12 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <Play className="h-6 w-6" />
-            </div>
-            <div className="space-y-1 max-w-md">
-              <h3 className="font-bold text-sm text-foreground">
-                {t.states.noRuns}
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {t.states.noRunsPrompt}
-              </p>
-            </div>
-            {canManage && rfq.status === "published" && (
-              <Button
-                onClick={() => void handleGenerateRun(targetAudience)}
-                disabled={isGenerating}
-                className="gap-2 min-h-8 px-3 py-1 text-xs"
-              >
-                {isGenerating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-                {t.actions.generate}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Play className="h-6 w-6 text-primary" />}
+          title={t.states.noRuns}
+          description={t.states.noRunsPrompt}
+          action={
+            canManage && rfq.status === "published"
+              ? {
+                  label: t.actions.generate,
+                  onClick: () => void handleGenerateRun(targetAudience),
+                  disabled: isGenerating,
+                  loading: isGenerating,
+                }
+              : undefined
+          }
+          locale={locale}
+        />
       ) : isLoadingCandidates ? (
-        <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-xs">{t.states.loadingCandidates}</p>
-        </div>
+        <LoadingState variant="section" message={t.states.loadingCandidates} locale={locale} />
       ) : (
         /* Three Lanes Rendering */
         <MatchingLaneView

@@ -24,6 +24,7 @@ import {
   SkipForward,
   UserCheck,
 } from "lucide-react";
+import { LoadingState, EmptyState } from "@/components/states";
 import type {
   ExecutionDetail,
   ExecutionMilestone,
@@ -881,12 +882,14 @@ export function ExecutionTab({
         </CardHeader>
         <CardContent>
           {isLoadingTimeline ? (
-            <div className="flex items-center justify-center p-8 text-muted-foreground gap-2">
-              <Loader2 className="size-4 animate-spin text-primary" />
-              <span className="text-xs">{messages.dealWorkspace.loading}</span>
-            </div>
+            <LoadingState variant="section" message={messages.dealWorkspace.loading} locale={locale} />
           ) : timeline.length === 0 ? (
-            <p className="text-xs text-muted-foreground p-4 text-center">{t.timeline.empty}</p>
+            <EmptyState
+              icon={<History className="size-6 text-muted-foreground/60" />}
+              title={t.timeline.title}
+              description={t.timeline.empty}
+              locale={locale}
+            />
           ) : (
             <div className="relative border-s border-border ms-4 ps-6 space-y-6 my-2">
               {timeline.map((event) => {

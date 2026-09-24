@@ -26,6 +26,12 @@ import {
 import { usePathname } from "next/navigation";
 import { getMessages, type Messages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
+import {
+  LoadingState,
+  NotFoundState,
+  AccessDeniedState,
+  ErrorState,
+} from "@/components/states";
 import type { components } from "@/lib/api/generated/schema";
 
 type VerificationDoc = components["schemas"]["VerificationDocument"];
@@ -109,6 +115,7 @@ export function ProfileClient({ id }: { id: string }) {
     data: profile,
     isLoading: isProfileLoading,
     isError: isProfileError,
+    error: profileError,
   } = useQuery({
     queryKey: ["organizations", "profiles", id],
     queryFn: async () => {
@@ -118,7 +125,21 @@ export function ProfileClient({ id }: { id: string }) {
           params: { path: { id } },
         }
       );
-      if (error || !response.ok || !data) throw error || new Error("Profile not found");
+      if (response.status === 404) {
+        const err = new Error("Not found");
+        (err as unknown as { status: number }).status = 404;
+        throw err;
+      }
+      if (response.status === 401 || response.status === 403) {
+        const err = new Error("Access denied");
+        (err as unknown as { status: number }).status = response.status;
+        throw err;
+      }
+      if (error || !response.ok || !data) {
+        const err = error || new Error("Profile not found");
+        (err as unknown as { status: number }).status = response.status;
+        throw err;
+      }
       return data;
     },
     retry: false,
@@ -262,19 +283,44 @@ export function ProfileClient({ id }: { id: string }) {
     uploadMutation.mutate({ file: selectedFile, type: selectedType });
   };
 
+  const profileStatus = (profileError as unknown as { status?: number })?.status;
+
   if (isProfileLoading) {
+    return <LoadingState locale={locale} />;
+  }
+
+  if (profileStatus === 401 || profileStatus === 403) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <AccessDeniedState
+        statusCode={profileStatus as 401 | 403}
+        backHref={`/${locale}/directory`}
+        backLabel={messages.states.notFound.backToList}
+        locale={locale}
+      />
+    );
+  }
+
+  if (profileStatus === 404) {
+    return (
+      <NotFoundState
+        resourceType="organization"
+        title={t.notFound}
+        backHref={`/${locale}/directory`}
+        backLabel={messages.states.notFound.backToList}
+        locale={locale}
+      />
     );
   }
 
   if (isProfileError || !profile) {
     return (
-      <Card className="p-8 text-center text-destructive">
-        {t.notFound}
-      </Card>
+      <ErrorState
+        errorMessage={t.notFound}
+        onRetry={() => void queryClient.invalidateQueries({ queryKey: ["organizations", "profiles", id] })}
+        backHref={`/${locale}/directory`}
+        backLabel={messages.states.notFound.backToList}
+        locale={locale}
+      />
     );
   }
 

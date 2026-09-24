@@ -5,7 +5,7 @@ import { apiClient as client } from "@/lib/api/client";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -29,6 +29,7 @@ import { VerificationBadge } from "@/components/verification-badge";
 import type { components } from "@/lib/api/generated/schema";
 import { getMessages, type Messages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
+import { LoadingState, EmptyState, ErrorState } from "@/components/states";
 
 type Organization = components["schemas"]["DirectoryOrganization"];
 type CommodityItem = components["schemas"]["CommodityDefinition"];
@@ -88,7 +89,7 @@ export function DirectoryClient() {
   });
 
   // Fetch directory organizations with filters
-  const { data, isLoading, isError } = useQuery<Organization[]>({
+  const { data, isLoading, isError, refetch } = useQuery<Organization[]>({
     queryKey: [
       "organizations",
       "directory",
@@ -256,14 +257,18 @@ export function DirectoryClient() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                  <TableCell colSpan={5} className="p-0">
+                    <LoadingState variant="section" locale={locale} />
                   </TableCell>
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-destructive">
-                    {t.table.error}
+                  <TableCell colSpan={5} className="p-0">
+                    <ErrorState
+                      errorMessage={t.table.error}
+                      onRetry={() => void refetch()}
+                      locale={locale}
+                    />
                   </TableCell>
                 </TableRow>
               ) : data && data.length > 0 ? (
@@ -303,8 +308,23 @@ export function DirectoryClient() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                    {t.table.empty}
+                  <TableCell colSpan={5} className="p-0">
+                    <EmptyState
+                      icon={<Search className="h-8 w-8 text-muted-foreground/60" />}
+                      title={
+                        search || capability || country || commodity || verification
+                          ? messages.states.empty.noFilterResultsTitle
+                          : t.table.empty
+                      }
+                      description={
+                        search || capability || country || commodity || verification
+                          ? messages.states.empty.noFilterResultsDescription
+                          : undefined
+                      }
+                      isFilterEmpty={Boolean(search || capability || country || commodity || verification)}
+                      onResetFilters={() => router.push(pathname)}
+                      locale={locale}
+                    />
                   </TableCell>
                 </TableRow>
               )}

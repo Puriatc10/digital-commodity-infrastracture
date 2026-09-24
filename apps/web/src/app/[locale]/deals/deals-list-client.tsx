@@ -19,7 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, ArrowRight, Handshake, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Handshake } from "lucide-react";
+import { LoadingState, EmptyState, ErrorState, AccessDeniedState } from "@/components/states";
 
 type DealResponse = components["schemas"]["DealResponse"];
 
@@ -37,6 +38,9 @@ export function DealsListClient({ locale = "fa" }: DealsListClientProps) {
 
   const [deals, setDeals] = useState<DealResponse[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [errorStatus, setErrorStatus] = useState<401 | 403 | 500 | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   const currentOrgId =
     state.status === "authenticated" ? state.currentOrganization?.organization.id : null;
@@ -53,25 +57,45 @@ export function DealsListClient({ locale = "fa" }: DealsListClientProps) {
     ) {
       queryClient.removeQueries({ queryKey: ["deals-list"] });
       setDeals([]);
+      setErrorStatus(null);
+      setErrorMessage(null);
       setIsLoading(true);
     }
     previousSessionKeyRef.current = activeSessionKey;
   }, [activeSessionKey, queryClient]);
 
+  const triggerRefresh = () => setRefreshTrigger((prev) => prev + 1);
+
   useEffect(() => {
     let ignore = false;
     async function fetchDeals() {
       setIsLoading(true);
+      setErrorStatus(null);
+      setErrorMessage(null);
       try {
         const { data, response } = await apiClient.GET("/api/deals/");
         if (ignore) return;
+        if (response.status === 401) {
+          setErrorStatus(401);
+          setDeals([]);
+          return;
+        }
+        if (response.status === 403) {
+          setErrorStatus(403);
+          setDeals([]);
+          return;
+        }
         if (response.ok && Array.isArray(data)) {
           setDeals(data);
         } else {
+          setErrorStatus(response.status >= 500 ? 500 : null);
+          setErrorMessage(messages.states?.error?.defaultDescription || "خطا در دریافت فهرست معاملات.");
           setDeals([]);
         }
       } catch {
         if (!ignore) {
+          setErrorStatus(500);
+          setErrorMessage(messages.states?.error?.networkError || "خطای ارتباط با سرور رخ داد.");
           setDeals([]);
         }
       } finally {
@@ -85,7 +109,7 @@ export function DealsListClient({ locale = "fa" }: DealsListClientProps) {
     return () => {
       ignore = true;
     };
-  }, [activeSessionKey]);
+  }, [activeSessionKey, refreshTrigger, messages.states]);
 
   const ArrowIcon = isRtl ? ArrowLeft : ArrowRight;
 
@@ -97,20 +121,22 @@ export function DealsListClient({ locale = "fa" }: DealsListClientProps) {
       </div>
 
       {isLoading ? (
-        <Card className="flex items-center justify-center p-12 shadow-none">
-          <div className="flex flex-col items-center gap-3 text-muted-foreground">
-            <Loader2 className="size-8 animate-spin text-primary" />
-            <p className="text-sm">{t.loading}</p>
-          </div>
-        </Card>
+        <LoadingState variant="page" message={t.loading} />
+      ) : errorStatus === 401 || errorStatus === 403 ? (
+        <AccessDeniedState status={errorStatus} />
+      ) : errorMessage || errorStatus ? (
+        <ErrorState
+          title={messages.states?.error?.defaultTitle || "خطا در دریافت اطلاعات"}
+          message={errorMessage || undefined}
+          statusCode={errorStatus || undefined}
+          onRetry={triggerRefresh}
+        />
       ) : deals.length === 0 ? (
-        <Card className="p-12 text-center shadow-none">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
-            <Handshake className="size-6 text-muted-foreground" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold">{t.emptyTitle}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{t.emptyDescription}</p>
-        </Card>
+        <EmptyState
+          icon={Handshake}
+          title={t.emptyTitle}
+          description={t.emptyDescription}
+        />
       ) : (
         <Card className="shadow-none overflow-hidden">
           <CardHeader className="border-b bg-muted/40 px-6 py-4">
