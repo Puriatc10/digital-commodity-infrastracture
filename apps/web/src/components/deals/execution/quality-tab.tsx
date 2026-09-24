@@ -348,7 +348,7 @@ export function QualityTab({
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-xs text-destructive space-y-1">
               <div className="font-semibold flex items-center gap-2">
                 <ShieldAlert className="size-4" />
-                <span>تکمیل بازرسی با نتیجه عدم انطباق (Completed Inspection with Failed Result)</span>
+                <span>{t.failedCompletedCalloutTitle}</span>
               </div>
               <p className="leading-relaxed text-muted-foreground">
                 {t.failedCompletedCallout}

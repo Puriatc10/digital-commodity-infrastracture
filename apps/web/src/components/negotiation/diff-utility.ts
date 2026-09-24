@@ -1,4 +1,7 @@
 import type { components } from "@/lib/api/generated/schema";
+import { getMessages } from "@/i18n/messages";
+import { isEnabledLocale } from "@/i18n/config";
+import { commodityMessages } from "@/i18n/commodity-messages";
 
 export type OfferVersionHistory = components["schemas"]["OfferVersionHistory"];
 export type CommoditySchemaVersion = components["schemas"]["CommoditySchemaVersion"];
@@ -101,8 +104,8 @@ function formatSpecDisplay(
 
   if (attr.data_type === "boolean") {
     const b = Boolean(val);
-    if (locale === "fa") return b ? "بله" : "خیر";
-    return b ? "Yes" : "No";
+    const cm = commodityMessages[locale] || commodityMessages.fa;
+    return b ? cm.yes : cm.no;
   }
 
   if (attr.data_type === "enum") {
@@ -145,6 +148,8 @@ export function diffOfferVersions(
 ): OfferVersionDiffResult {
   const fields: FieldDiff[] = [];
   const requestedSet = new Set(requestedFields);
+  const messages = isEnabledLocale(locale) ? getMessages(locale) : null;
+  const diffFields = messages?.rfqWorkspace.negotiationHistory.diff.fields;
 
   const checkScalar = (
     key: string,
@@ -167,9 +172,13 @@ export function diffOfferVersions(
     }
 
     const formatter = formatVal || ((v: unknown) => formatScalarDisplay(v));
+    const localizedLabel =
+      (diffFields && key in diffFields ? (diffFields as Record<string, string>)[key] : null) ||
+      (locale === "fa" ? labelFa : labelEn);
+
     fields.push({
       fieldKey: key,
-      label: locale === "fa" ? labelFa : labelEn,
+      label: localizedLabel,
       group,
       diffType,
       oldValue: oldVal,

@@ -233,7 +233,7 @@ export function NegotiationDiffView({
             variant="secondary"
             className="font-mono text-[10px] bg-primary/10 text-primary"
           >
-            {diff.changedCount} {isRtl ? "مورد تغییر" : "changes"}
+            {diff.changedCount} {t.changesCount}
           </Badge>
         </div>
 
@@ -253,25 +253,17 @@ export function NegotiationDiffView({
             onClick={() => setIsExpanded((prev) => !prev)}
             className="h-7 min-h-7 px-2 text-xs gap-1 border-transparent hover:bg-muted"
             aria-expanded={isExpanded}
-            aria-label={
-              isExpanded
-                ? isRtl
-                  ? "بستن جزئیات تغییرات"
-                  : "Collapse changes"
-                : isRtl
-                ? "مشاهده جزئیات تغییرات"
-                : "Expand changes"
-            }
+            aria-label={isExpanded ? t.collapseChanges : t.expandChanges}
           >
             {isExpanded ? (
               <>
                 <ChevronUp className="h-3.5 w-3.5" />
-                <span>{isRtl ? "بستن" : "Collapse"}</span>
+                <span>{t.collapse}</span>
               </>
             ) : (
               <>
                 <ChevronDown className="h-3.5 w-3.5" />
-                <span>{isRtl ? "مشاهده جزئیات" : "View details"}</span>
+                <span>{t.viewDetails}</span>
               </>
             )}
           </Button>

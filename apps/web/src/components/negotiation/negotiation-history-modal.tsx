@@ -186,17 +186,15 @@ export function NegotiationHistoryModal({
       );
 
       if (response.status === 200) {
-        setActionSuccess(
-          isRtl ? "درخواست بازنگری با موفقیت رد شد." : "Revision request declined."
-        );
+        setActionSuccess(t.toasts.declineSuccess);
         triggerRefresh();
         onActionCompleted?.();
       } else {
         const errPayload = error as { detail?: string } | undefined;
-        setActionError(errPayload?.detail || "عملیات رد درخواست با خطا مواجه شد.");
+        setActionError(errPayload?.detail || t.toasts.declineError);
       }
     } catch {
-      setActionError("خطای ارتباط با سرور در انجام عملیات.");
+      setActionError(t.toasts.serverError);
     } finally {
       setActionInProgress(null);
     }
@@ -218,17 +216,15 @@ export function NegotiationHistoryModal({
       );
 
       if (response.status === 200) {
-        setActionSuccess(
-          isRtl ? "درخواست بازنگری با موفقیت لغو شد." : "Revision request cancelled."
-        );
+        setActionSuccess(t.toasts.cancelSuccess);
         triggerRefresh();
         onActionCompleted?.();
       } else {
         const errPayload = error as { detail?: string } | undefined;
-        setActionError(errPayload?.detail || "عملیات لغو درخواست با خطا مواجه شد.");
+        setActionError(errPayload?.detail || t.toasts.cancelError);
       }
     } catch {
-      setActionError("خطای ارتباط با سرور در انجام عملیات.");
+      setActionError(t.toasts.serverError);
     } finally {
       setActionInProgress(null);
     }
@@ -250,17 +246,15 @@ export function NegotiationHistoryModal({
       );
 
       if (response.status === 201) {
-        setActionSuccess(
-          isRtl ? "پیش‌نویس نسخه جدید با موفقیت ایجاد شد." : "Revised draft created."
-        );
+        setActionSuccess(t.toasts.draftSuccess);
         triggerRefresh();
         onActionCompleted?.();
       } else {
         const errPayload = error as { detail?: string } | undefined;
-        setActionError(errPayload?.detail || "ایجاد پیش‌نویس با خطا مواجه شد.");
+        setActionError(errPayload?.detail || t.toasts.draftError);
       }
     } catch {
-      setActionError("خطای ارتباط با سرور در انجام عملیات.");
+      setActionError(t.toasts.serverError);
     } finally {
       setActionInProgress(null);
     }
@@ -285,17 +279,15 @@ export function NegotiationHistoryModal({
       );
 
       if (response.status === 200) {
-        setActionSuccess(
-          isRtl ? "نسخه بازنگری‌شده با موفقیت ثبت و ارسال شد." : "Revised offer submitted."
-        );
+        setActionSuccess(t.toasts.submitSuccess);
         triggerRefresh();
         onActionCompleted?.();
       } else {
         const errPayload = error as { detail?: string } | undefined;
-        setActionError(errPayload?.detail || "ارسال نسخه جدید با خطا مواجه شد.");
+        setActionError(errPayload?.detail || t.toasts.submitError);
       }
     } catch {
-      setActionError("خطای ارتباط با سرور در انجام عملیات.");
+      setActionError(t.toasts.serverError);
     } finally {
       setActionInProgress(null);
     }
@@ -321,7 +313,7 @@ export function NegotiationHistoryModal({
           variant="outline"
           className="border-indigo-500/30 text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 text-xs"
         >
-          {isRtl ? "تأمین خارج از بستر" : "External Supply"}
+          {t.roles.externalSupply}
         </Badge>
       );
     }
@@ -331,7 +323,7 @@ export function NegotiationHistoryModal({
           variant="outline"
           className="border-purple-500/30 text-purple-700 dark:text-purple-400 bg-purple-500/10 text-xs"
         >
-          {isRtl ? "کارگزار" : "Broker"}
+          {t.roles.broker}
         </Badge>
       );
     }
@@ -340,7 +332,7 @@ export function NegotiationHistoryModal({
         variant="outline"
         className="border-blue-500/30 text-blue-700 dark:text-blue-400 bg-blue-500/10 text-xs"
       >
-        {isRtl ? "تأمین‌کننده" : "Supplier"}
+        {t.roles.supplier}
       </Badge>
     );
   };
@@ -488,7 +480,7 @@ export function NegotiationHistoryModal({
                       <UserCheck className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
                       <span>
                         <strong className="font-semibold">
-                          {isRtl ? "توجه:" : "Note:"}
+                          {t.noteLabel}
                         </strong>{" "}
                         {t.header.operatorEntered}
                       </span>
@@ -719,8 +711,8 @@ export function NegotiationHistoryModal({
                                     <span className="font-semibold text-foreground">
                                       {req.requested_by_name ||
                                         (req.requested_by_role === "OPERATOR"
-                                          ? "اپراتور سامانه"
-                                          : "خریدار")}
+                                          ? t.revisionRequest.roles.operator
+                                          : t.revisionRequest.roles.buyer)}
                                     </span>
                                   </div>
 
@@ -877,9 +869,7 @@ export function NegotiationHistoryModal({
                               <CardContent className="p-4 space-y-3 text-xs">
                                 <div className="p-2.5 bg-blue-500/10 rounded-md text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between gap-2 flex-wrap">
                                   <span>
-                                    {isRtl
-                                      ? "این نسخه به عنوان پیش‌نویس در حال ویرایش است و تا زمان ارسال رسمی، برای خریدار قابل مشاهده نیست."
-                                      : "This version is in draft status and invisible to the buyer until submitted."}
+                                    {t.draftNote}
                                   </span>
 
                                   {canOfferPartyAct && openRevisionRequest && (
@@ -931,9 +921,7 @@ export function NegotiationHistoryModal({
         <div className="p-3.5 sm:p-4 border-t border-border flex items-center justify-between gap-2 bg-muted/20">
           <div className="text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 inline ml-1 text-muted-foreground" />
-            {isRtl
-              ? "سوابق مذاکرات و نسخه‌های ارائه‌شده غیرقابل تغییر و دارای ردپای ثبت رسمی هستند."
-              : "Submitted versions are immutable snapshots."}
+            {t.immutableNote}
           </div>
           <Button variant="outline" onClick={onClose} className="text-xs min-h-8">
             {t.close}

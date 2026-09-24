@@ -434,7 +434,7 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
               id="filter-origin"
               value={origin}
               onChange={(e) => setOrigin(e.target.value)}
-              placeholder="مثال: Bandar Abbas"
+              placeholder={t.filters.originPlaceholder}
               className="h-8 text-xs"
             />
           </div>
@@ -446,7 +446,7 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
               id="filter-dest"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder="مثال: Jebel Ali"
+              placeholder={t.filters.destPlaceholder}
               className="h-8 text-xs"
             />
           </div>

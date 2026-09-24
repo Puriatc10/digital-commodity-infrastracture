@@ -15,9 +15,9 @@ export default function VerificationQueuePage() {
     <ApplicationShell locale={locale} messages={messages.shell}>
       <div className="flex h-full flex-col gap-6 p-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">صف بررسی و احراز هویت</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{messages.verification.queue.title}</h1>
           <p className="text-muted-foreground">
-            بررسی پرونده‌های احراز هویت سازمان‌ها و تصمیم‌گیری اپراتور سامانه.
+            {messages.verification.queue.subtitle}
           </p>
         </div>
 

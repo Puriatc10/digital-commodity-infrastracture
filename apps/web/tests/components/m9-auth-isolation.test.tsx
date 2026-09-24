@@ -5,6 +5,10 @@ import VerificationCaseDetailPage from "../../src/app/[locale]/operator/verifica
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "../../src/lib/auth-context";
 import { apiClient as client } from "../../src/lib/api/client";
+import { getMessages } from "../../src/i18n/messages";
+
+const messages = getMessages("fa");
+const t = messages.verification.caseDetail;
 
 vi.mock("../../src/lib/api/client", () => ({
   apiClient: {
@@ -81,7 +85,7 @@ describe("M9 Session Cache Isolation", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Unauthorized")).toBeInTheDocument();
+      expect(screen.getAllByText(t.unauthorizedTitle)[0]).toBeInTheDocument();
       expect(screen.queryByText("Secret Operator Note")).not.toBeInTheDocument();
     });
 
@@ -112,7 +116,7 @@ describe("M9 Session Cache Isolation", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Unauthorized")).toBeInTheDocument();
+      expect(screen.getAllByText(t.unauthorizedTitle)[0]).toBeInTheDocument();
       expect(screen.queryByText("Secret Operator Note")).not.toBeInTheDocument();
     });
   });
@@ -134,7 +138,7 @@ describe("M9 Session Cache Isolation", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByText("Loading case details...")).toBeInTheDocument();
+      expect(screen.getByText(t.loadingSr)).toBeInTheDocument();
     });
 
     vi.mocked(client.GET).mockImplementation(async (url: string) => {
@@ -149,7 +153,7 @@ describe("M9 Session Cache Isolation", () => {
     });
 
     await waitFor(() => {
-        expect(screen.queryByText("Unauthorized")).toBeInTheDocument();
+        expect(screen.queryAllByText(t.unauthorizedTitle)[0]).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -157,7 +161,7 @@ describe("M9 Session Cache Isolation", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Unauthorized")).toBeInTheDocument();
+      expect(screen.getAllByText(t.unauthorizedTitle)[0]).toBeInTheDocument();
       expect(screen.queryByText("Delayed Secret")).not.toBeInTheDocument();
     });
   });
@@ -176,7 +180,7 @@ describe("M9 Session Cache Isolation", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByText("Unauthorized")).toBeInTheDocument();
+      expect(screen.getAllByText(t.unauthorizedTitle)[0]).toBeInTheDocument();
     }, { timeout: 2000 });
     expect(screen.queryByText("Secret Operator Note")).not.toBeInTheDocument();
   });
@@ -195,7 +199,7 @@ describe("M9 Session Cache Isolation", () => {
     renderWithProviders();
 
     await waitFor(() => {
-      expect(screen.getByText("Error loading case details.")).toBeInTheDocument();
+      expect(screen.getByText(t.errorSr)).toBeInTheDocument();
     });
   });
 });

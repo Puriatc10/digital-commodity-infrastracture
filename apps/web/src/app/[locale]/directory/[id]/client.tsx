@@ -23,15 +23,18 @@ import {
   AlertTriangle,
   Send,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { getMessages, type Messages } from "@/i18n/messages";
+import type { EnabledLocale } from "@/i18n/config";
 import type { components } from "@/lib/api/generated/schema";
 
 type VerificationDoc = components["schemas"]["VerificationDocument"];
 
-const REQUIRED_EVIDENCE_TYPES = [
-  { key: "company_registration", label: "ثبت تجاری / روزنامه رسمی" },
-  { key: "tax_id", label: "گواهی مالیاتی و کد اقتصادی" },
-  { key: "bank_details", label: "معرفی‌نامه بانکی" },
-  { key: "authorized_representative", label: "احراز هویت مدیران" },
+const REQUIRED_EVIDENCE_KEYS = [
+  "company_registration",
+  "tax_id",
+  "bank_details",
+  "authorized_representative",
 ] as const;
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -43,24 +46,24 @@ const ALLOWED_MIME_TYPES = [
 ];
 const ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"];
 
-function getCapabilityBadge(cap: string) {
+function getCapabilityBadge(cap: string, tDir: Messages["directory"]) {
   switch (cap) {
     case "buyer":
       return (
         <Badge variant="outline" key={cap}>
-          خریدار
+          {tDir.filters.roles.buyer}
         </Badge>
       );
     case "supplier":
       return (
         <Badge variant="outline" key={cap}>
-          تامین‌کننده
+          {tDir.filters.roles.supplier}
         </Badge>
       );
     case "broker":
       return (
         <Badge variant="outline" key={cap}>
-          کارگزار
+          {tDir.filters.roles.broker}
         </Badge>
       );
     default:
@@ -73,6 +76,12 @@ function getCapabilityBadge(cap: string) {
 }
 
 export function ProfileClient({ id }: { id: string }) {
+  const pathname = usePathname();
+  const locale = ((pathname?.split("/")[1] as EnabledLocale) || "fa") as EnabledLocale;
+  const messages = getMessages(locale);
+  const t = messages.directory.profile;
+  const tDir = messages.directory;
+
   const queryClient = useQueryClient();
   const authContext = useOptionalAuth();
   const authState = authContext?.state;
@@ -168,7 +177,7 @@ export function ProfileClient({ id }: { id: string }) {
       return res.json();
     },
     onSuccess: () => {
-      setUploadSuccess("مدرک با موفقیت بارگذاری شد.");
+      setUploadSuccess(t.uploadSuccess);
       setUploadError(null);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -176,7 +185,7 @@ export function ProfileClient({ id }: { id: string }) {
       void queryClient.invalidateQueries({ queryKey: ["organizations", "profiles", id] });
     },
     onError: (err) => {
-      setUploadError(err instanceof Error ? err.message : "خطا در بارگذاری مدرک");
+      setUploadError(err instanceof Error ? err.message : t.fileTypeError);
       setUploadSuccess(null);
     },
   });
@@ -201,7 +210,7 @@ export function ProfileClient({ id }: { id: string }) {
       return data;
     },
     onSuccess: () => {
-      setSubmitSuccess("درخواست احراز هویت با موفقیت ثبت شد و در صف بررسی اپراتور قرار گرفت.");
+      setSubmitSuccess(t.submitSuccess);
       setSubmitError(null);
       void queryClient.invalidateQueries({ queryKey: ["organizations", "profiles", id] });
       void refetchDocs();
@@ -227,7 +236,7 @@ export function ProfileClient({ id }: { id: string }) {
     const isMimeValid = ALLOWED_MIME_TYPES.includes(file.type);
 
     if (!isExtensionValid && !isMimeValid) {
-      setUploadError("فرمت فایل نامعتبر است. تنها فایل‌های PDF، JPG و PNG مجاز هستند.");
+      setUploadError(t.fileTypeError);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
@@ -235,7 +244,7 @@ export function ProfileClient({ id }: { id: string }) {
 
     // Client-side size validation
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setUploadError("حجم فایل نباید بیشتر از ۱۰ مگابایت باشد.");
+      setUploadError(t.fileSizeError);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
@@ -247,7 +256,7 @@ export function ProfileClient({ id }: { id: string }) {
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) {
-      setUploadError("لطفاً یک فایل را برای بارگذاری انتخاب کنید.");
+      setUploadError(t.selectFileError);
       return;
     }
     uploadMutation.mutate({ file: selectedFile, type: selectedType });
@@ -264,7 +273,7 @@ export function ProfileClient({ id }: { id: string }) {
   if (isProfileError || !profile) {
     return (
       <Card className="p-8 text-center text-destructive">
-        شرکت یافت نشد یا دسترسی مجاز نیست.
+        {t.notFound}
       </Card>
     );
   }
@@ -274,19 +283,19 @@ export function ProfileClient({ id }: { id: string }) {
       {/* Basic Organization Info */}
       <Card>
         <CardHeader>
-          <CardTitle>اطلاعات سازمان</CardTitle>
+          <CardTitle>{t.orgInfo}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">نام سازمان</p>
+            <p className="text-sm font-medium text-muted-foreground">{t.name}</p>
             <p className="text-base font-semibold">{profile.name}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">کشور</p>
+            <p className="text-sm font-medium text-muted-foreground">{t.country}</p>
             <p className="text-base">{profile.country || "-"}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">وب‌سایت</p>
+            <p className="text-sm font-medium text-muted-foreground">{t.website}</p>
             <p className="text-base">
               {profile.website ? (
                 <a
@@ -308,11 +317,11 @@ export function ProfileClient({ id }: { id: string }) {
       {/* Verification Status */}
       <Card>
         <CardHeader>
-          <CardTitle>وضعیت احراز هویت</CardTitle>
+          <CardTitle>{t.verificationStatus}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">وضعیت جاری:</span>
+            <span className="text-sm text-muted-foreground">{t.currentStatus}</span>
             <VerificationBadge status={profile.verification_status} />
           </div>
 
@@ -341,7 +350,7 @@ export function ProfileClient({ id }: { id: string }) {
                 ) : (
                   <Send className="h-4 w-4" />
                 )}
-                ارسال مدارک جهت بررسی و احراز هویت
+                {t.submitVerification}
               </Button>
             </div>
           )}
@@ -351,19 +360,19 @@ export function ProfileClient({ id }: { id: string }) {
       {/* Roles & Commodities */}
       <Card>
         <CardHeader>
-          <CardTitle>نقش‌ها و کالاها</CardTitle>
+          <CardTitle>{t.rolesAndCommodities}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-2">نقش‌ها</p>
+            <p className="text-sm font-medium text-muted-foreground mb-2">{t.roles}</p>
             <div className="flex gap-2 flex-wrap">
               {profile.capabilities.length > 0
-                ? profile.capabilities.map((cap) => getCapabilityBadge(cap))
+                ? profile.capabilities.map((cap) => getCapabilityBadge(cap, tDir))
                 : "-"}
             </div>
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-2">کالاها</p>
+            <p className="text-sm font-medium text-muted-foreground mb-2">{t.commodities}</p>
             <div className="flex gap-2 flex-wrap">
               {profile.commodities.length > 0
                 ? profile.commodities.map((comm) => (
@@ -381,29 +390,30 @@ export function ProfileClient({ id }: { id: string }) {
       {isOwnerOrManager && (
         <Card>
           <CardHeader>
-            <CardTitle>مدارک و مستندات هویتی سازمان</CardTitle>
+            <CardTitle>{t.evidenceTitle}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Status of Required Evidence Types */}
             <div>
-              <h4 className="text-sm font-semibold mb-3">وضعیت مدارک الزامی:</h4>
+              <h4 className="text-sm font-semibold mb-3">{t.requiredEvidenceStatus}</h4>
               {isDocsLoading ? (
                 <div className="flex items-center justify-center p-4">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {REQUIRED_EVIDENCE_TYPES.map((req) => {
+                  {REQUIRED_EVIDENCE_KEYS.map((key) => {
+                    const label = t.evidenceTypes[key];
                     const currentDoc = documents?.find(
-                      (d) => d.type === req.key && d.is_current
+                      (d) => d.type === key && d.is_current
                     );
                     return (
                       <div
-                        key={req.key}
+                        key={key}
                         className="rounded-lg border border-border p-3.5 flex flex-col justify-between gap-2"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{req.label}</span>
+                          <span className="text-sm font-medium">{label}</span>
                           {currentDoc ? (
                             <span
                               className={`text-xs px-2 py-0.5 rounded ${
@@ -415,14 +425,14 @@ export function ProfileClient({ id }: { id: string }) {
                               }`}
                             >
                               {currentDoc.verification_status === "accepted"
-                                ? "تایید شده"
+                                ? t.docStatuses.accepted
                                 : currentDoc.verification_status === "rejected"
-                                ? "رد شده"
-                                : "در انتظار بررسی"}
+                                ? t.docStatuses.rejected
+                                : t.docStatuses.pending}
                             </span>
                           ) : (
                             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                              بارگذاری نشده
+                              {t.notUploaded}
                             </span>
                           )}
                         </div>
@@ -430,7 +440,7 @@ export function ProfileClient({ id }: { id: string }) {
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <FileText className="h-3.5 w-3.5" />
                             <span className="truncate">{currentDoc.file_name}</span>
-                            <span>({(currentDoc.size_bytes / 1024).toFixed(0)} کیلوبایت)</span>
+                            <span>({(currentDoc.size_bytes / 1024).toFixed(0)} {t.fileSizeLabel})</span>
                           </div>
                         )}
                       </div>
@@ -442,7 +452,7 @@ export function ProfileClient({ id }: { id: string }) {
 
             {/* Upload/Replace Form */}
             <div className="pt-4 border-t space-y-4">
-              <h4 className="text-sm font-semibold">بارگذاری یا جایگزینی مدرک:</h4>
+              <h4 className="text-sm font-semibold">{t.uploadTitle}</h4>
 
               {uploadError && (
                 <div className="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
@@ -463,18 +473,18 @@ export function ProfileClient({ id }: { id: string }) {
                 className="flex flex-col gap-4 sm:flex-row sm:items-end"
               >
                 <div className="w-full sm:w-64 space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">نوع مدرک</label>
+                  <label className="text-xs font-medium text-muted-foreground">{t.docType}</label>
                   <Select
                     value={selectedType}
                     onValueChange={(val) => setSelectedType(val)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="انتخاب نوع مدرک" />
+                      <SelectValue placeholder={t.selectDocType} />
                     </SelectTrigger>
                     <SelectContent>
-                      {REQUIRED_EVIDENCE_TYPES.map((t) => (
-                        <SelectItem key={t.key} value={t.key}>
-                          {t.label}
+                      {REQUIRED_EVIDENCE_KEYS.map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {t.evidenceTypes[key]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -483,7 +493,7 @@ export function ProfileClient({ id }: { id: string }) {
 
                 <div className="flex-1 space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">
-                    انتخاب فایل (PDF، JPG یا PNG - حداکثر ۱۰ مگابایت)
+                    {t.allowedTypesNotice}
                   </label>
                   <input
                     ref={fileInputRef}
@@ -504,7 +514,7 @@ export function ProfileClient({ id }: { id: string }) {
                   ) : (
                     <Upload className="h-4 w-4" />
                   )}
-                  بارگذاری مدرک
+                  {uploadMutation.isPending ? t.uploading : t.uploadButton}
                 </Button>
               </form>
             </div>
@@ -515,10 +525,10 @@ export function ProfileClient({ id }: { id: string }) {
       {/* Activity Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>خلاصه فعالیت</CardTitle>
+          <CardTitle>{t.activitySummary}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">اطلاعات فعالیت در حال حاضر در دسترس نیست.</p>
+          <p className="text-sm text-muted-foreground">{t.activityUnavailable}</p>
         </CardContent>
       </Card>
     </div>
