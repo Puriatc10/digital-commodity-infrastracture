@@ -540,7 +540,7 @@ describe("T0905 — Deal Workspace Component Suite", () => {
     expect(screen.queryByText("password")).not.toBeInTheDocument();
   });
 
-  it("10. Future Tabs (Execution, Logistics, Quality, Documents, Issues) render honest staged empty states", async () => {
+  it("10. Execution tabs render active uninitialized states when execution has not yet started", async () => {
     setupAuth(mockBuyerOrg, "owner", "buyer", false, mockDealBase);
 
     render(
@@ -552,29 +552,28 @@ describe("T0905 — Deal Workspace Component Suite", () => {
     // Execution
     const execTab = await screen.findByRole("button", { name: new RegExp(t.tabs.execution) });
     fireEvent.click(execTab);
-    expect(screen.getByText(t.stagedTabs.execution.title)).toBeInTheDocument();
-    expect(screen.getByText(t.stagedTabs.execution.description)).toBeInTheDocument();
+    expect(screen.getByText(t.executionMonitor.uninitialized.title)).toBeInTheDocument();
+    expect(screen.getByText(t.executionMonitor.uninitialized.initButton)).toBeInTheDocument();
 
     // Logistics
     const logisticsTab = screen.getByRole("button", { name: new RegExp(t.tabs.logistics) });
     fireEvent.click(logisticsTab);
-    expect(screen.getByText(t.stagedTabs.logistics.title)).toBeInTheDocument();
-    expect(screen.getByText(t.stagedTabs.logistics.description)).toBeInTheDocument();
+    expect(screen.getByText(t.executionMonitor.logistics.title)).toBeInTheDocument();
 
     // Quality
     const qualityTab = screen.getByRole("button", { name: new RegExp(t.tabs.quality) });
     fireEvent.click(qualityTab);
-    expect(screen.getByText(t.stagedTabs.quality.title)).toBeInTheDocument();
+    expect(screen.getByText(t.executionMonitor.quality.title)).toBeInTheDocument();
 
     // Documents
     const docsTab = screen.getByRole("button", { name: new RegExp(t.tabs.documents) });
     fireEvent.click(docsTab);
-    expect(screen.getByText(t.stagedTabs.documents.title)).toBeInTheDocument();
+    expect(screen.getByText(t.executionMonitor.documents.title)).toBeInTheDocument();
 
     // Issues
     const issuesTab = screen.getByRole("button", { name: new RegExp(t.tabs.issues) });
     fireEvent.click(issuesTab);
-    expect(screen.getByRole("heading", { name: t.stagedTabs.issues.title })).toBeInTheDocument();
+    expect(screen.getByText(t.executionMonitor.issues.title)).toBeInTheDocument();
   });
 
   it("11. Activity Tab renders real domain events only", async () => {
