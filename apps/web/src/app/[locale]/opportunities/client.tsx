@@ -4,9 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Loader2,
   RefreshCw,
-  ShieldAlert,
   Inbox,
   UserCheck,
   CheckCircle2,
@@ -26,6 +24,12 @@ import type { components } from "@/lib/api/generated/schema";
 import { useAuth } from "@/lib/auth-context";
 import { getMessages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  AccessDeniedState,
+} from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,27 +133,17 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
   });
 
   if (authState.status === "loading") {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="sr-only">{oppMsg.states.loading}</span>
-      </div>
-    );
+    return <LoadingState message={oppMsg.states.loading} locale={locale} />;
   }
 
   if (!isOperatorOrAdmin) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h2 className="text-lg font-semibold text-destructive">
-            {messages.rfqBuilder.unauthorizedTitle}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {oppMsg.states.unauthorized}
-          </p>
-        </div>
-      </Card>
+      <AccessDeniedState
+        statusCode={403}
+        title={messages.rfqBuilder.unauthorizedTitle}
+        description={oppMsg.states.unauthorized}
+        locale={locale}
+      />
     );
   }
 
@@ -305,33 +299,43 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-base font-bold">
             {viewsConfig.find((v) => v.id === activeView)?.label}
-            <span className="mr-2 text-xs font-normal text-muted-foreground">
+            <span className="ms-2 text-xs font-normal text-muted-foreground">
               ({totalCount} {oppMsg.title})
             </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="flex items-center justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <span className="sr-only">{oppMsg.states.loading}</span>
-            </div>
+            <LoadingState variant="section" message={oppMsg.states.loading} locale={locale} />
           ) : isError ? (
-            <div className="p-8 text-center text-destructive">
-              <p className="text-sm font-semibold">{oppMsg.states.loadError}</p>
-              <Button
-                variant="outline"
-                onClick={() => void refetch()}
-                className="mt-3 min-h-8 px-3 text-xs"
-              >
-                {oppMsg.actions.refresh}
-              </Button>
-            </div>
+            <ErrorState
+              errorMessage={oppMsg.states.loadError}
+              onRetry={() => void refetch()}
+              locale={locale}
+            />
           ) : results.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <Inbox className="mx-auto mb-3 h-8 w-8 text-muted-foreground/60" />
-              <p className="text-sm font-medium">{oppMsg.states.emptyList}</p>
-            </div>
+            <EmptyState
+              icon={<Inbox className="h-8 w-8 text-muted-foreground/60" />}
+              title={
+                commodityFilter.trim() || identifierFilter.trim() || directionFilter !== "all"
+                  ? messages.states.empty.noFilterResultsTitle
+                  : oppMsg.states.emptyList
+              }
+              description={
+                commodityFilter.trim() || identifierFilter.trim() || directionFilter !== "all"
+                  ? messages.states.empty.noFilterResultsDescription
+                  : undefined
+              }
+              isFilterEmpty={Boolean(
+                commodityFilter.trim() || identifierFilter.trim() || directionFilter !== "all"
+              )}
+              onResetFilters={() => {
+                setDirectionFilter("all");
+                setCommodityFilter("");
+                setIdentifierFilter("");
+              }}
+              locale={locale}
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -345,7 +349,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                   <TableHead>{oppMsg.fields.source}</TableHead>
                   <TableHead>{oppMsg.fields.status}</TableHead>
                   <TableHead>{oppMsg.fields.updatedAt}</TableHead>
-                  <TableHead className="text-left">{oppMsg.fields.actions}</TableHead>
+                  <TableHead className="text-end">{oppMsg.fields.actions}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -367,7 +371,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                           href={`/${locale}/opportunities/${opp.id}`}
                           className="text-primary hover:underline"
                         >
-                          {opp.identifier || opp.id.slice(0, 8)}
+                          <bdi dir="ltr">{opp.identifier || opp.id.slice(0, 8)}</bdi>
                         </Link>
                       </TableCell>
 
@@ -396,12 +400,12 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                       </TableCell>
 
                       <TableCell className="text-sm">
-                        {opp.quantity ? `${opp.quantity} ${opp.unit}` : "—"}
+                        {opp.quantity ? <bdi dir="ltr">{opp.quantity} {opp.unit}</bdi> : "—"}
                       </TableCell>
 
                       <TableCell className="text-sm">
                         {opp.indicative_price
-                          ? `${opp.indicative_price} ${opp.currency}`
+                          ? <bdi dir="ltr">{opp.indicative_price} {opp.currency}</bdi>
                           : "—"}
                       </TableCell>
 
@@ -445,7 +449,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                         {new Date(opp.updated_at).toLocaleDateString("fa-IR")}
                       </TableCell>
 
-                      <TableCell className="text-left">
+                      <TableCell className="text-end">
                         <Link href={`/${locale}/opportunities/${opp.id}`}>
                           <Button variant="outline" className="min-h-7 px-2.5 py-1 text-xs">
                             {oppMsg.actions.viewDetails}
@@ -472,7 +476,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                   disabled={!hasPrev || isFetching}
                   className="min-h-8 px-2.5 py-1 gap-1 text-xs"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                   <span>قبلی</span>
                 </Button>
                 <Button
@@ -482,7 +486,7 @@ export function OpportunityDeskClient({ locale }: OpportunityDeskClientProps) {
                   className="min-h-8 px-2.5 py-1 gap-1 text-xs"
                 >
                   <span>بعدی</span>
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                 </Button>
               </div>
             </div>

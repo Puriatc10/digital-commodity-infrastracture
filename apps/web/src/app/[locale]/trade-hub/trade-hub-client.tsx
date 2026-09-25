@@ -7,11 +7,9 @@ import {
   AlertCircle,
   Calendar,
   Layers,
-  Loader2,
   MapPin,
   Package,
   PlusCircle,
-  RefreshCw,
   Search,
   Tag,
   Truck,
@@ -29,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VerificationBadge } from "@/components/verification-badge";
+import { LoadingState, EmptyState, ErrorState, AccessDeniedState } from "@/components/states";
 
 type RFQPublicResponse = components["schemas"]["RFQPublicResponse"];
 type RFQBuilderResponse = components["schemas"]["RFQBuilderResponse"];
@@ -42,6 +41,7 @@ interface TradeHubClientProps {
 
 export function TradeHubClient({ locale }: TradeHubClientProps) {
   const messages = getMessages(locale);
+  const isRtl = locale === "fa";
   const t = messages.tradeHub;
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -66,6 +66,7 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
   const [isLoadingCommodities, setIsLoadingCommodities] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<401 | 403 | 500 | null>(null);
 
   // User & Organization Permissions
   const isOperatorOrAdmin =
@@ -135,6 +136,7 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
     async function loadData() {
       setIsLoadingData(true);
       setErrorMessage(null);
+      setErrorStatus(null);
       try {
         const queryParams: {
           search?: string;
@@ -154,11 +156,17 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
             params: { query: queryParams },
           });
           if (!ignore) {
+            if (response.status === 401 || response.status === 403) {
+              setErrorStatus(response.status as 401 | 403);
+              setRfqs([]);
+              return;
+            }
             if (response.ok && data) {
               const results =
                 (data as { results?: (RFQPublicResponse | RFQBuilderResponse)[] }).results ?? [];
               setRfqs(results);
             } else {
+              setErrorStatus(response.status >= 500 ? 500 : null);
               setErrorMessage(t.states.loadError);
             }
           }
@@ -167,6 +175,11 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
             params: { query: queryParams },
           });
           if (!ignore) {
+            if (response.status === 401 || response.status === 403) {
+              setErrorStatus(response.status as 401 | 403);
+              setSupplyListings([]);
+              return;
+            }
             if (response.ok && data) {
               const results =
                 (data as {
@@ -174,12 +187,14 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
                 }).results ?? [];
               setSupplyListings(results);
             } else {
+              setErrorStatus(response.status >= 500 ? 500 : null);
               setErrorMessage(t.states.loadError);
             }
           }
         }
       } catch {
         if (!ignore) {
+          setErrorStatus(500);
           setErrorMessage(t.states.loadError);
         }
       } finally {
@@ -354,12 +369,12 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Text Search */}
           <div className="relative lg:col-span-2">
-            <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute start-3 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t.filters.searchPlaceholder}
-              className="pr-9 text-sm"
+              className="ps-9 pe-3 text-sm"
               aria-label={t.filters.searchPlaceholder}
             />
           </div>
@@ -434,7 +449,7 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
               id="filter-origin"
               value={origin}
               onChange={(e) => setOrigin(e.target.value)}
-              placeholder="مثال: Bandar Abbas"
+              placeholder={t.filters.originPlaceholder}
               className="h-8 text-xs"
             />
           </div>
@@ -446,7 +461,7 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
               id="filter-dest"
               value={destination}
               onChange={(e) => setDestination(e.target.value)}
-              placeholder="مثال: Jebel Ali"
+              placeholder={t.filters.destPlaceholder}
               className="h-8 text-xs"
             />
           </div>
@@ -455,44 +470,37 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
 
       {/* Content Area */}
       {isLoadingData ? (
-        <div className="flex h-64 flex-col items-center justify-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">{t.states.loading}</span>
-        </div>
-      ) : errorMessage ? (
-        <Card className="border-destructive/30 bg-destructive/5 p-8 text-center">
-          <div className="flex flex-col items-center gap-3">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-            <p className="text-sm font-medium text-destructive">{errorMessage}</p>
-            <Button
-              variant="outline"
-              onClick={triggerRefresh}
-              className="mt-2 min-h-8 px-3 py-1 text-xs"
-            >
-              <RefreshCw className="h-4 w-4" />
-              {t.actions.retry}
-            </Button>
-          </div>
-        </Card>
+        <LoadingState variant="page" message={t.states.loading} />
+      ) : errorStatus === 401 || errorStatus === 403 ? (
+        <AccessDeniedState status={errorStatus} />
+      ) : errorMessage || errorStatus ? (
+        <ErrorState
+          title={t.states.loadError}
+          message={errorMessage || undefined}
+          statusCode={errorStatus || undefined}
+          onRetry={triggerRefresh}
+          retryLabel={t.actions.retry}
+        />
       ) : activeTab === "demand" ? (
         rfqs.length === 0 ? (
-          <Card className="p-12 text-center border-dashed">
-            <div className="flex flex-col items-center gap-2">
-              <Layers className="h-10 w-10 text-muted-foreground/50" />
-              <h3 className="text-base font-semibold text-foreground">
-                {hasActiveFilters ? t.states.noResults : t.states.emptyDemand}
-              </h3>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="mt-1 text-xs text-primary underline hover:text-primary/80"
-                >
-                  {t.actions.resetFilters}
-                </button>
-              )}
-            </div>
-          </Card>
+          <EmptyState
+            icon={Layers}
+            variant="dashed"
+            isFilterEmpty={hasActiveFilters}
+            onResetFilters={handleResetFilters}
+            resetFilterLabel={t.actions.resetFilters}
+            title={hasActiveFilters ? t.states.noResults : t.states.emptyDemand}
+            description={hasActiveFilters ? undefined : messages.states?.empty?.noRfqs}
+            action={
+              canCreateRfq && !hasActiveFilters
+                ? {
+                    label: t.actions.createRfq,
+                    href: `/${locale}/trade-hub/rfqs/new`,
+                    icon: PlusCircle,
+                  }
+                : undefined
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {rfqs.map((rfq) => (
@@ -527,15 +535,17 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
                     <div>
                       <span className="text-muted-foreground block">{t.labels.quantity}:</span>
                       <span className="font-semibold text-foreground">
-                        {Number(rfq.quantity).toLocaleString()} {rfq.unit}
+                        <bdi dir="ltr">{Number(rfq.quantity).toLocaleString()} {rfq.unit}</bdi>
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground block">{t.labels.targetPrice}:</span>
                       <span className="font-semibold text-foreground">
-                        {rfq.target_price
-                          ? `${Number(rfq.target_price).toLocaleString()} ${rfq.currency}`
-                          : t.labels.notSpecified}
+                        {rfq.target_price ? (
+                          <bdi dir="ltr">{Number(rfq.target_price).toLocaleString()} {rfq.currency}</bdi>
+                        ) : (
+                          t.labels.notSpecified
+                        )}
                       </span>
                     </div>
                   </div>
@@ -556,8 +566,12 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
                           <MapPin className="h-3.5 w-3.5 shrink-0" />
                           {t.labels.origin} / {t.labels.destination}:
                         </span>
-                        <span className="text-foreground font-medium truncate max-w-[150px]">
-                          {rfq.origin || "—"} → {rfq.destination || "—"}
+                        <span className="text-foreground font-medium truncate max-w-[150px] inline-flex items-center gap-1">
+                          <span>{rfq.origin || "—"}</span>
+                          <span aria-hidden="true" className="text-muted-foreground">
+                            {isRtl ? "←" : "→"}
+                          </span>
+                          <span>{rfq.destination || "—"}</span>
                         </span>
                       </div>
                     )}
@@ -594,23 +608,23 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
         )
       ) : (
         supplyListings.length === 0 ? (
-          <Card className="p-12 text-center border-dashed">
-            <div className="flex flex-col items-center gap-2">
-              <Truck className="h-10 w-10 text-muted-foreground/50" />
-              <h3 className="text-base font-semibold text-foreground">
-                {hasActiveFilters ? t.states.noResults : t.states.emptySupply}
-              </h3>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={handleResetFilters}
-                  className="mt-1 text-xs text-primary underline hover:text-primary/80"
-                >
-                  {t.actions.resetFilters}
-                </button>
-              )}
-            </div>
-          </Card>
+          <EmptyState
+            icon={Truck}
+            variant="dashed"
+            isFilterEmpty={hasActiveFilters}
+            onResetFilters={handleResetFilters}
+            resetFilterLabel={t.actions.resetFilters}
+            title={hasActiveFilters ? t.states.noResults : t.states.emptySupply}
+            action={
+              canCreateSupply && !hasActiveFilters
+                ? {
+                    label: t.actions.createSupply,
+                    href: `/${locale}/trade-hub/supply-listings/new`,
+                    icon: PlusCircle,
+                  }
+                : undefined
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {supplyListings.map((listing) => (
@@ -645,15 +659,17 @@ export function TradeHubClient({ locale }: TradeHubClientProps) {
                     <div>
                       <span className="text-muted-foreground block">{t.labels.quantity}:</span>
                       <span className="font-semibold text-foreground">
-                        {Number(listing.quantity).toLocaleString()} {listing.unit}
+                        <bdi dir="ltr">{Number(listing.quantity).toLocaleString()} {listing.unit}</bdi>
                       </span>
                     </div>
                     <div>
                       <span className="text-muted-foreground block">{t.labels.indicativePrice}:</span>
                       <span className="font-semibold text-foreground">
-                        {listing.indicative_price
-                          ? `${Number(listing.indicative_price).toLocaleString()} ${listing.currency}`
-                          : t.labels.notSpecified}
+                        {listing.indicative_price ? (
+                          <bdi dir="ltr">{Number(listing.indicative_price).toLocaleString()} {listing.currency}</bdi>
+                        ) : (
+                          t.labels.notSpecified
+                        )}
                       </span>
                     </div>
                   </div>

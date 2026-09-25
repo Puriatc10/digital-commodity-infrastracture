@@ -32,6 +32,11 @@ import {
   Trash2,
   XCircle,
 } from "lucide-react";
+import {
+  LoadingState,
+  EmptyState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type AwardDetailResponse = components["schemas"]["AwardDetailResponse"];
 type AwardAllocationResponse = components["schemas"]["AwardAllocationResponse"];
@@ -353,53 +358,46 @@ export function RFQAwardTab({
 
   if (isUnauthorized) {
     return (
-      <Card className="border-destructive/40 bg-destructive/5">
-        <CardContent className="p-8 text-center text-destructive">
-          <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-destructive" />
-          <p className="font-bold">{messages.rfqWorkspace.unauthorizedTitle}</p>
-          <p className="text-xs text-muted-foreground mt-1">{t.unauthorized}</p>
-        </CardContent>
-      </Card>
+      <AccessDeniedState
+        statusCode={403}
+        title={messages.rfqWorkspace.unauthorizedTitle}
+        description={t.unauthorized}
+        locale={locale}
+      />
     );
   }
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span>{messages.rfqWorkspace.loadingRfq}</span>
-        </div>
-      </div>
+      <LoadingState
+        variant="section"
+        message={messages.rfqWorkspace.loadingRfq}
+        locale={locale}
+      />
     );
   }
 
   // If no award exists yet
   if (awardNotFound || !award) {
     return (
-      <Card className="border-dashed">
-        <CardHeader className="text-center pb-2">
-          <CardTitle className="text-base font-semibold flex items-center justify-center gap-2">
-            <Award className="h-5 w-5 text-primary" />
-            {t.title}
-          </CardTitle>
-          <CardDescription className="text-xs">{t.description}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
-          <Award className="h-12 w-12 text-muted-foreground/40" />
-          <p className="max-w-md text-sm text-muted-foreground">
-            {canManageAward
-              ? "هنوز هیچ پیش‌نویس واگذاری برای این استعلام ایجاد نشده است. می‌توانید با ایجاد پیش‌نویس واگذاری، پیشنهادهای موردنظر خود را تخصیص دهید."
-              : "هنوز تصمیمی برای واگذاری این استعلام ثبت نشده است."}
-          </p>
-          {canManageAward && rfqStatus === "published" && (
-            <Button onClick={() => void handleInitializeAward()} className="gap-2">
-              <Plus className="h-4 w-4" />
-              {t.initializeAward}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={<Award className="h-10 w-10 text-muted-foreground/40" />}
+        title={t.title}
+        description={
+          canManageAward
+            ? "هنوز هیچ پیش‌نویس واگذاری برای این استعلام ایجاد نشده است. می‌توانید با ایجاد پیش‌نویس واگذاری، پیشنهادهای موردنظر خود را تخصیص دهید."
+            : "هنوز تصمیمی برای واگذاری این استعلام ثبت نشده است."
+        }
+        action={
+          canManageAward && rfqStatus === "published"
+            ? {
+                label: t.initializeAward,
+                onClick: () => void handleInitializeAward(),
+              }
+            : undefined
+        }
+        locale={locale}
+      />
     );
   }
 
@@ -512,7 +510,7 @@ export function RFQAwardTab({
           <CardContent className="pt-4">
             <div className="text-xs font-medium text-muted-foreground">{t.requestedQuantity}</div>
             <div className="text-xl font-bold mt-1">
-              {requestedTotal.toLocaleString()} {rfqUnit}
+              <bdi dir="ltr">{requestedTotal.toLocaleString()} {rfqUnit}</bdi>
             </div>
           </CardContent>
         </Card>
@@ -521,7 +519,7 @@ export function RFQAwardTab({
           <CardContent className="pt-4">
             <div className="text-xs font-medium text-muted-foreground">{t.totalAwarded}</div>
             <div className="text-xl font-bold mt-1 text-primary">
-              {awardedTotal.toLocaleString()} {rfqUnit}
+              <bdi dir="ltr">{awardedTotal.toLocaleString()} {rfqUnit}</bdi>
             </div>
           </CardContent>
         </Card>
@@ -530,7 +528,7 @@ export function RFQAwardTab({
           <CardContent className="pt-4">
             <div className="text-xs font-medium text-muted-foreground">{t.remaining}</div>
             <div className={`text-xl font-bold mt-1 ${remainingTotal === 0 ? "text-green-600" : "text-amber-600"}`}>
-              {remainingTotal.toLocaleString()} {rfqUnit}
+              <bdi dir="ltr">{remainingTotal.toLocaleString()} {rfqUnit}</bdi>
             </div>
           </CardContent>
         </Card>
@@ -539,7 +537,7 @@ export function RFQAwardTab({
           <CardContent className="pt-4">
             <div className="text-xs font-medium text-muted-foreground">{t.allocatedPercent}</div>
             <div className="text-xl font-bold mt-1">
-              %{percentAllocated}
+              <bdi dir="ltr">%{percentAllocated}</bdi>
             </div>
             <div className="w-full bg-muted rounded-full h-1.5 mt-2 overflow-hidden">
               <div
@@ -673,7 +671,7 @@ export function RFQAwardTab({
                   <TableHead>{t.awardedQty}</TableHead>
                   <TableHead>{t.unitPrice}</TableHead>
                   <TableHead>{t.totalPrice}</TableHead>
-                  {!isFinalized && canManageAward && <TableHead className="text-left">{t.actions}</TableHead>}
+                  {!isFinalized && canManageAward && <TableHead className="text-end">{t.actions}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -697,11 +695,11 @@ export function RFQAwardTab({
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="font-mono text-xs">
-                          v{alloc.offer_version_number}
+                          <bdi dir="ltr">v{alloc.offer_version_number}</bdi>
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {Number(alloc.offered_quantity).toLocaleString()} {alloc.quantity_unit}
+                        <bdi dir="ltr">{Number(alloc.offered_quantity).toLocaleString()} {alloc.quantity_unit}</bdi>
                       </TableCell>
                       <TableCell>
                         {isEditing ? (
@@ -730,19 +728,19 @@ export function RFQAwardTab({
                           </div>
                         ) : (
                           <span className="font-semibold text-primary">
-                            {Number(alloc.awarded_quantity).toLocaleString()} {alloc.quantity_unit}
+                            <bdi dir="ltr">{Number(alloc.awarded_quantity).toLocaleString()} {alloc.quantity_unit}</bdi>
                           </span>
                         )}
                       </TableCell>
                       <TableCell>
-                        ${Number(alloc.unit_price).toLocaleString()} {alloc.currency}
+                        <bdi dir="ltr">${Number(alloc.unit_price).toLocaleString()} {alloc.currency}</bdi>
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        ${totalPrice}
+                        <bdi dir="ltr">${totalPrice}</bdi>
                       </TableCell>
                       {!isFinalized && canManageAward && (
-                        <TableCell>
-                          <div className="flex items-center gap-1">
+                        <TableCell className="text-end">
+                          <div className="flex items-center justify-end gap-1">
                             {!isEditing && (
                               <Button
                                 variant="outline"
@@ -782,7 +780,7 @@ export function RFQAwardTab({
 
       {/* --- MODAL: FINALIZE CONFIRMATION --- */}
       {showFinalizeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
           <Card className="w-full max-w-md shadow-lg" dir={isRtl ? "rtl" : "ltr"}>
             <CardHeader className="border-b pb-3">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -797,15 +795,15 @@ export function RFQAwardTab({
               <div className="rounded-md bg-muted/40 p-3 space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.requestedQuantity}</span>
-                  <span className="font-semibold">{requestedTotal.toLocaleString()} {rfqUnit}</span>
+                  <span className="font-semibold"><bdi dir="ltr">{requestedTotal.toLocaleString()} {rfqUnit}</bdi></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.totalAwarded}</span>
-                  <span className="font-semibold text-primary">{awardedTotal.toLocaleString()} {rfqUnit}</span>
+                  <span className="font-semibold text-primary"><bdi dir="ltr">{awardedTotal.toLocaleString()} {rfqUnit}</bdi></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t.remaining}</span>
-                  <span className="font-semibold">{remainingTotal.toLocaleString()} {rfqUnit}</span>
+                  <span className="font-semibold"><bdi dir="ltr">{remainingTotal.toLocaleString()} {rfqUnit}</bdi></span>
                 </div>
               </div>
 
@@ -825,12 +823,12 @@ export function RFQAwardTab({
                 >
                   {isFinalizing ? (
                     <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin me-1.5" />
                       {t.finalizing}
                     </>
                   ) : (
                     <>
-                      <Lock className="h-3.5 w-3.5 mr-1" />
+                      <Lock className="h-3.5 w-3.5 me-1" />
                       {t.finalizeButton}
                     </>
                   )}

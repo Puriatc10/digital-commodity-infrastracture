@@ -861,7 +861,7 @@ describe("T1009 — Execution Monitor UI Test Suite", () => {
     // Explicit COMPLETED + FAIL Callout Banner
     expect(screen.getByText(emT.quality.failedCompletedCallout)).toBeInTheDocument();
     expect(
-      screen.getByText("تکمیل بازرسی با نتیجه عدم انطباق (Completed Inspection with Failed Result)")
+      screen.getByText(emT.quality.failedCompletedCalloutTitle)
     ).toBeInTheDocument();
 
     // Agency & Notes

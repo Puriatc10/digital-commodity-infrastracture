@@ -27,6 +27,7 @@ import {
   PlusCircle,
   ShieldAlert,
 } from "lucide-react";
+import { LoadingState, EmptyState } from "@/components/states";
 import type {
   ExecutionDetail,
   ExecutionIssue,
@@ -458,12 +459,14 @@ export function IssuesTab({
 
           {/* Issues List / Cards */}
           {isLoadingIssues ? (
-            <div className="flex items-center justify-center p-8 text-muted-foreground gap-2">
-              <Loader2 className="size-4 animate-spin text-primary" />
-              <span className="text-xs">{messages.dealWorkspace.loading}</span>
-            </div>
+            <LoadingState variant="section" message={messages.dealWorkspace.loading} locale={locale} />
           ) : issues.length === 0 ? (
-            <p className="text-xs text-muted-foreground p-6 text-center">{t.empty}</p>
+            <EmptyState
+              icon={<AlertTriangle className="size-8 text-muted-foreground/60" />}
+              title={t.title}
+              description={t.empty}
+              locale={locale}
+            />
           ) : (
             <div className="divide-y divide-border border rounded-lg overflow-hidden">
               {issues.map((issue) => {

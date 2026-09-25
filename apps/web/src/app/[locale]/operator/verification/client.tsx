@@ -23,12 +23,24 @@ import {
 import Link from "next/link";
 import { VerificationBadge } from "@/components/verification-badge";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2, RefreshCw, ShieldAlert } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { components } from "@/lib/api/generated/schema";
+import { getMessages } from "@/i18n/messages";
+import type { EnabledLocale } from "@/i18n/config";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type VerificationQueueItem = components["schemas"]["VerificationQueue"];
 
 export function VerificationQueueClient({ locale }: { locale: string }) {
+  const messages = getMessages((locale || "fa") as EnabledLocale);
+  const t = messages.verification.queue;
+  const vStatuses = messages.verification.statuses;
+
   const { state: authState } = useAuth();
   const [filterMode, setFilterMode] = useState<"pending" | "all" | string>("pending");
 
@@ -66,23 +78,21 @@ export function VerificationQueueClient({ locale }: { locale: string }) {
 
   if (authState.status === "loading") {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <LoadingState
+        message={messages.states.loading.default}
+        locale={locale as EnabledLocale}
+      />
     );
   }
 
   if (!isOperatorOrAdmin) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h2 className="text-lg font-semibold text-destructive">دسترسی غیرمجاز</h2>
-          <p className="text-sm text-muted-foreground">
-            این بخش اختصاصی اپراتورها و مدیران سامانه برای بررسی پرونده‌های احراز هویت است.
-          </p>
-        </div>
-      </Card>
+      <AccessDeniedState
+        statusCode={authState.status === "unauthenticated" ? 401 : 403}
+        title={t.unauthorizedTitle}
+        description={t.unauthorizedDesc}
+        locale={locale as EnabledLocale}
+      />
     );
   }
 
@@ -90,7 +100,7 @@ export function VerificationQueueClient({ locale }: { locale: string }) {
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-4">
-          <CardTitle className="text-lg font-bold">پرونده‌های احراز هویت سازمان‌ها</CardTitle>
+          <CardTitle className="text-lg font-bold">{t.tableTitle}</CardTitle>
           <Button
             variant="outline"
             onClick={() => refetch()}
@@ -98,53 +108,56 @@ export function VerificationQueueClient({ locale }: { locale: string }) {
             className="flex items-center gap-2 min-h-8 px-2.5 py-1 text-xs"
           >
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            بروزرسانی
+            {t.refresh}
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-4">
             <div className="w-64 space-y-1">
-              <label className="text-sm font-medium">نمایش وضعیت</label>
+              <label className="text-sm font-medium">{t.filterLabel}</label>
               <Select value={filterMode} onValueChange={(val) => setFilterMode(val)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="فیلتر وضعیت" />
+                  <SelectValue placeholder={t.filterLabel} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">پرونده‌های در انتظار بررسی</SelectItem>
-                  <SelectItem value="all">همه وضعیت‌ها</SelectItem>
-                  <SelectItem value="documents_submitted">مدارک ارسال شده</SelectItem>
-                  <SelectItem value="under_review">در حال بررسی</SelectItem>
-                  <SelectItem value="basic_verified">تایید اولیه</SelectItem>
-                  <SelectItem value="verified">تایید کامل</SelectItem>
-                  <SelectItem value="suspended">تعلیق شده</SelectItem>
-                  <SelectItem value="unverified">تایید نشده</SelectItem>
+                  <SelectItem value="pending">{t.pendingOnly}</SelectItem>
+                  <SelectItem value="all">{t.allCases}</SelectItem>
+                  <SelectItem value="documents_submitted">{vStatuses.documents_submitted}</SelectItem>
+                  <SelectItem value="under_review">{vStatuses.under_review}</SelectItem>
+                  <SelectItem value="basic_verified">{vStatuses.basic_verified}</SelectItem>
+                  <SelectItem value="verified">{vStatuses.verified}</SelectItem>
+                  <SelectItem value="suspended">{vStatuses.suspended}</SelectItem>
+                  <SelectItem value="unverified">{vStatuses.unverified}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <LoadingState variant="section" locale={locale as EnabledLocale} />
           ) : isError ? (
-            <div className="rounded-md border border-destructive/20 bg-destructive/10 p-4 text-center text-sm text-destructive">
-              خطا در دریافت اطلاعات صف احراز هویت. لطفاً دوباره تلاش کنید.
-            </div>
+            <ErrorState
+              errorMessage={t.table.error}
+              onRetry={() => void refetch()}
+              locale={locale as EnabledLocale}
+            />
           ) : !data || data.length === 0 ? (
-            <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-              هیچ پرونده‌ای با این مشخصات یافت نشد.
-            </div>
+            <EmptyState
+              title={t.table.empty}
+              isFilterEmpty={filterMode !== "all" && filterMode !== "pending"}
+              onResetFilters={() => setFilterMode("pending")}
+              locale={locale as EnabledLocale}
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>نام سازمان</TableHead>
-                    <TableHead>وضعیت پرونده</TableHead>
-                    <TableHead>نسخه پرونده</TableHead>
-                    <TableHead>آخرین بروزرسانی</TableHead>
-                    <TableHead>عملیات</TableHead>
+                    <TableHead>{t.table.orgName}</TableHead>
+                    <TableHead>{t.table.status}</TableHead>
+                    <TableHead>{t.table.version}</TableHead>
+                    <TableHead>{t.table.updatedAt}</TableHead>
+                    <TableHead>{t.table.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -156,14 +169,14 @@ export function VerificationQueueClient({ locale }: { locale: string }) {
                       </TableCell>
                       <TableCell>v{item.version}</TableCell>
                       <TableCell>
-                        {new Date(item.updated_at).toLocaleString("fa-IR")}
+                        {new Date(item.updated_at).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
                       </TableCell>
                       <TableCell>
                         <Link
                           href={`/${locale}/operator/verification/${item.organization_id}`}
                           className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
                         >
-                          بررسی پرونده
+                          {t.table.reviewAction}
                         </Link>
                       </TableCell>
                     </TableRow>

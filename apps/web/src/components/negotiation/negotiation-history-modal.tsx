@@ -186,17 +186,15 @@ export function NegotiationHistoryModal({
       );
 
       if (response.status === 200) {
-        setActionSuccess(
-          isRtl ? "درخواست بازنگری با موفقیت رد شد." : "Revision request declined."
-        );
+        setActionSuccess(t.toasts.declineSuccess);
         triggerRefresh();
         onActionCompleted?.();
       } else {
         const errPayload = error as { detail?: string } | undefined;
-        setActionError(errPayload?.detail || "عملیات رد درخواست با خطا مواجه شد.");
+        setActionError(errPayload?.detail || t.toasts.declineError);
       }
     } catch {
-      setActionError("خطای ارتباط با سرور در انجام عملیات.");
+      setActionError(t.toasts.serverError);
     } finally {
       setActionInProgress(null);
     }
@@ -218,17 +216,15 @@ export function NegotiationHistoryModal({
       );
 
       if (response.status === 200) {
-        setActionSuccess(
-          isRtl ? "درخواست بازنگری با موفقیت لغو شد." : "Revision request cancelled."
-        );
+        setActionSuccess(t.toasts.cancelSuccess);
         triggerRefresh();
         onActionCompleted?.();
       } else {
         const errPayload = error as { detail?: string } | undefined;
-        setActionError(errPayload?.detail || "عملیات لغو درخواست با خطا مواجه شد.");
+        setActionError(errPayload?.detail || t.toasts.cancelError);
       }
     } catch {
-      setActionError("خطای ارتباط با سرور در انجام عملیات.");
+      setActionError(t.toasts.serverError);
     } finally {
       setActionInProgress(null);
     }
@@ -250,17 +246,15 @@ export function NegotiationHistoryModal({
       );
 
       if (response.status === 201) {
-        setActionSuccess(
-          isRtl ? "پیش‌نویس نسخه جدید با موفقیت ایجاد شد." : "Revised draft created."
-        );
+        setActionSuccess(t.toasts.draftSuccess);
         triggerRefresh();
         onActionCompleted?.();
       } else {
         const errPayload = error as { detail?: string } | undefined;
-        setActionError(errPayload?.detail || "ایجاد پیش‌نویس با خطا مواجه شد.");
+        setActionError(errPayload?.detail || t.toasts.draftError);
       }
     } catch {
-      setActionError("خطای ارتباط با سرور در انجام عملیات.");
+      setActionError(t.toasts.serverError);
     } finally {
       setActionInProgress(null);
     }
@@ -285,17 +279,15 @@ export function NegotiationHistoryModal({
       );
 
       if (response.status === 200) {
-        setActionSuccess(
-          isRtl ? "نسخه بازنگری‌شده با موفقیت ثبت و ارسال شد." : "Revised offer submitted."
-        );
+        setActionSuccess(t.toasts.submitSuccess);
         triggerRefresh();
         onActionCompleted?.();
       } else {
         const errPayload = error as { detail?: string } | undefined;
-        setActionError(errPayload?.detail || "ارسال نسخه جدید با خطا مواجه شد.");
+        setActionError(errPayload?.detail || t.toasts.submitError);
       }
     } catch {
-      setActionError("خطای ارتباط با سرور در انجام عملیات.");
+      setActionError(t.toasts.serverError);
     } finally {
       setActionInProgress(null);
     }
@@ -321,7 +313,7 @@ export function NegotiationHistoryModal({
           variant="outline"
           className="border-indigo-500/30 text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 text-xs"
         >
-          {isRtl ? "تأمین خارج از بستر" : "External Supply"}
+          {t.roles.externalSupply}
         </Badge>
       );
     }
@@ -331,7 +323,7 @@ export function NegotiationHistoryModal({
           variant="outline"
           className="border-purple-500/30 text-purple-700 dark:text-purple-400 bg-purple-500/10 text-xs"
         >
-          {isRtl ? "کارگزار" : "Broker"}
+          {t.roles.broker}
         </Badge>
       );
     }
@@ -340,7 +332,7 @@ export function NegotiationHistoryModal({
         variant="outline"
         className="border-blue-500/30 text-blue-700 dark:text-blue-400 bg-blue-500/10 text-xs"
       >
-        {isRtl ? "تأمین‌کننده" : "Supplier"}
+        {t.roles.supplier}
       </Badge>
     );
   };
@@ -451,7 +443,7 @@ export function NegotiationHistoryModal({
                   onClick={triggerRefresh}
                   className="text-xs min-h-8"
                 >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                  <RefreshCw className="h-3.5 w-3.5 me-1" />
                   {t.refresh}
                 </Button>
               </CardContent>
@@ -477,7 +469,7 @@ export function NegotiationHistoryModal({
                     <div className="flex items-center gap-2 flex-wrap">
                       {renderRoleBadge(history.offeror_role, history.is_external)}
                       <Badge variant="secondary" className="font-mono text-xs">
-                        v{history.aggregate_version}
+                        <bdi dir="ltr">v{history.aggregate_version}</bdi>
                       </Badge>
                     </div>
                   </div>
@@ -488,7 +480,7 @@ export function NegotiationHistoryModal({
                       <UserCheck className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
                       <span>
                         <strong className="font-semibold">
-                          {isRtl ? "توجه:" : "Note:"}
+                          {t.noteLabel}
                         </strong>{" "}
                         {t.header.operatorEntered}
                       </span>
@@ -509,23 +501,23 @@ export function NegotiationHistoryModal({
                     {t.emptyState.noHistory}
                   </div>
                 ) : (
-                  <div className="space-y-4 relative before:absolute before:inset-0 before:right-3.5 sm:before:right-4 before:w-0.5 before:bg-border/60 before:z-0">
+                  <div className="space-y-4 relative before:absolute before:inset-0 before:start-3.5 sm:before:start-4 before:w-0.5 before:bg-border/60 before:z-0">
                     {timelineItems.map((item) => {
                       if (item.type === "version") {
                         const v = item.version;
                         return (
                           <div
                             key={item.id}
-                            className="relative z-10 mr-7 sm:mr-9 space-y-3"
+                            className="relative z-10 ms-7 sm:ms-9 space-y-3"
                           >
                             {/* Marker dot */}
-                            <div className="absolute -right-7 sm:-right-9 top-3.5 w-3 h-3 rounded-full bg-primary border-2 border-background ring-2 ring-primary/20" />
+                            <div className="absolute -start-7 sm:-start-9 top-3.5 w-3 h-3 rounded-full bg-primary border-2 border-background ring-2 ring-primary/20" />
 
                             <Card className="border border-border shadow-xs bg-card">
                               <CardHeader className="p-3.5 pb-2 border-b border-border/40 bg-muted/20 flex flex-row items-center justify-between gap-2 flex-wrap space-y-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <CardTitle className="text-sm font-bold font-mono">
-                                    V{v.version_number}
+                                    <bdi dir="ltr">V{v.version_number}</bdi>
                                   </CardTitle>
                                   {item.isInitial && (
                                     <Badge
@@ -673,11 +665,11 @@ export function NegotiationHistoryModal({
                         return (
                           <div
                             key={item.id}
-                            className="relative z-10 mr-7 sm:mr-9 space-y-2"
+                            className="relative z-10 ms-7 sm:ms-9 space-y-2"
                           >
                             {/* Marker dot */}
                             <div
-                              className={`absolute -right-7 sm:-right-9 top-3.5 w-3 h-3 rounded-full border-2 border-background ring-2 ${
+                              className={`absolute -start-7 sm:-start-9 top-3.5 w-3 h-3 rounded-full border-2 border-background ring-2 ${
                                 isOpen
                                   ? "bg-amber-500 ring-amber-500/20"
                                   : isTerminal
@@ -719,8 +711,8 @@ export function NegotiationHistoryModal({
                                     <span className="font-semibold text-foreground">
                                       {req.requested_by_name ||
                                         (req.requested_by_role === "OPERATOR"
-                                          ? "اپراتور سامانه"
-                                          : "خریدار")}
+                                          ? t.revisionRequest.roles.operator
+                                          : t.revisionRequest.roles.buyer)}
                                     </span>
                                   </div>
 
@@ -729,7 +721,7 @@ export function NegotiationHistoryModal({
                                       {t.revisionRequest.baseVersion}{" "}
                                     </span>
                                     <span className="font-mono font-bold text-foreground">
-                                      V{req.base_version_number}
+                                      <bdi dir="ltr">V{req.base_version_number}</bdi>
                                     </span>
                                   </div>
                                 </div>
@@ -749,7 +741,7 @@ export function NegotiationHistoryModal({
                                         variant="secondary"
                                         className="text-[11px] font-medium"
                                       >
-                                        <Tag className="h-2.5 w-2.5 mr-1 text-muted-foreground" />
+                                        <Tag className="h-2.5 w-2.5 me-1 text-muted-foreground" />
                                         {Object.hasOwn(t.diff.fields, f)
                                           ? (t.diff.fields as Record<string, string>)[f]
                                           : f}
@@ -778,7 +770,7 @@ export function NegotiationHistoryModal({
                                         <span>
                                           {t.revisionRequest.resolvedBy}{" "}
                                           <strong className="font-mono font-bold">
-                                            V{req.resolved_version_number}
+                                            <bdi dir="ltr">V{req.resolved_version_number}</bdi>
                                           </strong>
                                         </span>
                                       </div>
@@ -855,15 +847,15 @@ export function NegotiationHistoryModal({
                         return (
                           <div
                             key={item.id}
-                            className="relative z-10 mr-7 sm:mr-9 space-y-3"
+                            className="relative z-10 ms-7 sm:ms-9 space-y-3"
                           >
-                            <div className="absolute -right-7 sm:-right-9 top-3.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-background ring-2 ring-blue-500/20" />
+                            <div className="absolute -start-7 sm:-start-9 top-3.5 w-3 h-3 rounded-full bg-blue-500 border-2 border-background ring-2 ring-blue-500/20" />
 
                             <Card className="border border-blue-500/40 bg-blue-500/5 shadow-xs">
                               <CardHeader className="p-3.5 pb-2 border-b border-blue-500/20 flex flex-row items-center justify-between gap-2 flex-wrap space-y-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <CardTitle className="text-sm font-bold font-mono text-blue-900 dark:text-blue-300">
-                                    V{dv.version_number} ({t.timeline.draftBadge})
+                                    <bdi dir="ltr">V{dv.version_number}</bdi> ({t.timeline.draftBadge})
                                   </CardTitle>
                                   <Badge className="bg-blue-600/10 text-blue-700 dark:text-blue-400 border-blue-500/20 text-[10px]">
                                     {t.timeline.draftTitle.replace(
@@ -877,9 +869,7 @@ export function NegotiationHistoryModal({
                               <CardContent className="p-4 space-y-3 text-xs">
                                 <div className="p-2.5 bg-blue-500/10 rounded-md text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between gap-2 flex-wrap">
                                   <span>
-                                    {isRtl
-                                      ? "این نسخه به عنوان پیش‌نویس در حال ویرایش است و تا زمان ارسال رسمی، برای خریدار قابل مشاهده نیست."
-                                      : "This version is in draft status and invisible to the buyer until submitted."}
+                                    {t.draftNote}
                                   </span>
 
                                   {canOfferPartyAct && openRevisionRequest && (
@@ -930,10 +920,8 @@ export function NegotiationHistoryModal({
         {/* Modal Footer */}
         <div className="p-3.5 sm:p-4 border-t border-border flex items-center justify-between gap-2 bg-muted/20">
           <div className="text-xs text-muted-foreground">
-            <Info className="h-3.5 w-3.5 inline ml-1 text-muted-foreground" />
-            {isRtl
-              ? "سوابق مذاکرات و نسخه‌های ارائه‌شده غیرقابل تغییر و دارای ردپای ثبت رسمی هستند."
-              : "Submitted versions are immutable snapshots."}
+            <Info className="h-3.5 w-3.5 inline me-1 text-muted-foreground" />
+            {t.immutableNote}
           </div>
           <Button variant="outline" onClick={onClose} className="text-xs min-h-8">
             {t.close}

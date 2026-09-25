@@ -6,8 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   RefreshCw,
-  ShieldAlert,
-  ArrowRight,
+  ArrowLeft,
   Building2,
   User,
   Handshake,
@@ -36,6 +35,12 @@ import type { components } from "@/lib/api/generated/schema";
 import { useAuth } from "@/lib/auth-context";
 import { getMessages } from "@/i18n/messages";
 import type { EnabledLocale } from "@/i18n/config";
+import {
+  LoadingState,
+  NotFoundState,
+  AccessDeniedState,
+  ErrorState,
+} from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -126,6 +131,7 @@ export function OpportunityDetailClient({
     data: opp,
     isLoading: isOppLoading,
     isError: isOppError,
+    error: oppError,
     refetch: refetchOpp,
     isFetching: isOppFetching,
   } = useQuery({
@@ -134,8 +140,20 @@ export function OpportunityDetailClient({
       const resp = await client.GET("/api/opportunities/opportunities/{id}/", {
         params: { path: { id: opportunityId } },
       });
+      if (resp.response.status === 404) {
+        const err = new Error("Opportunity not found");
+        (err as unknown as { status: number }).status = 404;
+        throw err;
+      }
+      if (resp.response.status === 401 || resp.response.status === 403) {
+        const err = new Error("Access denied");
+        (err as unknown as { status: number }).status = resp.response.status;
+        throw err;
+      }
       if (!resp.response.ok || !resp.data) {
-        throw new Error("Opportunity not found");
+        const err = new Error("Failed to load opportunity");
+        (err as unknown as { status: number }).status = resp.response.status;
+        throw err;
       }
       return resp.data as OpportunityDetail;
     },
@@ -184,55 +202,46 @@ export function OpportunityDetailClient({
     enabled: isOperatorOrAdmin && Boolean(opp),
   });
 
+  if (authState.status === "loading" || isOppLoading) {
+    return <LoadingState message={oppMsg.states.loadingDetail} locale={locale} />;
+  }
 
-  if (authState.status === "loading") {
+  const oppStatus = (oppError as unknown as { status?: number })?.status;
+
+  if (!isOperatorOrAdmin || oppStatus === 401 || oppStatus === 403) {
     return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="sr-only">{oppMsg.states.loadingDetail}</span>
-      </div>
+      <AccessDeniedState
+        statusCode={(oppStatus as 401 | 403) || 403}
+        title={messages.rfqBuilder.unauthorizedTitle}
+        description={oppMsg.states.unauthorized}
+        backHref={`/${locale}/opportunities`}
+        backLabel={oppMsg.actions.backToList}
+        locale={locale}
+      />
     );
   }
 
-  if (!isOperatorOrAdmin) {
+  if (oppStatus === 404) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <ShieldAlert className="h-10 w-10 text-destructive" />
-          <h2 className="text-lg font-semibold text-destructive">
-            {messages.rfqBuilder.unauthorizedTitle}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {oppMsg.states.unauthorized}
-          </p>
-        </div>
-      </Card>
-    );
-  }
-
-  if (isOppLoading) {
-    return (
-      <div className="flex items-center justify-center p-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="sr-only">{oppMsg.states.loadingDetail}</span>
-      </div>
+      <NotFoundState
+        resourceType="opportunity"
+        title={oppMsg.states.notFound}
+        backHref={`/${locale}/opportunities`}
+        backLabel={oppMsg.actions.backToList}
+        locale={locale}
+      />
     );
   }
 
   if (isOppError || !opp) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-3">
-          <AlertTriangle className="h-10 w-10 text-amber-500" />
-          <h2 className="text-lg font-semibold">{oppMsg.states.notFound}</h2>
-          <p className="text-sm text-muted-foreground">{oppMsg.states.loadError}</p>
-          <Link href={`/${locale}/opportunities`}>
-            <Button variant="outline" className="min-h-8 px-3 text-xs mt-2">
-              {oppMsg.actions.backToList}
-            </Button>
-          </Link>
-        </div>
-      </Card>
+      <ErrorState
+        errorMessage={oppMsg.states.loadError}
+        onRetry={() => void refetchOpp()}
+        backHref={`/${locale}/opportunities`}
+        backLabel={oppMsg.actions.backToList}
+        locale={locale}
+      />
     );
   }
 
@@ -303,13 +312,13 @@ export function OpportunityDetailClient({
           setQualificationErrors(combined);
         }
 
-        throw new Error(errData?.detail || "Action failed");
+        throw new Error(errData?.detail || oppMsg.states.actionError);
       }
 
       setActionSuccess(oppMsg.states.lifecycleSuccess);
       await refetchOpp();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Error executing action");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.actionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -352,7 +361,7 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "Action failed");
+        throw new Error(errData?.detail || oppMsg.states.actionError);
       }
 
       setActionSuccess(oppMsg.states.lifecycleSuccess);
@@ -360,7 +369,7 @@ export function OpportunityDetailClient({
       setActionReason("");
       await refetchOpp();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Error executing action");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.actionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -391,7 +400,7 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "Failed to record contact attempt");
+        throw new Error(errData?.detail || oppMsg.states.contactError);
       }
 
       setActionSuccess(oppMsg.states.attemptRecorded);
@@ -399,7 +408,7 @@ export function OpportunityDetailClient({
       setContactNotes("");
       await refetchContacts();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Error recording attempt");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.contactError);
     } finally {
       setIsSubmitting(false);
     }
@@ -431,7 +440,7 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "Failed to create task");
+        throw new Error(errData?.detail || oppMsg.states.taskError);
       }
 
       setActionSuccess(oppMsg.states.taskCreated);
@@ -441,7 +450,7 @@ export function OpportunityDetailClient({
       setTaskDescription("");
       await refetchTasks();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Error creating task");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.taskError);
     } finally {
       setIsSubmitting(false);
     }
@@ -469,7 +478,7 @@ export function OpportunityDetailClient({
       }
 
       if (!resp.response.ok) {
-        throw new Error("Task transition failed");
+        throw new Error(oppMsg.states.taskError);
       }
 
       setActionSuccess(
@@ -479,7 +488,7 @@ export function OpportunityDetailClient({
       );
       await refetchTasks();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Task action failed");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.taskError);
     }
   };
 
@@ -512,14 +521,14 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "RFQ conversion failed");
+        throw new Error(errData?.detail || oppMsg.states.conversionError);
       }
 
       setActionSuccess(oppMsg.states.conversionSuccess);
       setActiveModal("none");
       await refetchOpp();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Conversion failed");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.conversionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -555,14 +564,14 @@ export function OpportunityDetailClient({
 
       if (!resp.response.ok) {
         const errData = resp.error as { detail?: string } | undefined;
-        throw new Error(errData?.detail || "Supply Listing conversion failed");
+        throw new Error(errData?.detail || oppMsg.states.supplyConversionError);
       }
 
       setActionSuccess(oppMsg.states.conversionSuccess);
       setActiveModal("none");
       await refetchOpp();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Conversion failed");
+      setActionError(err instanceof Error ? err.message : oppMsg.states.supplyConversionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -603,13 +612,13 @@ export function OpportunityDetailClient({
         <div className="flex items-center gap-3">
           <Link href={`/${locale}/opportunities`}>
             <Button variant="outline" className="min-h-8 px-2.5 py-1 text-xs gap-1">
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" />
               <span>{oppMsg.actions.backToList}</span>
             </Button>
           </Link>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold font-mono">
-              {opp.identifier || opp.id}
+              <bdi dir="ltr">{opp.identifier || opp.id}</bdi>
             </h1>
             <Badge
               variant="outline"
@@ -625,7 +634,7 @@ export function OpportunityDetailClient({
 
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
-            {oppMsg.fields.version}: <strong className="font-mono">{opp.version}</strong>
+            {oppMsg.fields.version}: <strong className="font-mono"><bdi dir="ltr">{opp.version}</bdi></strong>
           </span>
           <Button
             variant="outline"
@@ -1059,7 +1068,7 @@ export function OpportunityDetailClient({
                         </p>
                         {attempt.recorded_by_email && (
                           <span className="text-[10px] text-muted-foreground">
-                            ثبت شده توسط: {attempt.recorded_by_email}
+                            ثبت شده توسط: <bdi dir="ltr">{attempt.recorded_by_email}</bdi>
                           </span>
                         )}
                       </div>
@@ -1133,7 +1142,7 @@ export function OpportunityDetailClient({
 
                         <div className="flex items-center justify-between border-t pt-2 mt-1">
                           <span className="text-[10px] text-muted-foreground">
-                            مسئول: {task.assigned_to_email || "بدون انتساب"}
+                            مسئول: {task.assigned_to_email ? <bdi dir="ltr">{task.assigned_to_email}</bdi> : "بدون انتساب"}
                           </span>
                           {isOpen && (
                             <div className="flex items-center gap-2">
@@ -1254,7 +1263,7 @@ export function OpportunityDetailClient({
 
       {/* 1. Reason Action Modal (Hold / Reject / Lost) */}
       {activeModal === "reason_action" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">
@@ -1306,7 +1315,7 @@ export function OpportunityDetailClient({
 
       {/* 2. Contact Attempt Modal */}
       {activeModal === "contact_attempt" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">{oppMsg.modals.contactTitle}</CardTitle>
@@ -1372,7 +1381,7 @@ export function OpportunityDetailClient({
 
       {/* 3. Follow-up Task Modal */}
       {activeModal === "create_task" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">{oppMsg.modals.taskTitle}</CardTitle>
@@ -1454,7 +1463,7 @@ export function OpportunityDetailClient({
 
       {/* 4. Convert to RFQ Modal (T0609) */}
       {activeModal === "convert_rfq" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-lg bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">{oppMsg.modals.convertRfqTitle}</CardTitle>
@@ -1466,7 +1475,7 @@ export function OpportunityDetailClient({
                     {oppMsg.modals.buyerOrgLabel} *
                   </Label>
                   <Input
-                    placeholder="UUID سازمان خریدار ثبت‌شده..."
+                    placeholder={oppMsg.modals.buyerUuidPlaceholder}
                     value={convertBuyerOrgId}
                     onChange={(e) => setConvertBuyerOrgId(e.target.value)}
                     className="h-8 text-xs font-mono"
@@ -1549,7 +1558,7 @@ export function OpportunityDetailClient({
 
       {/* 5. Convert to Supply Listing Modal (T0610) */}
       {activeModal === "convert_supply" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-lg bg-background shadow-xl">
             <CardHeader>
               <CardTitle className="text-base font-bold">{oppMsg.modals.convertSupplyTitle}</CardTitle>
@@ -1561,7 +1570,7 @@ export function OpportunityDetailClient({
                     {oppMsg.modals.supplierOrgLabel} *
                   </Label>
                   <Input
-                    placeholder="UUID سازمان تأمین‌کننده ثبت‌شده..."
+                    placeholder={oppMsg.modals.supplierUuidPlaceholder}
                     value={convertSupplierOrgId}
                     onChange={(e) => setConvertSupplierOrgId(e.target.value)}
                     className="h-8 text-xs font-mono"

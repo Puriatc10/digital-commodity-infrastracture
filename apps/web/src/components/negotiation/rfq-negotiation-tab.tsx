@@ -9,8 +9,14 @@ import type { EnabledLocale } from "@/i18n/config";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, History, Loader2, MessageSquare, RefreshCw, ShieldAlert } from "lucide-react";
+import { History, MessageSquare, RefreshCw } from "lucide-react";
 import { NegotiationHistoryModal } from "./negotiation-history-modal";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  AccessDeniedState,
+} from "@/components/states";
 
 type ComparisonRow = components["schemas"]["ComparisonRow"];
 type RFQComparisonResponse = components["schemas"]["RFQComparisonResponse"];
@@ -84,17 +90,13 @@ export function RFQNegotiationTab({
           const detail =
             errPayload && typeof errPayload === "object" && "detail" in errPayload
               ? String(errPayload.detail)
-              : isRtl
-              ? "خطا در دریافت پیشنهادهای استعلام."
-              : "Failed to load offers for RFQ.";
+              : t.negotiationHistory.tab.errorLoading;
           setErrorMessage(detail);
         }
       } catch (err: unknown) {
         if (ignore || generation !== fetchGenerationRef.current) return;
         if ((err as Error)?.name !== "AbortError") {
-          setErrorMessage(
-            isRtl ? "خطای ارتباط با سرور." : "Network connection error."
-          );
+          setErrorMessage(t.negotiationHistory.tab.networkError);
         }
       } finally {
         if (!ignore && generation === fetchGenerationRef.current) {
@@ -109,26 +111,26 @@ export function RFQNegotiationTab({
       ignore = true;
       controller.abort();
     };
-  }, [rfqId, currentOrgId, roleKey, refreshIndex, isRtl]);
+  }, [rfqId, currentOrgId, roleKey, refreshIndex, t.negotiationHistory.tab]);
 
   const renderRoleBadge = (role: string, isExternal: boolean) => {
     if (isExternal) {
       return (
         <Badge variant="outline" className="border-indigo-500/30 text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 text-[11px]">
-          {isRtl ? "طرف برون‌سامانه‌ای" : "External Party"}
+          {t.negotiationHistory.roles.externalSupply}
         </Badge>
       );
     }
     if (role === "BROKER") {
       return (
         <Badge variant="outline" className="border-purple-500/30 text-purple-700 dark:text-purple-400 bg-purple-500/10 text-[11px]">
-          {isRtl ? "کارگزار" : "Broker"}
+          {t.negotiationHistory.roles.broker}
         </Badge>
       );
     }
     return (
       <Badge variant="outline" className="border-blue-500/30 text-blue-700 dark:text-blue-400 bg-blue-500/10 text-[11px]">
-        {isRtl ? "تأمین‌کننده" : "Supplier"}
+        {t.negotiationHistory.roles.supplier}
       </Badge>
     );
   };
@@ -143,12 +145,10 @@ export function RFQNegotiationTab({
           <div className="space-y-1">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-primary" />
-              {isRtl ? "مذاکرات و تاریخچه پیشنهادها" : "Negotiations and Offer Histories"}
+              {t.negotiationHistory.tab.title}
             </CardTitle>
             <CardDescription className="text-xs">
-              {isRtl
-                ? "سیر بازنگری، درخواست‌ها و مقایسه دقیق نسخه‌های مختلف پیشنهادهای این استعلام"
-                : "Audit trail of revisions, requests, and structured diffs across offer versions"}
+              {t.negotiationHistory.tab.description}
             </CardDescription>
           </div>
           <Button
@@ -158,66 +158,43 @@ export function RFQNegotiationTab({
             className="h-8 min-h-8 text-xs gap-1"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-            {isRtl ? "به‌روزرسانی" : "Refresh"}
+            {t.negotiationHistory.tab.refresh}
           </Button>
         </CardHeader>
       </Card>
 
       {/* Unauthorized State */}
       {isUnauthorized && (
-        <Card className="border-rose-500/30 bg-rose-500/5">
-          <CardContent className="p-8 text-center space-y-3">
-            <ShieldAlert className="h-10 w-10 text-rose-600 mx-auto" />
-            <h3 className="font-semibold text-rose-900 dark:text-rose-200">
-              {isRtl ? "عدم دسترسی به بخش مذاکرات" : "Unauthorized Access"}
-            </h3>
-            <p className="text-xs text-rose-700 dark:text-rose-300 max-w-md mx-auto">
-              {isRtl
-                ? "تنها اعضای سازمان خریدار این استعلام و اپراتورهای سامانه مجاز به مشاهده تاریخچه مذاکرات هستند."
-                : "Only members of the buyer organization and operators are authorized to view negotiation histories."}
-            </p>
-          </CardContent>
-        </Card>
+        <AccessDeniedState
+          statusCode={403}
+          title={t.negotiationHistory.tab.unauthorizedTitle}
+          description={t.negotiationHistory.tab.unauthorizedDescription}
+          locale={locale}
+        />
       )}
 
       {/* Loading State */}
       {isLoading && !comparison && (
-        <Card>
-          <CardContent className="p-12 flex flex-col items-center justify-center space-y-3 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="text-xs">{t.negotiationHistory?.loading || "در حال بارگذاری پیشنهادها…"}</span>
-          </CardContent>
-        </Card>
+        <LoadingState variant="section" message={t.negotiationHistory.tab.loading} locale={locale} />
       )}
 
       {/* Error State */}
       {errorMessage && !isLoading && (
-        <Card className="border-rose-500/30 bg-rose-500/5">
-          <CardContent className="p-6 flex items-start gap-3 text-rose-800 dark:text-rose-200 text-xs">
-            <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">{isRtl ? "خطا در بارگذاری" : "Error Loading Data"}</p>
-              <p className="mt-1">{errorMessage}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <ErrorState
+          errorMessage={errorMessage}
+          onRetry={triggerRefresh}
+          locale={locale}
+        />
       )}
 
       {/* Empty State */}
       {!isLoading && !isUnauthorized && !errorMessage && rows.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="p-12 text-center space-y-3 text-muted-foreground">
-            <History className="h-10 w-10 mx-auto text-muted-foreground/50" />
-            <h3 className="font-medium text-sm text-foreground">
-              {isRtl ? "هیچ پیشنهادی برای مذاکره ثبت نشده است" : "No Offers Submitted Yet"}
-            </h3>
-            <p className="text-xs max-w-md mx-auto">
-              {isRtl
-                ? "پس از ثبت پیشنهاد توسط تأمین‌کنندگان یا کارگزاران، تاریخچه رفت‌وبرگشت مذاکرات در این بخش در دسترس خواهد بود."
-                : "Once suppliers or brokers submit offers, the complete revision history will appear here."}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<History className="h-10 w-10 text-muted-foreground/50" />}
+          title={t.negotiationHistory.tab.emptyTitle}
+          description={t.negotiationHistory.tab.emptyDescription}
+          locale={locale}
+        />
       )}
 
       {/* Offers List */}
@@ -237,13 +214,13 @@ export function RFQNegotiationTab({
 
                   <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                     <div>
-                      <span>{isRtl ? "قیمت واحد: " : "Unit Price: "}</span>
+                      <span>{t.negotiationHistory.tab.unitPriceLabel}</span>
                       <span className="font-mono font-bold text-foreground">
                         {row.unit_price} {row.currency}
                       </span>
                     </div>
                     <div>
-                      <span>{isRtl ? "مقدار: " : "Quantity: "}</span>
+                      <span>{t.negotiationHistory.tab.quantityLabel}</span>
                       <span className="font-mono text-foreground">
                         {row.offered_quantity} {row.quantity_unit}
                       </span>
@@ -258,7 +235,7 @@ export function RFQNegotiationTab({
                     className="h-8 min-h-8 text-xs gap-1.5"
                   >
                     <History className="h-3.5 w-3.5 text-primary" />
-                    {isRtl ? "مشاهده تاریخچه مذاکرات" : "View History"}
+                    {t.negotiationHistory.tab.viewHistory}
                   </Button>
                 </div>
               </CardContent>

@@ -5,7 +5,7 @@ import { apiClient as client } from "@/lib/api/client";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -27,28 +27,31 @@ import { FormEvent } from "react";
 import Link from "next/link";
 import { VerificationBadge } from "@/components/verification-badge";
 import type { components } from "@/lib/api/generated/schema";
+import { getMessages, type Messages } from "@/i18n/messages";
+import type { EnabledLocale } from "@/i18n/config";
+import { LoadingState, EmptyState, ErrorState } from "@/components/states";
 
 type Organization = components["schemas"]["DirectoryOrganization"];
 type CommodityItem = components["schemas"]["CommodityDefinition"];
 
-function getCapabilityBadge(cap: string) {
+function getCapabilityBadge(cap: string, t: Messages["directory"]) {
   switch (cap) {
     case "buyer":
       return (
         <Badge variant="outline" key={cap}>
-          خریدار
+          {t.filters.roles.buyer}
         </Badge>
       );
     case "supplier":
       return (
         <Badge variant="outline" key={cap}>
-          تامین‌کننده
+          {t.filters.roles.supplier}
         </Badge>
       );
     case "broker":
       return (
         <Badge variant="outline" key={cap}>
-          کارگزار
+          {t.filters.roles.broker}
         </Badge>
       );
     default:
@@ -64,7 +67,10 @@ export function DirectoryClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const locale = pathname.split("/")[1] || "fa";
+  const locale = ((pathname?.split("/")[1] as EnabledLocale) || "fa") as EnabledLocale;
+  const messages = getMessages(locale);
+  const t = messages.directory;
+  const vStatuses = messages.verification.statuses;
 
   const search = searchParams.get("search") || "";
   const capability = searchParams.get("capability") || "";
@@ -83,7 +89,7 @@ export function DirectoryClient() {
   });
 
   // Fetch directory organizations with filters
-  const { data, isLoading, isError } = useQuery<Organization[]>({
+  const { data, isLoading, isError, refetch } = useQuery<Organization[]>({
     queryKey: [
       "organizations",
       "directory",
@@ -138,16 +144,16 @@ export function DirectoryClient() {
           {/* Search by Name */}
           <div className="flex-1 min-w-[200px] space-y-1">
             <label htmlFor="search" className="text-sm font-medium">
-              جستجو در نام سازمان
+              {t.filters.searchLabel}
             </label>
             <div className="relative">
-              <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 id="search"
                 name="search"
                 defaultValue={search}
-                placeholder="نام سازمان..."
-                className="pl-8 pr-8"
+                placeholder={t.filters.searchPlaceholder}
+                className="ps-8 pe-3"
               />
             </div>
           </div>
@@ -155,48 +161,48 @@ export function DirectoryClient() {
           {/* Country filter */}
           <div className="w-full sm:w-36 space-y-1">
             <label htmlFor="country" className="text-sm font-medium">
-              فیلتر کشور
+              {t.filters.countryLabel}
             </label>
             <Input
               id="country"
               name="country"
               defaultValue={country}
-              placeholder="مثلاً IR..."
+              placeholder={t.filters.countryPlaceholder}
               onChange={(e) => updateFilters("country", e.target.value.trim().toUpperCase())}
             />
           </div>
 
           {/* Capability filter */}
           <div className="w-full sm:w-40 space-y-1">
-            <label className="text-sm font-medium">نقش</label>
+            <label className="text-sm font-medium">{t.filters.capabilityLabel}</label>
             <Select
               value={capability}
               onValueChange={(val) => updateFilters("capability", val === "all" ? "" : val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="همه" />
+                <SelectValue placeholder={t.filters.capabilityAll} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">همه</SelectItem>
-                <SelectItem value="buyer">خریدار</SelectItem>
-                <SelectItem value="supplier">تامین‌کننده</SelectItem>
-                <SelectItem value="broker">کارگزار</SelectItem>
+                <SelectItem value="all">{t.filters.capabilityAll}</SelectItem>
+                <SelectItem value="buyer">{t.filters.roles.buyer}</SelectItem>
+                <SelectItem value="supplier">{t.filters.roles.supplier}</SelectItem>
+                <SelectItem value="broker">{t.filters.roles.broker}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Commodity filter */}
           <div className="w-full sm:w-44 space-y-1">
-            <label className="text-sm font-medium">کالا</label>
+            <label className="text-sm font-medium">{t.filters.commodityLabel}</label>
             <Select
               value={commodity}
               onValueChange={(val) => updateFilters("commodity", val === "all" ? "" : val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="همه کالاها" />
+                <SelectValue placeholder={t.filters.commodityAll} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">همه کالاها</SelectItem>
+                <SelectItem value="all">{t.filters.commodityAll}</SelectItem>
                 {commodities
                   ?.filter((c) => c && typeof c.code === "string" && c.code.length > 0)
                   .map((c) => (
@@ -210,28 +216,28 @@ export function DirectoryClient() {
 
           {/* Verification Status filter */}
           <div className="w-full sm:w-48 space-y-1">
-            <label className="text-sm font-medium">وضعیت تاییدیه</label>
+            <label className="text-sm font-medium">{t.filters.verificationLabel}</label>
             <Select
               value={verification}
               onValueChange={(val) => updateFilters("verification", val === "all" ? "" : val)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="همه وضعیت‌ها" />
+                <SelectValue placeholder={t.filters.verificationAll} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">همه وضعیت‌ها</SelectItem>
-                <SelectItem value="verified">تایید شده</SelectItem>
-                <SelectItem value="basic_verified">تایید اولیه</SelectItem>
-                <SelectItem value="documents_submitted">مدارک ارسال شده</SelectItem>
-                <SelectItem value="under_review">در حال بررسی</SelectItem>
-                <SelectItem value="unverified">تایید نشده</SelectItem>
-                <SelectItem value="suspended">تعلیق شده</SelectItem>
+                <SelectItem value="all">{t.filters.verificationAll}</SelectItem>
+                <SelectItem value="verified">{vStatuses.verified}</SelectItem>
+                <SelectItem value="basic_verified">{vStatuses.basic_verified}</SelectItem>
+                <SelectItem value="documents_submitted">{vStatuses.documents_submitted}</SelectItem>
+                <SelectItem value="under_review">{vStatuses.under_review}</SelectItem>
+                <SelectItem value="unverified">{vStatuses.unverified}</SelectItem>
+                <SelectItem value="suspended">{vStatuses.suspended}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <Button type="submit" variant="outline" className="w-full sm:w-auto">
-            اعمال
+            {t.filters.apply}
           </Button>
         </form>
       </Card>
@@ -241,24 +247,28 @@ export function DirectoryClient() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>نام شرکت</TableHead>
-                <TableHead>کشور</TableHead>
-                <TableHead>نقش‌ها</TableHead>
-                <TableHead>کالاها</TableHead>
-                <TableHead>تاییدیه</TableHead>
+                <TableHead>{t.table.name}</TableHead>
+                <TableHead>{t.table.country}</TableHead>
+                <TableHead>{t.table.capabilities}</TableHead>
+                <TableHead>{t.table.commodities}</TableHead>
+                <TableHead>{t.table.verification}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                  <TableCell colSpan={5} className="p-0">
+                    <LoadingState variant="section" locale={locale} />
                   </TableCell>
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-destructive">
-                    خطا در دریافت اطلاعات
+                  <TableCell colSpan={5} className="p-0">
+                    <ErrorState
+                      errorMessage={t.table.error}
+                      onRetry={() => void refetch()}
+                      locale={locale}
+                    />
                   </TableCell>
                 </TableRow>
               ) : data && data.length > 0 ? (
@@ -276,7 +286,7 @@ export function DirectoryClient() {
                     <TableCell>
                       <div className="flex gap-1 flex-wrap">
                         {org.capabilities.length > 0
-                          ? org.capabilities.map((cap) => getCapabilityBadge(cap))
+                          ? org.capabilities.map((cap) => getCapabilityBadge(cap, t))
                           : "-"}
                       </div>
                     </TableCell>
@@ -298,8 +308,23 @@ export function DirectoryClient() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                    شرکتی یافت نشد.
+                  <TableCell colSpan={5} className="p-0">
+                    <EmptyState
+                      icon={<Search className="h-8 w-8 text-muted-foreground/60" />}
+                      title={
+                        search || capability || country || commodity || verification
+                          ? messages.states.empty.noFilterResultsTitle
+                          : t.table.empty
+                      }
+                      description={
+                        search || capability || country || commodity || verification
+                          ? messages.states.empty.noFilterResultsDescription
+                          : undefined
+                      }
+                      isFilterEmpty={Boolean(search || capability || country || commodity || verification)}
+                      onResetFilters={() => router.push(pathname)}
+                      locale={locale}
+                    />
                   </TableCell>
                 </TableRow>
               )}

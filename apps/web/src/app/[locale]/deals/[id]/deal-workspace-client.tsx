@@ -31,7 +31,6 @@ import {
 } from "@/components/ui/table";
 import {
   Activity,
-  AlertCircle,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
@@ -44,7 +43,6 @@ import {
   Lock,
   PlayCircle,
   Scale,
-  ShieldAlert,
   ShieldCheck,
   Truck,
   Users,
@@ -54,6 +52,12 @@ import { LogisticsTab } from "@/components/deals/execution/logistics-tab";
 import { QualityTab } from "@/components/deals/execution/quality-tab";
 import { DocumentsTab } from "@/components/deals/execution/documents-tab";
 import { IssuesTab } from "@/components/deals/execution/issues-tab";
+import {
+  LoadingState,
+  NotFoundState,
+  AccessDeniedState,
+  ErrorState,
+} from "@/components/states";
 import type {
   ExecutionDetail,
   ExecutionLogistics,
@@ -115,7 +119,9 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
   const [isLoadingDeal, setIsLoadingDeal] = useState<boolean>(true);
   const [isLoadingSchema, setIsLoadingSchema] = useState<boolean>(false);
   const [isNotFound, setIsNotFound] = useState<boolean>(false);
-  const [isUnauthorized, setIsUnauthorized] = useState<boolean>(false);
+  const [unauthorizedStatus, setUnauthorizedStatus] = useState<401 | 403 | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [dealRefreshIndex, setDealRefreshIndex] = useState<number>(0);
 
   // Manual Attribution Resolution Form State (Operator/Admin only)
   const [selectedChannel, setSelectedChannel] = useState<PrimaryChannelEnum | "">("");
@@ -317,7 +323,8 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
 
     async function fetchDeal() {
       setIsNotFound(false);
-      setIsUnauthorized(false);
+      setUnauthorizedStatus(null);
+      setLoadError(null);
       setResolveError(null);
       setResolveSuccess(false);
       setIsLoadingDeal(true);
@@ -335,8 +342,8 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
           return;
         }
 
-        if (response.status === 403) {
-          setIsUnauthorized(true);
+        if (response.status === 401 || response.status === 403) {
+          setUnauthorizedStatus(response.status as 401 | 403);
           setDeal(null);
           return;
         }
@@ -344,12 +351,19 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
         if (response.ok && data) {
           setDeal(data);
           setIsNotFound(false);
-          setIsUnauthorized(false);
+          setUnauthorizedStatus(null);
           void fetchExecution(requestKey);
+        } else {
+          setLoadError(
+            response.status >= 500
+              ? messages.states.error.serverError
+              : messages.states.error.defaultDescription
+          );
+          setDeal(null);
         }
       } catch {
         if (!ignore && activeRequestKeyRef.current === requestKey) {
-          setIsNotFound(true);
+          setLoadError(messages.states.error.networkError);
           setDeal(null);
         }
       } finally {
@@ -364,7 +378,7 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
       ignore = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSessionKey, dealId, isAuthLoading, queryClient]);
+  }, [currentSessionKey, dealId, isAuthLoading, queryClient, dealRefreshIndex]);
 
   // 2. Exact Historical Schema Fetch
   const schemaVersionId = deal?.terms?.schema_version_id;
@@ -469,82 +483,52 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
     }
   };
 
-  const ArrowIcon = isRtl ? ArrowLeft : ArrowRight;
+  const ArrowIcon = isRtl ? ArrowRight : ArrowLeft;
 
   // Loading State View
   if (isAuthLoading || isLoadingDeal) {
+    return <LoadingState message={t.loading} locale={locale} />;
+  }
+
+  // Unauthorized State View
+  if (unauthorizedStatus) {
     return (
-      <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href={`/${locale}/deals`} className="hover:text-foreground">
-            {t.backToList}
-          </Link>
-        </div>
-        <Card className="flex items-center justify-center p-16 shadow-none">
-          <div className="flex flex-col items-center gap-3 text-muted-foreground">
-            <Loader2 className="size-8 animate-spin text-primary" />
-            <p className="text-sm">{t.loading}</p>
-          </div>
-        </Card>
-      </div>
+      <AccessDeniedState
+        statusCode={unauthorizedStatus}
+        title={t.unauthorizedTitle}
+        description={t.unauthorizedDescription}
+        backHref={`/${locale}/deals`}
+        backLabel={t.backToList}
+        locale={locale}
+      />
     );
   }
 
   // Not Found State View
   if (isNotFound) {
     return (
-      <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href={`/${locale}/deals`} className="flex items-center gap-1 hover:text-foreground">
-            <ArrowIcon className="size-4" />
-            <span>{t.backToList}</span>
-          </Link>
-        </div>
-        <Card className="p-12 text-center shadow-none border-dashed">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
-            <AlertCircle className="size-6 text-muted-foreground" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold">{t.notFoundTitle}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{t.notFoundDescription}</p>
-          <div className="mt-6">
-            <Button asChild variant="outline">
-              <Link href={`/${locale}/deals`}>{t.backToList}</Link>
-            </Button>
-          </div>
-        </Card>
-      </div>
+      <NotFoundState
+        title={t.notFoundTitle}
+        description={t.notFoundDescription}
+        backHref={`/${locale}/deals`}
+        backLabel={t.backToList}
+        locale={locale}
+      />
     );
   }
 
-  // Unauthorized State View
-  if (isUnauthorized) {
+  // Server / Network Error Guard
+  if (loadError || !deal) {
     return (
-      <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href={`/${locale}/deals`} className="flex items-center gap-1 hover:text-foreground">
-            <ArrowIcon className="size-4" />
-            <span>{t.backToList}</span>
-          </Link>
-        </div>
-        <Card className="p-12 text-center shadow-none border-destructive/20 bg-destructive/5">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-destructive/10">
-            <ShieldAlert className="size-6 text-destructive" />
-          </div>
-          <h2 className="mt-4 text-base font-semibold text-destructive">{t.unauthorizedTitle}</h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            {t.unauthorizedDescription}
-          </p>
-          <div className="mt-6">
-            <Button asChild variant="outline">
-              <Link href={`/${locale}/deals`}>{t.backToList}</Link>
-            </Button>
-          </div>
-        </Card>
-      </div>
+      <ErrorState
+        errorMessage={loadError ?? undefined}
+        onRetry={() => setDealRefreshIndex((k) => k + 1)}
+        backHref={`/${locale}/deals`}
+        backLabel={t.backToList}
+        locale={locale}
+      />
     );
   }
-
-  if (!deal) return null;
 
   // Extract Parties
   const buyerParty = deal.parties?.find((p) => p.role === "BUYER");
@@ -619,7 +603,7 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
               </h1>
               <p className="mt-1 text-sm text-muted-foreground flex flex-wrap items-center gap-2">
                 <span>{buyerParty?.name_snapshot || "خریدار"}</span>
-                <span>←</span>
+                <span aria-hidden="true">{isRtl ? "←" : "→"}</span>
                 <span>{sellerParty?.name_snapshot || "فروشنده"}</span>
               </p>
             </div>
@@ -646,7 +630,7 @@ export function DealWorkspaceClient({ locale = "fa", dealId }: DealWorkspaceClie
 
       {/* Tabs Navigation Bar */}
       <div className="border-b border-border overflow-x-auto">
-        <nav className="flex space-x-1 rtl:space-x-reverse min-w-max pb-px" aria-label="Tabs">
+        <nav className="flex space-x-1 rtl:space-x-reverse min-w-max pb-px" aria-label={t.tabs.ariaLabel}>
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
