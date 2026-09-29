@@ -31,9 +31,15 @@ from identity.seed_hero import (
     HERO_RFQ_TAG,
 )
 from offers.enums import OfferorRole
-from offers.models import Offer
+from offers.models import (
+    DecisionCandidate,
+    DecisionProfile,
+    DecisionProfileVersion,
+    DecisionRun,
+    Offer,
+)
 from offers.services.creation import create_offer
-from offers.services.version_services import create_draft_offer_version
+from offers.services.version_services import create_draft_offer_version, submit_offer_version
 from opportunities.models import (
     Opportunity,
     OpportunityDirection,
@@ -390,6 +396,61 @@ class DemoResetExecutionTests(TestCase):
 
         # Verify that transaction rolled back and didn't leave zero RFQs
         self.assertEqual(RFQ.objects.count(), initial_rfqs)
+
+    def test_reset_demo_environment_clears_decision_runs_and_candidates(self):
+        """Verify reset_demo_environment clears DecisionRun and DecisionCandidate without ProtectedError."""
+        reset_demo_environment()
+
+        # Find Hero RFQ (guaranteed 0 offers) and demo supplier
+        hero_rfq = RFQ.objects.get(notes__contains=HERO_RFQ_TAG)
+        supplier_user = User.objects.get(email="supplier@demo.local")
+        supplier_org = Organization.objects.get(name="Demo Supplier LLC")
+
+        # Create an offer and submit an offer version on Hero RFQ
+        offer = create_offer(
+            actor=supplier_user,
+            rfq=hero_rfq,
+            offeror_role=OfferorRole.SUPPLIER,
+            offering_organization=supplier_org,
+        )
+        v1 = create_draft_offer_version(
+            actor=supplier_user,
+            offer=offer,
+            offered_quantity=hero_rfq.quantity,
+            quantity_unit=hero_rfq.unit,
+            unit_price=Decimal("400.00"),
+            currency="USD",
+            delivery_terms="FOB Bandar Abbas",
+            specifications=hero_rfq.specifications,
+        )
+        submit_offer_version(offer_version_id=v1.id, actor=supplier_user)
+
+        # Create a DecisionProfile, DecisionProfileVersion, DecisionRun and DecisionCandidate
+        dp = DecisionProfile.objects.create(code="test-profile-reset", name="Test Reset Profile")
+        dpv = DecisionProfileVersion.objects.create(
+            profile=dp, version=1, status="PUBLISHED"
+        )
+        drun = DecisionRun.objects.create(
+            rfq=hero_rfq,
+            decision_profile_version=dpv,
+            created_by=supplier_user,
+        )
+        DecisionCandidate.objects.create(
+            decision_run=drun,
+            offer=offer,
+            offer_version=v1,
+        )
+
+        # Verify records exist
+        self.assertTrue(DecisionRun.objects.filter(id=drun.id).exists())
+        self.assertTrue(DecisionCandidate.objects.filter(decision_run=drun).exists())
+
+        # Execute reset_demo_environment - must succeed without raising ProtectedError
+        reset_demo_environment()
+
+        # Verify DecisionRun and DecisionCandidate were removed and demo restored
+        self.assertFalse(DecisionRun.objects.filter(id=drun.id).exists())
+        self.assertEqual(RFQ.objects.count(), 23)
 
     def test_management_command_reset_demo(self):
         """Verify that python manage.py reset_demo management command executes successfully."""

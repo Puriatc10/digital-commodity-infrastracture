@@ -1166,6 +1166,10 @@ describe("T1009 — Execution Monitor UI Test Suite", () => {
     };
     window.dispatchEvent(new Event("focus"));
 
+    await waitFor(() => {
+      expect(screen.queryByText("گردش کار سازمان الف")).not.toBeInTheDocument();
+    });
+
     rerender(
       <Wrapper>
         <DealWorkspaceClient locale="fa" dealId="deal-test-123" />
