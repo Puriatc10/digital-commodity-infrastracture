@@ -401,37 +401,37 @@ class DemoResetExecutionTests(TestCase):
         """Verify reset_demo_environment clears DecisionRun and DecisionCandidate without ProtectedError."""
         reset_demo_environment()
 
-        # Find demo RFQ and supplier
-        demo_rfq = RFQ.objects.filter(notes__contains="[DEMO-RFQ-01]").first()
+        # Find Hero RFQ (guaranteed 0 offers) and demo supplier
+        hero_rfq = RFQ.objects.get(notes__contains=HERO_RFQ_TAG)
         supplier_user = User.objects.get(email="supplier@demo.local")
         supplier_org = Organization.objects.get(name="Demo Supplier LLC")
 
-        # Create an offer and submit an offer version
+        # Create an offer and submit an offer version on Hero RFQ
         offer = create_offer(
             actor=supplier_user,
-            rfq=demo_rfq,
+            rfq=hero_rfq,
             offeror_role=OfferorRole.SUPPLIER,
             offering_organization=supplier_org,
         )
         v1 = create_draft_offer_version(
             actor=supplier_user,
             offer=offer,
-            offered_quantity=demo_rfq.quantity,
-            quantity_unit=demo_rfq.unit,
+            offered_quantity=hero_rfq.quantity,
+            quantity_unit=hero_rfq.unit,
             unit_price=Decimal("400.00"),
             currency="USD",
             delivery_terms="FOB Bandar Abbas",
-            specifications=demo_rfq.specifications,
+            specifications=hero_rfq.specifications,
         )
         submit_offer_version(offer_version_id=v1.id, actor=supplier_user)
 
         # Create a DecisionProfile, DecisionProfileVersion, DecisionRun and DecisionCandidate
-        dp = DecisionProfile.objects.create(code="test-profile", name="Test Profile")
+        dp = DecisionProfile.objects.create(code="test-profile-reset", name="Test Reset Profile")
         dpv = DecisionProfileVersion.objects.create(
             profile=dp, version=1, status="PUBLISHED"
         )
         drun = DecisionRun.objects.create(
-            rfq=demo_rfq,
+            rfq=hero_rfq,
             decision_profile_version=dpv,
             created_by=supplier_user,
         )
