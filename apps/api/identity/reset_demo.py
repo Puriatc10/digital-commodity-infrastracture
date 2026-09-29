@@ -70,7 +70,14 @@ from identity.seed_hero import (
     HERO_RFQ_TAG,
 )
 from matching.models import MatchingRun
-from offers.models import Award, AwardAllocation, Offer, OfferVersion, RevisionRequest
+from offers.models import (
+    Award,
+    AwardAllocation,
+    DecisionRun,
+    Offer,
+    OfferVersion,
+    RevisionRequest,
+)
 from opportunities.models import (
     ExternalCounterparty,
     Opportunity,
@@ -273,6 +280,9 @@ def _clear_demo_transactional_data(stdout=None) -> Dict[str, int]:
     # C. Delete AwardAllocations and Awards
     AwardAllocation.objects.filter(award__in=demo_awards).delete()
     Award.objects.filter(id__in=demo_awards).delete()
+
+    # Delete DecisionRuns (cascades to DecisionCandidates and DecisionSignals)
+    DecisionRun.objects.filter(rfq__in=demo_rfqs).delete()
 
     # D. Delete Offer RevisionRequests, Version Pointers, Versions, and Offers
     RevisionRequest.objects.filter(offer__in=demo_offers).delete()
